@@ -5,4 +5,32 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="VRLCRM.Infrastructure\VRLCRM.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="VRLCRM.Domain\**" />
+    <Compile Remove="VRLCRM.Application\**" />
+    <Compile Remove="VRLCRM.Infrastructure\**" />
+    <Content Remove="VRLCRM.Domain\**" />
+    <Content Remove="VRLCRM.Application\**" />
+    <Content Remove="VRLCRM.Infrastructure\**" />
+    <EmbeddedResource Remove="VRLCRM.Domain\**" />
+    <EmbeddedResource Remove="VRLCRM.Application\**" />
+    <EmbeddedResource Remove="VRLCRM.Infrastructure\**" />
+    <None Remove="VRLCRM.Domain\**" />
+    <None Remove="VRLCRM.Application\**" />
+    <None Remove="VRLCRM.Infrastructure\**" />
+  </ItemGroup>
+
 </Project>
