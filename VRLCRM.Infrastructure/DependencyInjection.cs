@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using VRLCRM.Application.Customers;
 using VRLCRM.Domain.Entities;
+using VRLCRM.Infrastructure.Customers;
 using VRLCRM.Infrastructure.Data;
 using VRLCRM.Infrastructure.Options;
 
@@ -22,6 +24,8 @@ public static class DependencyInjection
             options.UseSqlServer(
                 connectionString,
                 sqlOptions => sqlOptions.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
+
+        services.AddScoped<ICustomerService, CustomerService>();
 
         services
             .AddIdentity<ApplicationUser, ApplicationRole>(options =>

@@ -33,6 +33,17 @@
       </a>
     </li>
 
+    <!-- CRM -->
+    <li class="menu-header mt-7">
+      <span class="menu-header-text">CRM</span>
+    </li>
+    <li class='menu-item@(currentPage.StartsWith("/Customers") ? " active" : "")'>
+      <a asp-controller="Customers" asp-action="Index" class="menu-link">
+        <i class="menu-icon icon-base ri ri-group-line"></i>
+        <div>Customers</div>
+      </a>
+    </li>
+
     <!-- Layouts -->
     <li class='menu-item@(currentPage.StartsWith("/LayoutExamples") ? " active open" : "")'>
       <a href="javascript:void(0);" class="menu-link menu-toggle">
