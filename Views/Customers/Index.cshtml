@@ -1,0 +1,94 @@
+@model IReadOnlyList<Customer>
+@{
+  ViewData["Title"] = "Müşteriler";
+}
+
+@if (TempData["SuccessMessage"] is string successMessage)
+{
+  <div class="alert alert-solid-success alert-dismissible d-flex align-items-center mb-6" role="alert">
+    <span class="alert-icon rounded"><i class="icon-base ri ri-check-line icon-md"></i></span>
+    @successMessage
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+}
+
+<div class="card">
+  <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <h5 class="mb-0">Müşteri Listesi</h5>
+    <a asp-action="Create" class="btn btn-primary">
+      <i class="icon-base ri ri-add-line icon-16px me-1"></i>
+      Yeni Müşteri
+    </a>
+  </div>
+  <div class="table-responsive text-nowrap">
+    <table class="table table-hover">
+      <thead>
+        <tr>
+          <th>Müşteri</th>
+          <th>Firma</th>
+          <th>Telefon</th>
+          <th>İl / İlçe</th>
+          <th>İşlemler</th>
+        </tr>
+      </thead>
+      <tbody class="table-border-bottom-0">
+        @if (!Model.Any())
+        {
+          <tr>
+            <td colspan="5" class="text-center py-5 text-body-secondary">Henüz müşteri kaydı yok.</td>
+          </tr>
+        }
+        else
+        {
+          @foreach (var customer in Model)
+          {
+            <tr>
+              <td>
+                <div class="d-flex align-items-center">
+                  <div class="avatar avatar-sm me-3">
+                    <span class="avatar-initial rounded-circle bg-label-primary">
+                      @(string.IsNullOrWhiteSpace(customer.FirstName) ? "?" : customer.FirstName[0].ToString().ToUpperInvariant())
+                    </span>
+                  </div>
+                  <div>
+                    <strong>@customer.FullName</strong>
+                  </div>
+                </div>
+              </td>
+              <td>@(customer.CompanyName ?? "-")</td>
+              <td>@customer.PhoneNumber</td>
+              <td>
+                @if (customer.Address is not null)
+                {
+                  @($"{customer.Address.City} / {customer.Address.District}")
+                }
+                else
+                {
+                  <span>-</span>
+                }
+              </td>
+              <td>
+                <div class="dropdown">
+                  <button type="button" class="btn p-0 dropdown-toggle hide-arrow shadow-none" data-bs-toggle="dropdown">
+                    <i class="icon-base ri ri-more-2-line icon-18px"></i>
+                  </button>
+                  <div class="dropdown-menu">
+                    <a class="dropdown-item" asp-action="Details" asp-route-id="@customer.Id">
+                      <i class="icon-base ri ri-eye-line icon-18px me-1"></i> Detay
+                    </a>
+                    <a class="dropdown-item" asp-action="Edit" asp-route-id="@customer.Id">
+                      <i class="icon-base ri ri-pencil-line icon-18px me-1"></i> Düzenle
+                    </a>
+                    <a class="dropdown-item text-danger" asp-action="Delete" asp-route-id="@customer.Id">
+                      <i class="icon-base ri ri-delete-bin-6-line icon-18px me-1"></i> Sil
+                    </a>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

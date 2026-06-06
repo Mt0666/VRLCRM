@@ -1,0 +1,39 @@
+@model Customer
+@{
+  ViewData["Title"] = "Müşteri Sil";
+}
+
+<div class="row">
+  <div class="col-md-8 col-lg-6">
+    <div class="card border-danger mb-6">
+      <div class="card-body">
+        <div class="d-flex align-items-start mb-4">
+          <span class="badge badge-center rounded-pill bg-danger me-3 p-3">
+            <i class="icon-base ri ri-error-warning-line icon-24px"></i>
+          </span>
+          <div>
+            <h5 class="mb-2">Müşteriyi silmek istediğinize emin misiniz?</h5>
+            <p class="mb-0 text-body-secondary">
+              <strong>@Model.FullName</strong> kaydı ve ilişkili adres bilgisi kalıcı olarak silinecek.
+            </p>
+          </div>
+        </div>
+
+        <ul class="list-unstyled mb-4">
+          <li class="mb-2"><strong>Firma:</strong> @(Model.CompanyName ?? "-")</li>
+          <li class="mb-2"><strong>Telefon:</strong> @Model.PhoneNumber</li>
+          @if (Model.Address is not null)
+          {
+            <li><strong>Adres:</strong> @Model.Address.City / @Model.Address.District - @Model.Address.AddressLine</li>
+          }
+        </ul>
+
+        <form asp-action="Delete" method="post">
+          <input type="hidden" asp-for="Id" />
+          <button type="submit" class="btn btn-danger me-3">Evet, Sil</button>
+          <a asp-action="Index" class="btn btn-outline-secondary">İptal</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
