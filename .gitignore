@@ -98,17 +98,10 @@ bld/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
-# Uncomment if you have tasks that create the project's static files in wwwroot
 
-# Ignoring following files/folder only for master
-
-wwwroot/vendor/**/*.css
-wwwroot/vendor/fonts/*.css
-wwwroot/vendor/fonts/**/*
-wwwroot/vendor/**/*.js
-wwwroot/vendor/css
-
-src/fonts/iconify-icons.css
+# NOT: Materio şablonunda wwwroot/vendor CSS/JS dosyaları ignore ediliyordu.
+# Pull sonrası stillerin çalışması için bu dosyalar repoda tutulmalı.
+# SCSS değiştirdiğinizde: yarn install && yarn build
 
 # Visual Studio 2017 auto generated files
 Generated\ Files/
