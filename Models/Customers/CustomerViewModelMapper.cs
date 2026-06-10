@@ -17,7 +17,8 @@ public static class CustomerViewModelMapper
             Notes = customer.Notes,
             City = customer.Address?.City ?? string.Empty,
             District = customer.Address?.District ?? string.Empty,
-            AddressLine = customer.Address?.AddressLine ?? string.Empty
+            AddressLine = customer.Address?.AddressLine ?? string.Empty,
+            CreditLimit = customer.CreditLimit
         };
     }
 
@@ -30,7 +31,8 @@ public static class CustomerViewModelMapper
             LastName = model.LastName.Trim(),
             CompanyName = model.CompanyName?.Trim(),
             PhoneNumber = model.PhoneNumber.Trim(),
-            Notes = model.Notes?.Trim()
+            Notes = model.Notes?.Trim(),
+            CreditLimit = model.CreditLimit
         };
     }
 

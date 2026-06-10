@@ -420,6 +420,8 @@ ASALocalRun/
 appsettings.*.local.json
 secrets.json
 **/Properties/serviceDependencies.local.json
+wwwroot/uploads/**/*
+!wwwroot/uploads/**/.gitkeep
 
 # =============================================================================
 # Yapay zeka / LLM IDE araçları (Cursor, Claude, Copilot vb.)

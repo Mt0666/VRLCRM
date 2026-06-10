@@ -1,0 +1,65 @@
+@model IReadOnlyList<Order>
+@{
+  ViewData["Title"] = "Siparişler";
+}
+
+<div class="card">
+  <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <h5 class="mb-0">Sipariş Listesi</h5>
+    <a asp-action="Create" class="btn btn-primary btn-sm">
+      <i class="icon-base ri ri-add-line icon-16px me-1"></i> Yeni Sipariş (Barkod)
+    </a>
+  </div>
+  <div class="card-body pb-0">
+    <partial name="_TableToolbar" />
+  </div>
+  <div class="table-responsive text-nowrap">
+    <table class="table table-hover js-data-table">
+      <thead>
+        <tr>
+          <th>Sipariş No</th>
+          <th>Müşteri</th>
+          <th>Tarih</th>
+          <th>Durum</th>
+          <th>Tutar</th>
+          <th>İşlemler</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (!Model.Any())
+        {
+          <tr><td colspan="6" class="text-center py-5 text-body-secondary">Henüz sipariş yok.</td></tr>
+        }
+        else
+        {
+          @foreach (var order in Model)
+          {
+            <tr class="@(order.IsActive ? "" : "table-secondary")">
+              <td><strong>@order.OrderNumber</strong></td>
+              <td>@order.Customer.FullName</td>
+              <td>@order.OrderDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+              <td>
+                @switch (order.Status)
+                {
+                  case OrderStatus.Approved:
+                    <span class="badge bg-label-success">Onaylandı</span>
+                    break;
+                  case OrderStatus.Cancelled:
+                    <span class="badge bg-label-danger">İptal</span>
+                    break;
+                  default:
+                    <span class="badge bg-label-warning">@order.Status</span>
+                    break;
+                }
+              </td>
+              <td>@order.TotalAmount.ToString("N2") ₺</td>
+              <td>
+                <a asp-action="Details" asp-route-id="@order.Id" class="btn btn-sm btn-outline-primary">Detay</a>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

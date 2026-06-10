@@ -1,0 +1,62 @@
+@model IReadOnlyList<Supplier>
+@{
+  ViewData["Title"] = "Tedarikçiler";
+}
+
+<div class="card">
+  <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <h5 class="mb-0">Tedarikçi Listesi</h5>
+    <a asp-action="Create" class="btn btn-primary btn-sm">Yeni Tedarikçi</a>
+  </div>
+  <div class="card-body pb-0">
+    <partial name="_TableToolbar" />
+  </div>
+  <div class="table-responsive text-nowrap">
+    <table class="table table-hover js-data-table">
+      <thead>
+        <tr>
+          <th>Firma</th>
+          <th>Yetkili</th>
+          <th>Telefon</th>
+          <th>Cari Borç</th>
+          <th>Durum</th>
+          <th>İşlemler</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (!Model.Any())
+        {
+          <tr><td colspan="6" class="text-center py-5 text-body-secondary">Henüz tedarikçi kaydı yok.</td></tr>
+        }
+        else
+        {
+          @foreach (var supplier in Model)
+          {
+            <tr class="@(supplier.IsActive ? "" : "table-secondary")">
+              <td><strong>@supplier.CompanyName</strong></td>
+              <td>@(supplier.ContactName ?? "-")</td>
+              <td>@supplier.PhoneNumber</td>
+              <td>@supplier.Balance.ToString("N2") ₺</td>
+              <td><partial name="_StatusBadge" model="supplier.IsActive" /></td>
+              <td>
+                <div class="dropdown">
+                  <button type="button" class="btn p-0 dropdown-toggle hide-arrow shadow-none" data-bs-toggle="dropdown">
+                    <i class="icon-base ri ri-more-2-line icon-18px"></i>
+                  </button>
+                  <div class="dropdown-menu">
+                    <a class="dropdown-item" asp-action="Details" asp-route-id="@supplier.Id">Detay</a>
+                    @if (supplier.IsActive)
+                    {
+                      <a class="dropdown-item" asp-action="Edit" asp-route-id="@supplier.Id">Düzenle</a>
+                      <a class="dropdown-item text-danger" asp-action="Delete" asp-route-id="@supplier.Id">Pasife Al</a>
+                    }
+                  </div>
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

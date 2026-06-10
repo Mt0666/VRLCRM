@@ -1,0 +1,36 @@
+@model StockItem
+@{
+  ViewData["Title"] = "Stoku Pasife Al";
+}
+
+<div class="row">
+  <div class="col-md-8 col-lg-6">
+    <div class="card border-danger mb-6">
+      <div class="card-body">
+        <div class="d-flex align-items-start mb-4">
+          <span class="badge badge-center rounded-pill bg-danger me-3 p-3">
+            <i class="icon-base ri ri-error-warning-line icon-24px"></i>
+          </span>
+          <div>
+            <h5 class="mb-2">Stok kaydını pasif duruma almak istediğinize emin misiniz?</h5>
+            <p class="mb-0 text-body-secondary">
+              <strong>@Model.Name</strong> (@Model.StockCode) pasif olacak; veritabanından tamamen silinmeyecek.
+            </p>
+          </div>
+        </div>
+
+        <ul class="list-unstyled mb-4">
+          <li class="mb-2"><strong>Kategori:</strong> @Model.Category.Name</li>
+          <li class="mb-2"><strong>Fiyat:</strong> @Model.Price.ToString("N2") ₺</li>
+          <li><strong>Stok Adedi:</strong> @Model.StockQuantity</li>
+        </ul>
+
+        <form asp-action="Delete" method="post">
+          <input type="hidden" asp-for="Id" />
+          <button type="submit" class="btn btn-danger me-3">Evet, Pasife Al</button>
+          <a asp-action="Index" class="btn btn-outline-secondary">İptal</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

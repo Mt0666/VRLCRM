@@ -1,0 +1,24 @@
+@model SupplierFormViewModel
+@{ ViewData["Title"] = "Tedarikçi Düzenle"; }
+
+<div class="row">
+  <div class="col-xl-8 col-lg-10">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Tedarikçi Düzenle</h5>
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Listeye Dön</a>
+      </div>
+      <div class="card-body">
+        <form asp-action="Edit" method="post">
+          <input type="hidden" asp-for="Id" />
+          <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+          <partial name="_Form" model="Model" />
+          <button type="submit" class="btn btn-primary me-3">Kaydet</button>
+          <a asp-action="Index" class="btn btn-outline-secondary">İptal</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section PageScripts { <partial name="_ValidationScriptsPartial" /> }

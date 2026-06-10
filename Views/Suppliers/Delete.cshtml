@@ -1,0 +1,20 @@
+@model Supplier
+@{ ViewData["Title"] = "Tedarikçi Sil"; }
+
+<div class="row">
+  <div class="col-md-8 col-lg-6">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="mb-4">Tedarikçiyi pasife almak istediğinize emin misiniz?</h5>
+        <p><strong>@Model.CompanyName</strong></p>
+        <p class="text-body-secondary">Cari borç: @Model.Balance.ToString("N2") ₺</p>
+        <form asp-action="Delete" method="post" class="d-flex gap-2">
+          @Html.AntiForgeryToken()
+          <input type="hidden" asp-for="Id" />
+          <button type="submit" class="btn btn-danger">Pasife Al</button>
+          <a asp-action="Index" class="btn btn-outline-secondary">İptal</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

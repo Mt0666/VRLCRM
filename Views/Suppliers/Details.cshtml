@@ -1,0 +1,69 @@
+@model Supplier
+@{ ViewData["Title"] = "Tedarikçi Detayı"; }
+
+<div class="row g-6">
+  <div class="col-xl-8 col-lg-10">
+    <div class="card">
+      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+          <h5 class="mb-1">@Model.CompanyName</h5>
+          <small class="text-body-secondary">Tedarikçi detayı</small>
+        </div>
+        <div class="d-flex gap-2">
+          <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary btn-sm">Düzenle</a>
+          <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Listeye Dön</a>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row g-4 mb-6">
+          <div class="col-md-6"><strong>Yetkili:</strong> @(Model.ContactName ?? "-")</div>
+          <div class="col-md-6"><strong>Telefon:</strong> @Model.PhoneNumber</div>
+          <div class="col-md-6"><strong>Vergi No:</strong> @(Model.TaxNumber ?? "-")</div>
+          <div class="col-md-6"><strong>Cari Borç:</strong> <span class="text-danger fw-semibold">@Model.Balance.ToString("N2") ₺</span></div>
+          <div class="col-md-6"><strong>Cari Limit:</strong> @(Model.CreditLimit.HasValue ? $"{Model.CreditLimit:N2} ₺" : "Limitsiz")</div>
+          @if (Model.CreditLimit.HasValue)
+          {
+            <div class="col-md-6"><strong>Kullanılabilir:</strong> @Model.AvailableCredit?.ToString("N2") ₺</div>
+          }
+          <div class="col-md-6"><strong>Durum:</strong> <partial name="_StatusBadge" model="Model.IsActive" /></div>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.AddressLine) || !string.IsNullOrWhiteSpace(Model.City))
+        {
+          <h6 class="mb-3">Adres</h6>
+          <p class="mb-4">@(Model.City ?? "-") / @(Model.District ?? "-") — @(Model.AddressLine ?? "-")</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.Notes))
+        {
+          <h6 class="mb-3">Notlar</h6>
+          <p class="mb-4">@Model.Notes</p>
+        }
+        <h6 class="mb-3">Alış Faturaları (@Model.PurchaseInvoices.Count)</h6>
+        @if (!Model.PurchaseInvoices.Any())
+        {
+          <p class="text-body-secondary">Henüz alış faturası yok.</p>
+        }
+        else
+        {
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr><th>Fatura No</th><th>Tarih</th><th>Tutar</th><th></th></tr>
+              </thead>
+              <tbody>
+                @foreach (var invoice in Model.PurchaseInvoices.OrderByDescending(i => i.InvoiceDate).Take(10))
+                {
+                  <tr>
+                    <td>@invoice.InvoiceNumber</td>
+                    <td>@invoice.InvoiceDate.ToLocalTime().ToString("dd.MM.yyyy")</td>
+                    <td>@invoice.TotalAmount.ToString("N2") ₺</td>
+                    <td><a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoice.Id">Detay</a></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

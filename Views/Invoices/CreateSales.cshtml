@@ -1,0 +1,131 @@
+@model InvoiceFormViewModel
+@{
+  ViewData["Title"] = "Satış Faturası";
+}
+
+<div class="row">
+  <div class="col-xl-10">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Yeni Satış Faturası</h5>
+        <a asp-action="Sales" class="btn btn-sm btn-outline-secondary">Listeye Dön</a>
+      </div>
+      <div class="card-body">
+        <form asp-action="CreateSales" method="post" id="invoiceForm">
+          <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="form-floating form-floating-outline">
+                <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select">
+                  <option value="">Müşteri seçin</option>
+                </select>
+                <label asp-for="CustomerId"></label>
+                <span asp-validation-for="CustomerId" class="text-danger"></span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating form-floating-outline">
+                <input asp-for="InvoiceDate" class="form-control" type="date" />
+                <label asp-for="InvoiceDate"></label>
+                <span asp-validation-for="InvoiceDate" class="text-danger"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-floating form-floating-outline mb-6">
+            <textarea asp-for="Notes" class="form-control h-px-100"></textarea>
+            <label asp-for="Notes"></label>
+          </div>
+
+          <h6 class="mb-3">Fatura Kalemleri</h6>
+          <div class="row g-3 align-items-end mb-4">
+            <div class="col-md-5">
+              <label class="form-label">Ürün</label>
+              <select id="stockSelect" class="form-select">
+                <option value="">Ürün seçin</option>
+                @foreach (var stock in Model.Stocks)
+                {
+                  <option value="@stock.Value">@stock.Text</option>
+                }
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Adet</label>
+              <input type="number" id="lineQty" class="form-control" value="1" min="1" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Birim Fiyat</label>
+              <input type="number" id="linePrice" class="form-control" step="0.01" min="0" />
+            </div>
+            <div class="col-md-2">
+              <button type="button" id="addLineBtn" class="btn btn-outline-primary w-100">Ekle</button>
+            </div>
+          </div>
+
+          <div class="table-responsive mb-4">
+            <table class="table" id="linesTable">
+              <thead>
+                <tr>
+                  <th>Ürün</th>
+                  <th>Adet</th>
+                  <th>Birim Fiyat</th>
+                  <th>Toplam</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div id="lineInputs"></div>
+
+          <button type="submit" class="btn btn-primary me-2">Kaydet</button>
+          <a asp-action="Sales" class="btn btn-outline-secondary">İptal</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section PageScripts {
+  <partial name="_ValidationScriptsPartial" />
+  <script>
+    const stockOptions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StockOptions));
+    const stockPrices = Object.fromEntries(stockOptions.map(s => [String(s.id), s.price]));
+    const stockNames = Object.fromEntries(stockOptions.map(s => [String(s.id), s.name]));
+    let lineIndex = 0;
+
+    document.getElementById('stockSelect').addEventListener('change', function () {
+      const price = stockPrices[this.value];
+      if (price !== undefined) document.getElementById('linePrice').value = price;
+    });
+
+    document.getElementById('addLineBtn').addEventListener('click', function () {
+      const stockId = document.getElementById('stockSelect').value;
+      const qty = parseInt(document.getElementById('lineQty').value, 10);
+      const price = parseFloat(document.getElementById('linePrice').value);
+      if (!stockId || !qty || qty <= 0 || isNaN(price)) return;
+
+      const name = stockNames[stockId] || stockId;
+      const tbody = document.querySelector('#linesTable tbody');
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${name}</td>
+        <td>${qty}</td>
+        <td>${price.toFixed(2)} ₺</td>
+        <td>${(qty * price).toFixed(2)} ₺</td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger remove-line">Sil</button></td>`;
+      tbody.appendChild(row);
+
+      document.getElementById('lineInputs').insertAdjacentHTML('beforeend', `
+        <input type="hidden" name="Lines[${lineIndex}].IsNewProduct" value="false" />
+        <input type="hidden" name="Lines[${lineIndex}].StockItemId" value="${stockId}" />
+        <input type="hidden" name="Lines[${lineIndex}].StockName" value="${name}" />
+        <input type="hidden" name="Lines[${lineIndex}].Quantity" value="${qty}" />
+        <input type="hidden" name="Lines[${lineIndex}].UnitPrice" value="${price}" />`);
+      lineIndex++;
+      row.querySelector('.remove-line').addEventListener('click', () => row.remove());
+    });
+  </script>
+}

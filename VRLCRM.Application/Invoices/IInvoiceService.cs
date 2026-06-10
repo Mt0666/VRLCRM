@@ -1,0 +1,48 @@
+using VRLCRM.Domain.Entities;
+using VRLCRM.Domain.Enums;
+
+namespace VRLCRM.Application.Invoices;
+
+public class NewPurchaseProductInput
+{
+    public string StockCode { get; set; } = string.Empty;
+
+    public string Name { get; set; } = string.Empty;
+
+    public int CategoryId { get; set; }
+
+    public string? Barcode { get; set; }
+}
+
+public class InvoiceLineInput
+{
+    public int? StockItemId { get; set; }
+
+    public int Quantity { get; set; }
+
+    public decimal UnitPrice { get; set; }
+
+    public NewPurchaseProductInput? NewProduct { get; set; }
+}
+
+public interface IInvoiceService
+{
+    Task<IReadOnlyList<Invoice>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Invoice>> GetByTypeAsync(InvoiceType invoiceType, CancellationToken cancellationToken = default);
+
+    Task<Invoice?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<Invoice> CreateAsync(
+        InvoiceType invoiceType,
+        int? customerId,
+        int? supplierId,
+        DateTime invoiceDate,
+        string? notes,
+        IReadOnlyList<InvoiceLineInput> lines,
+        CancellationToken cancellationToken = default);
+
+    Task<Invoice> CreateSalesInvoiceFromOrderAsync(int orderId, CancellationToken cancellationToken = default);
+
+    Task<bool> DeactivateAsync(int id, CancellationToken cancellationToken = default);
+}

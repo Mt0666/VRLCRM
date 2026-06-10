@@ -1,0 +1,7 @@
+@model CategoryFormViewModel
+
+<div class="form-floating form-floating-outline mb-6">
+  <input asp-for="Name" class="form-control" placeholder="Kategori adı" />
+  <label asp-for="Name"></label>
+  <span asp-validation-for="Name" class="text-danger"></span>
+</div>
