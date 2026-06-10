@@ -1,0 +1,17 @@
+@if (TempData["SuccessMessage"] is string successMessage)
+{
+  <div class="alert alert-solid-success alert-dismissible d-flex align-items-center mb-6 js-flash-alert" role="alert">
+    <span class="alert-icon rounded"><i class="icon-base ri ri-check-line icon-md"></i></span>
+    @successMessage
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+}
+
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+  <div class="alert alert-solid-danger alert-dismissible d-flex align-items-center mb-6 js-flash-alert" role="alert">
+    <span class="alert-icon rounded"><i class="icon-base ri ri-error-warning-line icon-md"></i></span>
+    @errorMessage
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+}

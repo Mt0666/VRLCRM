@@ -1,0 +1,171 @@
+@model OrderFormViewModel
+@{
+  ViewData["Title"] = "Yeni Sipariş";
+}
+
+<div class="row">
+  <div class="col-xl-10">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Barkod ile Sipariş Girişi</h5>
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Listeye Dön</a>
+      </div>
+      <div class="card-body">
+        <form asp-action="Create" method="post" id="orderForm">
+          <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="form-floating form-floating-outline">
+                <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select">
+                  <option value="">Müşteri seçin</option>
+                </select>
+                <label asp-for="CustomerId"></label>
+                <span asp-validation-for="CustomerId" class="text-danger"></span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating form-floating-outline">
+                <input asp-for="Notes" class="form-control" />
+                <label asp-for="Notes"></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="card bg-label-secondary mb-4">
+            <div class="card-body">
+              <div class="row g-3 align-items-end">
+                <div class="col-md-6">
+                  <label class="form-label">Barkod / Stok Kodu</label>
+                  <input type="text" id="barcodeInput" class="form-control form-control-lg" placeholder="Barkodu okutun veya yazın" autofocus />
+                  <div id="barcodeMessage" class="form-text text-danger"></div>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">Adet</label>
+                  <input type="number" id="scanQty" class="form-control" value="1" min="1" />
+                </div>
+                <div class="col-md-2">
+                  <button type="button" id="scanAddBtn" class="btn btn-primary w-100">Ekle</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-responsive mb-4">
+            <table class="table" id="linesTable">
+              <thead>
+                <tr>
+                  <th>Ürün</th>
+                  <th>Adet</th>
+                  <th>Birim Fiyat</th>
+                  <th>Toplam</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+              <tfoot>
+                <tr>
+                  <th colspan="3" class="text-end">Genel Toplam</th>
+                  <th id="grandTotal">0,00 ₺</th>
+                  <th></th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div id="lineInputs"></div>
+
+          <button type="submit" class="btn btn-success me-2">Siparişi Onayla</button>
+          <a asp-action="Index" class="btn btn-outline-secondary">İptal</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section PageScripts {
+  <partial name="_ValidationScriptsPartial" />
+  <script>
+    let lineIndex = 0;
+    const lines = new Map();
+
+    function updateGrandTotal() {
+      let total = 0;
+      lines.forEach(item => total += item.qty * item.price);
+      document.getElementById('grandTotal').textContent = total.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+    }
+
+    function renderLine(stockId, name, qty, price) {
+      const total = qty * price;
+      const tbody = document.querySelector('#linesTable tbody');
+      const row = document.createElement('tr');
+      row.dataset.stockId = stockId;
+      row.innerHTML = `
+        <td>${name}</td>
+        <td>${qty}</td>
+        <td>${price.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+        <td>${total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger remove-line">Sil</button></td>`;
+      tbody.appendChild(row);
+
+      row.querySelector('.remove-line').addEventListener('click', () => {
+        lines.delete(stockId);
+        row.remove();
+        rebuildHiddenInputs();
+        updateGrandTotal();
+      });
+    }
+
+    function rebuildHiddenInputs() {
+      const container = document.getElementById('lineInputs');
+      container.innerHTML = '';
+      lineIndex = 0;
+      lines.forEach((item, stockId) => {
+        container.insertAdjacentHTML('beforeend', `
+          <input type="hidden" name="Lines[${lineIndex}].StockItemId" value="${stockId}" />
+          <input type="hidden" name="Lines[${lineIndex}].StockName" value="${item.name}" />
+          <input type="hidden" name="Lines[${lineIndex}].Quantity" value="${item.qty}" />
+          <input type="hidden" name="Lines[${lineIndex}].UnitPrice" value="${item.price}" />`);
+        lineIndex++;
+      });
+    }
+
+    async function addByBarcode() {
+      const barcode = document.getElementById('barcodeInput').value.trim();
+      const qty = parseInt(document.getElementById('scanQty').value, 10) || 1;
+      const message = document.getElementById('barcodeMessage');
+      message.textContent = '';
+
+      if (!barcode) return;
+
+      const response = await fetch(`@Url.Action("LookupBarcode")?barcode=${encodeURIComponent(barcode)}`);
+      if (!response.ok) {
+        message.textContent = 'Ürün bulunamadı.';
+        return;
+      }
+
+      const product = await response.json();
+      const existing = lines.get(String(product.id));
+      const newQty = (existing?.qty || 0) + qty;
+      lines.set(String(product.id), { name: product.name, qty: newQty, price: product.price });
+
+      document.querySelectorAll('#linesTable tbody tr').forEach(r => {
+        if (r.dataset.stockId === String(product.id)) r.remove();
+      });
+      renderLine(String(product.id), product.name, newQty, product.price);
+      rebuildHiddenInputs();
+      updateGrandTotal();
+
+      document.getElementById('barcodeInput').value = '';
+      document.getElementById('barcodeInput').focus();
+    }
+
+    document.getElementById('scanAddBtn').addEventListener('click', addByBarcode);
+    document.getElementById('barcodeInput').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addByBarcode();
+      }
+    });
+  </script>
+}

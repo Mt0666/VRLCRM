@@ -44,4 +44,8 @@ public class CustomerFormViewModel
     [Display(Name = "Açık Adres")]
     [StringLength(500)]
     public string AddressLine { get; set; } = string.Empty;
+
+    [Display(Name = "Cari Limit (₺)")]
+    [Range(0, double.MaxValue, ErrorMessage = "Limit 0 veya daha büyük olmalıdır.")]
+    public decimal? CreditLimit { get; set; }
 }

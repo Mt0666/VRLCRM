@@ -1,0 +1,63 @@
+@model SupplierFormViewModel
+
+<div class="form-floating form-floating-outline mb-6">
+  <input asp-for="CompanyName" class="form-control" placeholder="Firma adı" />
+  <label asp-for="CompanyName"></label>
+  <span asp-validation-for="CompanyName" class="text-danger"></span>
+</div>
+
+<div class="row g-6">
+  <div class="col-md-6">
+    <div class="form-floating form-floating-outline mb-6">
+      <input asp-for="ContactName" class="form-control" placeholder="Yetkili kişi" />
+      <label asp-for="ContactName"></label>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="form-floating form-floating-outline mb-6">
+      <input asp-for="TaxNumber" class="form-control" placeholder="Vergi no" />
+      <label asp-for="TaxNumber"></label>
+    </div>
+  </div>
+</div>
+
+<div class="input-group input-group-merge mb-6">
+  <span class="input-group-text"><i class="icon-base ri ri-phone-fill"></i></span>
+  <div class="form-floating form-floating-outline">
+    <input asp-for="PhoneNumber" class="form-control" placeholder="555 123 4567" />
+    <label asp-for="PhoneNumber"></label>
+  </div>
+</div>
+<span asp-validation-for="PhoneNumber" class="text-danger d-block mb-4"></span>
+
+<div class="form-floating form-floating-outline mb-6">
+  <textarea asp-for="Notes" class="form-control h-px-100"></textarea>
+  <label asp-for="Notes"></label>
+</div>
+
+<h6 class="mb-4">Cari Hesap</h6>
+<div class="form-floating form-floating-outline mb-6">
+  <input asp-for="CreditLimit" class="form-control" step="0.01" />
+  <label asp-for="CreditLimit"></label>
+  <div class="form-text">Boş bırakılırsa tedarikçi için cari limit uygulanmaz.</div>
+</div>
+
+<h6 class="mb-4">Adres</h6>
+<div class="row g-6">
+  <div class="col-md-6">
+    <div class="form-floating form-floating-outline mb-6">
+      <input asp-for="City" class="form-control" />
+      <label asp-for="City"></label>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="form-floating form-floating-outline mb-6">
+      <input asp-for="District" class="form-control" />
+      <label asp-for="District"></label>
+    </div>
+  </div>
+</div>
+<div class="form-floating form-floating-outline mb-6">
+  <textarea asp-for="AddressLine" class="form-control h-px-100"></textarea>
+  <label asp-for="AddressLine"></label>
+</div>

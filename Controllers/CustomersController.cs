@@ -113,7 +113,7 @@ public class CustomersController : Controller
             return NotFound();
         }
 
-        TempData["SuccessMessage"] = "Müşteri başarıyla silindi.";
+        TempData["SuccessMessage"] = "Müşteri pasif duruma alındı.";
         return RedirectToAction(nameof(Index));
     }
 }

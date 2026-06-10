@@ -19,7 +19,8 @@ public class CustomerService : ICustomerService
         return await _context.Customers
             .AsNoTracking()
             .Include(c => c.Address)
-            .OrderByDescending(c => c.CreatedAt)
+            .OrderByDescending(c => c.IsActive)
+            .ThenByDescending(c => c.CreatedAt)
             .ToListAsync(cancellationToken);
     }
 
@@ -35,6 +36,7 @@ public class CustomerService : ICustomerService
         Address address,
         CancellationToken cancellationToken = default)
     {
+        customer.IsActive = true;
         customer.Address = address;
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync(cancellationToken);
@@ -60,6 +62,7 @@ public class CustomerService : ICustomerService
         existing.CompanyName = customer.CompanyName;
         existing.PhoneNumber = customer.PhoneNumber;
         existing.Notes = customer.Notes;
+        existing.CreditLimit = customer.CreditLimit;
 
         if (existing.Address is null)
         {
@@ -86,7 +89,12 @@ public class CustomerService : ICustomerService
             return false;
         }
 
-        _context.Customers.Remove(customer);
+        if (!customer.IsActive)
+        {
+            return false;
+        }
+
+        customer.IsActive = false;
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }

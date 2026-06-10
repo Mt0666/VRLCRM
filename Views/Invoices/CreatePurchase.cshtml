@@ -1,0 +1,275 @@
+@model InvoiceFormViewModel
+@{
+  ViewData["Title"] = "Alış Faturası";
+}
+
+<div class="row">
+  <div class="col-xl-10">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Yeni Alış Faturası</h5>
+        <a asp-action="Purchase" class="btn btn-sm btn-outline-secondary">Listeye Dön</a>
+      </div>
+      <div class="card-body">
+        <form asp-action="CreatePurchase" method="post" id="purchaseForm">
+          <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="form-floating form-floating-outline">
+                <select asp-for="SupplierId" asp-items="Model.Suppliers" class="form-select">
+                  <option value="">Tedarikçi seçin</option>
+                </select>
+                <label asp-for="SupplierId"></label>
+                <span asp-validation-for="SupplierId" class="text-danger"></span>
+              </div>
+              @if (!Model.Suppliers.Any())
+              {
+                <div class="form-text">
+                  Henüz tedarikçi yok.
+                  <a asp-controller="Suppliers" asp-action="Create">Tedarikçi oluştur</a>
+                </div>
+              }
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating form-floating-outline">
+                <input asp-for="InvoiceDate" class="form-control" type="date" />
+                <label asp-for="InvoiceDate"></label>
+                <span asp-validation-for="InvoiceDate" class="text-danger"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-floating form-floating-outline mb-6">
+            <textarea asp-for="Notes" class="form-control h-px-100"></textarea>
+            <label asp-for="Notes"></label>
+          </div>
+
+          <ul class="nav nav-pills mb-4" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button type="button" class="nav-link active" id="existing-tab" data-bs-toggle="tab" data-bs-target="#existingProductTab" role="tab">Mevcut Ürün</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button type="button" class="nav-link" id="new-tab" data-bs-toggle="tab" data-bs-target="#newProductTab" role="tab">Yeni Ürün (Stoğa Al)</button>
+            </li>
+          </ul>
+
+          <div class="tab-content mb-4">
+            <div class="tab-pane fade show active" id="existingProductTab" role="tabpanel">
+              <div class="row g-3 align-items-end">
+                <div class="col-md-5">
+                  <label class="form-label" for="stockSelect">Ürün</label>
+                  <select id="stockSelect" class="form-select">
+                    <option value="">Ürün seçin</option>
+                    @foreach (var stock in Model.Stocks)
+                    {
+                      <option value="@stock.Value">@stock.Text</option>
+                    }
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label" for="existingQty">Adet</label>
+                  <input type="number" id="existingQty" class="form-control" value="1" min="1" />
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label" for="existingPrice">Alış Fiyatı</label>
+                  <input type="number" id="existingPrice" class="form-control" step="0.01" min="0" value="0" />
+                </div>
+                <div class="col-md-2">
+                  <button type="button" id="addExistingBtn" class="btn btn-outline-primary w-100">Ekle</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="newProductTab" role="tabpanel">
+              <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                  <label class="form-label" for="newStockCode">Stok Kodu</label>
+                  <input type="text" id="newStockCode" class="form-control" placeholder="STK-001" />
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label" for="newProductName">Ürün Adı</label>
+                  <input type="text" id="newProductName" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label" for="newCategoryId">Kategori</label>
+                  <select id="newCategoryId" class="form-select">
+                    <option value="">Kategori seçin</option>
+                    @foreach (var category in Model.Categories)
+                    {
+                      <option value="@category.Value">@category.Text</option>
+                    }
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label" for="newBarcode">Barkod (opsiyonel)</label>
+                  <input type="text" id="newBarcode" class="form-control" />
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label" for="newQty">Adet</label>
+                  <input type="number" id="newQty" class="form-control" value="1" min="1" />
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label" for="newPrice">Alış Fiyatı</label>
+                  <input type="number" id="newPrice" class="form-control" step="0.01" min="0" value="0" />
+                </div>
+                <div class="col-md-2">
+                  <button type="button" id="addNewBtn" class="btn btn-success w-100">Stoğa Ekle</button>
+                </div>
+              </div>
+              <div class="form-text mt-2">Yeni ürün kaydı oluşturulur ve alış faturası ile stoğa alınır.</div>
+              <div id="newProductError" class="text-danger small mt-2"></div>
+            </div>
+          </div>
+
+          <div class="table-responsive mb-4">
+            <table class="table" id="linesTable">
+              <thead>
+                <tr>
+                  <th>Ürün</th>
+                  <th>Stok Kodu</th>
+                  <th>Adet</th>
+                  <th>Birim Fiyat</th>
+                  <th>Toplam</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div id="lineInputs"></div>
+
+          <button type="submit" class="btn btn-primary me-2">Faturayı Kaydet</button>
+          <a asp-action="Purchase" class="btn btn-outline-secondary">İptal</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section PageScripts {
+  <partial name="_ValidationScriptsPartial" />
+  <script>
+    const stockOptions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StockOptions));
+    const stockPrices = Object.fromEntries(stockOptions.map(s => [String(s.Id ?? s.id), s.Price ?? s.price]));
+    const stockNames = Object.fromEntries(stockOptions.map(s => [String(s.Id ?? s.id), s.Name ?? s.name]));
+    const stockCodes = Object.fromEntries(stockOptions.map(s => [String(s.Id ?? s.id), s.StockCode ?? s.stockCode]));
+    let lineIndex = 0;
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function isValidPrice(value) {
+      return value !== '' && !Number.isNaN(value) && value >= 0;
+    }
+
+    document.getElementById('stockSelect').addEventListener('change', function () {
+      const price = stockPrices[this.value];
+      if (price !== undefined) document.getElementById('existingPrice').value = price;
+    });
+
+    document.getElementById('addExistingBtn').addEventListener('click', function () {
+      const stockId = document.getElementById('stockSelect').value;
+      const qty = parseInt(document.getElementById('existingQty').value, 10);
+      const price = parseFloat(document.getElementById('existingPrice').value);
+      if (!stockId || !qty || qty <= 0 || !isValidPrice(price)) return;
+
+      const name = stockNames[stockId] || stockId;
+      const code = stockCodes[stockId] || '-';
+      addLineRow({
+        name,
+        code,
+        qty,
+        price,
+        isNew: false,
+        inputs: `
+          <input type="hidden" name="Lines[INDEX].IsNewProduct" value="false" />
+          <input type="hidden" name="Lines[INDEX].StockItemId" value="${stockId}" />
+          <input type="hidden" name="Lines[INDEX].StockName" value="${escapeHtml(name)}" />
+          <input type="hidden" name="Lines[INDEX].Quantity" value="${qty}" />
+          <input type="hidden" name="Lines[INDEX].UnitPrice" value="${price}" />`
+      });
+    });
+
+    document.getElementById('addNewBtn').addEventListener('click', function () {
+      const errorEl = document.getElementById('newProductError');
+      errorEl.textContent = '';
+
+      const stockCode = document.getElementById('newStockCode').value.trim();
+      const name = document.getElementById('newProductName').value.trim();
+      const categoryId = document.getElementById('newCategoryId').value;
+      const barcode = document.getElementById('newBarcode').value.trim();
+      const qty = parseInt(document.getElementById('newQty').value, 10);
+      const price = parseFloat(document.getElementById('newPrice').value);
+
+      if (!stockCode || !name || !categoryId) {
+        errorEl.textContent = 'Stok kodu, ürün adı ve kategori zorunludur.';
+        return;
+      }
+      if (!qty || qty <= 0) {
+        errorEl.textContent = 'Geçerli bir adet girin.';
+        return;
+      }
+      if (!isValidPrice(price)) {
+        errorEl.textContent = 'Geçerli bir alış fiyatı girin.';
+        return;
+      }
+
+      addLineRow({
+        name,
+        code: stockCode,
+        qty,
+        price,
+        isNew: true,
+        inputs: `
+          <input type="hidden" name="Lines[INDEX].IsNewProduct" value="true" />
+          <input type="hidden" name="Lines[INDEX].NewStockCode" value="${escapeHtml(stockCode)}" />
+          <input type="hidden" name="Lines[INDEX].NewProductName" value="${escapeHtml(name)}" />
+          <input type="hidden" name="Lines[INDEX].NewCategoryId" value="${categoryId}" />
+          <input type="hidden" name="Lines[INDEX].NewBarcode" value="${escapeHtml(barcode)}" />
+          <input type="hidden" name="Lines[INDEX].StockName" value="${escapeHtml(name)}" />
+          <input type="hidden" name="Lines[INDEX].Quantity" value="${qty}" />
+          <input type="hidden" name="Lines[INDEX].UnitPrice" value="${price}" />`
+      });
+
+      document.getElementById('newStockCode').value = '';
+      document.getElementById('newProductName').value = '';
+      document.getElementById('newBarcode').value = '';
+      document.getElementById('newQty').value = '1';
+      document.getElementById('newPrice').value = '0';
+    });
+
+    function addLineRow({ name, code, qty, price, isNew, inputs }) {
+      const tbody = document.querySelector('#linesTable tbody');
+      const row = document.createElement('tr');
+      const inputGroup = document.createElement('div');
+      inputGroup.className = 'line-input-group';
+      inputGroup.innerHTML = inputs.replace(/INDEX/g, lineIndex);
+
+      const badge = isNew ? ' <span class="badge bg-label-success">Yeni</span>' : '';
+      row.innerHTML = `
+        <td>${escapeHtml(name)}${badge}</td>
+        <td>${escapeHtml(code)}</td>
+        <td>${qty}</td>
+        <td>${price.toFixed(2)} ₺</td>
+        <td>${(qty * price).toFixed(2)} ₺</td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger remove-line">Sil</button></td>`;
+
+      tbody.appendChild(row);
+      document.getElementById('lineInputs').appendChild(inputGroup);
+      lineIndex++;
+
+      row.querySelector('.remove-line').addEventListener('click', () => {
+        row.remove();
+        inputGroup.remove();
+      });
+    }
+  </script>
+}

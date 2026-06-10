@@ -1,0 +1,63 @@
+@model IReadOnlyList<StockMovement>
+@{
+  ViewData["Title"] = "Stok Hareketleri";
+}
+
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0">Stok Hareketleri</h5>
+  </div>
+  <div class="card-body pb-0">
+    <partial name="_TableToolbar" />
+  </div>
+  <div class="table-responsive text-nowrap">
+    <table class="table table-hover js-data-table">
+      <thead>
+        <tr>
+          <th>Tarih</th>
+          <th>Ürün</th>
+          <th>Tür</th>
+          <th>Miktar</th>
+          <th>Kaynak</th>
+          <th>Not</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (!Model.Any())
+        {
+          <tr><td colspan="6" class="text-center py-5 text-body-secondary">Henüz stok hareketi yok.</td></tr>
+        }
+        else
+        {
+          @foreach (var movement in Model)
+          {
+            <tr>
+              <td>@movement.MovementDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+              <td>@movement.StockItem.Name</td>
+              <td>
+                @if (movement.MovementType == StockMovementType.In)
+                {
+                  <span class="badge bg-label-success">Giriş</span>
+                }
+                else
+                {
+                  <span class="badge bg-label-danger">Çıkış</span>
+                }
+              </td>
+              <td>@movement.Quantity</td>
+              <td>
+                @(movement.ReferenceType switch
+                {
+                  StockMovementReferenceType.Invoice => "Fatura",
+                  StockMovementReferenceType.Order => "Sipariş",
+                  _ => movement.ReferenceType.ToString()
+                }) #@movement.ReferenceId
+              </td>
+              <td>@(movement.Notes ?? "-")</td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

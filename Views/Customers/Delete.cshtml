@@ -1,6 +1,6 @@
 @model Customer
 @{
-  ViewData["Title"] = "Müşteri Sil";
+  ViewData["Title"] = "Müşteriyi Pasife Al";
 }
 
 <div class="row">
@@ -12,9 +12,9 @@
             <i class="icon-base ri ri-error-warning-line icon-24px"></i>
           </span>
           <div>
-            <h5 class="mb-2">Müşteriyi silmek istediğinize emin misiniz?</h5>
+            <h5 class="mb-2">Müşteriyi pasif duruma almak istediğinize emin misiniz?</h5>
             <p class="mb-0 text-body-secondary">
-              <strong>@Model.FullName</strong> kaydı ve ilişkili adres bilgisi kalıcı olarak silinecek.
+              <strong>@Model.FullName</strong> kaydı pasif olacak; veritabanından tamamen silinmeyecek.
             </p>
           </div>
         </div>
@@ -30,7 +30,7 @@
 
         <form asp-action="Delete" method="post">
           <input type="hidden" asp-for="Id" />
-          <button type="submit" class="btn btn-danger me-3">Evet, Sil</button>
+          <button type="submit" class="btn btn-danger me-3">Evet, Pasife Al</button>
           <a asp-action="Index" class="btn btn-outline-secondary">İptal</a>
         </form>
       </div>

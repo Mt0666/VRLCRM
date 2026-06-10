@@ -28,7 +28,16 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(c => c.Notes)
             .HasMaxLength(2000);
 
+        builder.Property(c => c.Balance)
+            .HasPrecision(18, 2);
+
+        builder.Property(c => c.CreditLimit)
+            .HasPrecision(18, 2);
+
         builder.HasIndex(c => c.PhoneNumber);
+
+        builder.Property(c => c.IsActive)
+            .HasDefaultValue(true);
 
         builder.HasOne(c => c.Address)
             .WithOne(a => a.Customer)

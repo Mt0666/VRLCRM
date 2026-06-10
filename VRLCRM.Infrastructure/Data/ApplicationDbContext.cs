@@ -14,7 +14,23 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<Customer> Customers => Set<Customer>();
 
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+
     public DbSet<Address> Addresses => Set<Address>();
+
+    public DbSet<StockItem> StockItems => Set<StockItem>();
+
+    public DbSet<Category> Categories => Set<Category>();
+
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+
+    public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
+
+    public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+
+    public DbSet<Order> Orders => Set<Order>();
+
+    public DbSet<OrderLine> OrderLines => Set<OrderLine>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

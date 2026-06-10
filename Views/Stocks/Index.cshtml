@@ -1,0 +1,106 @@
+@model IReadOnlyList<StockItem>
+@{
+  ViewData["Title"] = "Stoklar";
+}
+
+<div class="card">
+  <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <h5 class="mb-0">Stok Listesi</h5>
+    <a asp-action="Create" class="btn btn-primary">
+      <i class="icon-base ri ri-add-line icon-16px me-1"></i>
+      Yeni Stok
+    </a>
+  </div>
+  <div class="card-body pb-0">
+    <partial name="_TableToolbar" />
+  </div>
+  <div class="table-responsive text-nowrap">
+    <table class="table table-hover js-data-table">
+      <thead>
+        <tr>
+          <th>Ürün</th>
+          <th>Stok Kodu</th>
+          <th>Kategori</th>
+          <th>Fiyat</th>
+          <th>Stok</th>
+          <th>Durum</th>
+          <th>İşlemler</th>
+        </tr>
+      </thead>
+      <tbody class="table-border-bottom-0">
+        @if (!Model.Any())
+        {
+          <tr>
+            <td colspan="7" class="text-center py-5 text-body-secondary">Henüz stok kaydı yok.</td>
+          </tr>
+        }
+        else
+        {
+          @foreach (var stock in Model)
+          {
+            <tr class="@(stock.IsActive ? "" : "table-secondary")">
+              <td>
+                <div class="d-flex align-items-center">
+                  @if (!string.IsNullOrWhiteSpace(stock.ImageUrl))
+                  {
+                    <img src="@stock.ImageUrl" alt="@stock.Name" class="rounded me-3" style="width: 40px; height: 40px; object-fit: cover;" />
+                  }
+                  else
+                  {
+                    <div class="avatar avatar-sm me-3">
+                      <span class="avatar-initial rounded bg-label-info">
+                        <i class="icon-base ri ri-box-3-line"></i>
+                      </span>
+                    </div>
+                  }
+                  <strong>@stock.Name</strong>
+                </div>
+              </td>
+              <td><span class="badge bg-label-secondary">@stock.StockCode</span></td>
+              <td>@(stock.Category?.Name ?? "-")</td>
+              <td>@stock.Price.ToString("N2") ₺</td>
+              <td>
+                @if (stock.StockQuantity <= 5)
+                {
+                  <span class="badge bg-label-danger">@stock.StockQuantity</span>
+                }
+                else if (stock.StockQuantity <= 20)
+                {
+                  <span class="badge bg-label-warning">@stock.StockQuantity</span>
+                }
+                else
+                {
+                  <span class="badge bg-label-success">@stock.StockQuantity</span>
+                }
+              </td>
+              <td>
+                <partial name="_StatusBadge" model="stock.IsActive" />
+              </td>
+              <td>
+                <div class="dropdown">
+                  <button type="button" class="btn p-0 dropdown-toggle hide-arrow shadow-none" data-bs-toggle="dropdown">
+                    <i class="icon-base ri ri-more-2-line icon-18px"></i>
+                  </button>
+                  <div class="dropdown-menu">
+                    <a class="dropdown-item" asp-action="Details" asp-route-id="@stock.Id">
+                      <i class="icon-base ri ri-eye-line icon-18px me-1"></i> Detay
+                    </a>
+                    @if (stock.IsActive)
+                    {
+                      <a class="dropdown-item" asp-action="Edit" asp-route-id="@stock.Id">
+                        <i class="icon-base ri ri-pencil-line icon-18px me-1"></i> Düzenle
+                      </a>
+                      <a class="dropdown-item text-danger" asp-action="Delete" asp-route-id="@stock.Id">
+                        <i class="icon-base ri ri-delete-bin-6-line icon-18px me-1"></i> Pasife Al
+                      </a>
+                    }
+                  </div>
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

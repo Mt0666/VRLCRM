@@ -2,9 +2,21 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using VRLCRM.Application.Categories;
 using VRLCRM.Application.Customers;
+using VRLCRM.Application.Invoices;
+using VRLCRM.Application.Orders;
+using VRLCRM.Application.StockMovements;
+using VRLCRM.Application.Stocks;
+using VRLCRM.Application.Suppliers;
 using VRLCRM.Domain.Entities;
+using VRLCRM.Infrastructure.Categories;
 using VRLCRM.Infrastructure.Customers;
+using VRLCRM.Infrastructure.Invoices;
+using VRLCRM.Infrastructure.Orders;
+using VRLCRM.Infrastructure.StockMovements;
+using VRLCRM.Infrastructure.Stocks;
+using VRLCRM.Infrastructure.Suppliers;
 using VRLCRM.Infrastructure.Data;
 using VRLCRM.Infrastructure.Options;
 
@@ -26,6 +38,13 @@ public static class DependencyInjection
                 sqlOptions => sqlOptions.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
 
         services.AddScoped<ICustomerService, CustomerService>();
+        services.AddScoped<IStockService, StockService>();
+        services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<ISupplierService, SupplierService>();
+
+        services.AddScoped<IInvoiceService, InvoiceService>();
+        services.AddScoped<IStockMovementService, StockMovementService>();
+        services.AddScoped<IOrderService, OrderService>();
 
         services
             .AddIdentity<ApplicationUser, ApplicationRole>(options =>
