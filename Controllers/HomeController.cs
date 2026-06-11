@@ -1,9 +1,11 @@
-﻿using System.Diagnostics;
+﻿using Microsoft.AspNetCore.Authorization;
+using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using VRLCRM.Models;
 
 namespace VRLCRM.Controllers;
 
+[Authorize]
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;

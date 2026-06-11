@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VRLCRM.Application.Suppliers;
 using VRLCRM.Models.Suppliers;
 
 namespace VRLCRM.Controllers;
 
+[Authorize]
 public class SuppliersController : Controller
 {
     private readonly ISupplierService _supplierService;

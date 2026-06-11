@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VRLCRM.Application.Customers;
 using VRLCRM.Models.Customers;
 
 namespace VRLCRM.Controllers;
 
+[Authorize]
 public class CustomersController : Controller
 {
     private readonly ICustomerService _customerService;

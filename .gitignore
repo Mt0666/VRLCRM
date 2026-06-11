@@ -465,6 +465,9 @@ wwwroot/uploads/**/*
 .devin/
 .trae/
 .replit/
+GEMINI.md
+*.gemini.md
+MEMORY.md
 
 # AI proje talimat dosyaları (isteğe bağlı — repoda tutmak isterseniz satırları kaldırın)
 AGENTS.md

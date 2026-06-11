@@ -1,6 +1,7 @@
+@model VRLCRM.Models.Auth.LoginViewModel
 @{
   Layout = "_BlankLayout";
-  ViewData["Title"] = "Login Basic - Pages";
+  ViewData["Title"] = "Giriş Yap";
 }
 
 @section PageStyles {
@@ -17,51 +18,52 @@
         <div class="app-brand justify-content-center mt-5">
           <a href="/" class="app-brand-link gap-3">
             <span class="app-brand-logo demo">@await Html.PartialAsync("../_Partials/_Macros")</span>
-            <span class="app-brand-text demo text-heading fw-semibold">@TempData.Peek("appName")</span>
+            <span class="app-brand-text demo text-heading fw-semibold">VRLCRM</span>
           </a>
         </div>
         <!-- /Logo -->
 
         <div class="card-body mt-1">
-          <h4 class="mb-1">Welcome to @TempData.Peek("appName")! 👋🏻</h4>
-          <p class="mb-5">Please sign-in to your account and start the adventure</p>
+          <h4 class="mb-1">VRLCRM'e Hoş Geldiniz! 👋🏻</h4>
+          <p class="mb-5">Lütfen hesabınızla giriş yapın.</p>
 
-          <form id="formAuthentication" class="mb-5" action="/" method="POST">
-            <div class="form-floating form-floating-outline mb-5 form-control-validation">
-              <input type="text" class="form-control" id="email" name="email-username" placeholder="Enter your email or username" autofocus />
-              <label for="email">Email or Username</label>
+          <form asp-action="LoginBasic" asp-controller="Auth" method="POST" class="mb-5">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <input type="hidden" asp-for="ReturnUrl" />
+            
+            <div class="form-floating form-floating-outline mb-5">
+              <input asp-for="Email" class="form-control" placeholder="Email adresinizi giriniz" autofocus />
+              <label asp-for="Email">Email</label>
+              <span asp-validation-for="Email" class="text-danger"></span>
             </div>
+            
             <div class="mb-5">
-              <div class="form-password-toggle form-control-validation">
+              <div class="form-password-toggle">
                 <div class="input-group input-group-merge">
                   <div class="form-floating form-floating-outline">
-                    <input type="password" id="password" class="form-control" name="password" placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;" aria-describedby="password" />
-                    <label for="password">Password</label>
+                    <input asp-for="Password" class="form-control" placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;" />
+                    <label asp-for="Password">Şifre</label>
                   </div>
                   <span class="input-group-text cursor-pointer"><i class="icon-base ri ri-eye-off-line icon-20px"></i></span>
                 </div>
+                <span asp-validation-for="Password" class="text-danger"></span>
               </div>
             </div>
+            
             <div class="mb-5 pb-2 d-flex justify-content-between pt-2 align-items-center">
               <div class="form-check mb-0">
-                <input class="form-check-input" type="checkbox" id="remember-me" />
-                <label class="form-check-label" for="remember-me"> Remember Me </label>
+                <input asp-for="RememberMe" class="form-check-input" />
+                <label asp-for="RememberMe" class="form-check-label"> Beni Hatırla </label>
               </div>
               <a href="/Auth/ForgotPasswordBasic" class="float-end mb-1">
-                <span>Forgot Password?</span>
+                <span>Şifremi Unuttum?</span>
               </a>
             </div>
+            
             <div class="mb-5">
-              <button class="btn btn-primary d-grid w-100" type="submit">login</button>
+              <button class="btn btn-primary d-grid w-100" type="submit">Giriş Yap</button>
             </div>
           </form>
-
-          <p class="text-center mb-5">
-            <span>New on our platform?</span>
-            <a href="/Auth/RegisterBasic">
-              <span>Create an account</span>
-            </a>
-          </p>
         </div>
       </div>
       <!-- /Login -->
