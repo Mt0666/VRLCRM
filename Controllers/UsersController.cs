@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using VRLCRM.Application.Users;
 using VRLCRM.Domain.Entities;
 using VRLCRM.Models.Auth;
 
@@ -10,23 +9,21 @@ namespace VRLCRM.Controllers;
 [Authorize(Roles = "Admin")]
 public class UsersController : Controller
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly RoleManager<ApplicationRole> _roleManager;
+    private readonly IUserService _userService;
 
-    public UsersController(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager)
+    public UsersController(IUserService userService)
     {
-        _userManager = userManager;
-        _roleManager = roleManager;
+        _userService = userService;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        var users = await _userManager.Users.ToListAsync();
+        var users = await _userService.GetAllUsersAsync(cancellationToken);
         var userViewModels = new List<UserViewModel>();
 
         foreach (var user in users)
         {
-            var roles = await _userManager.GetRolesAsync(user);
+            var roles = await _userService.GetRolesAsync(user, cancellationToken);
             userViewModels.Add(new UserViewModel
             {
                 Id = user.Id,
@@ -47,54 +44,54 @@ public class UsersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(UserFormViewModel model)
+    public async Task<IActionResult> Create(UserFormViewModel model, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
         {
             return View(model);
         }
 
-        var user = new ApplicationUser
+        try
         {
-            UserName = model.Email,
-            Email = model.Email,
-            FullName = model.FullName,
-            EmailConfirmed = true
-        };
+            var user = new ApplicationUser
+            {
+                UserName = model.Email,
+                Email = model.Email,
+                FullName = model.FullName,
+                EmailConfirmed = true
+            };
 
-        var result = await _userManager.CreateAsync(user, model.Password!);
-
-        if (result.Succeeded)
-        {
-            await _userManager.AddToRoleAsync(user, model.SelectedRole);
+            await _userService.CreateUserAsync(user, model.Password!, model.SelectedRole, cancellationToken);
+            TempData["SuccessMessage"] = "Kullanıcı başarıyla oluşturuldu.";
             return RedirectToAction(nameof(Index));
         }
-
-        foreach (var error in result.Errors)
+        catch (InvalidOperationException ex)
         {
-            ModelState.AddModelError(string.Empty, error.Description);
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View(model);
         }
-
-        return View(model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Delete(string id)
+    public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
-        var user = await _userManager.FindByIdAsync(id);
-        if (user == null)
+        try
         {
-            return NotFound();
-        }
+            var deleted = await _userService.DeleteUserAsync(id, cancellationToken);
+            if (!deleted)
+            {
+                return NotFound();
+            }
 
-        if (user.Email == "admin@vrlcrm.local")
+            TempData["SuccessMessage"] = "Kullanıcı başarıyla silindi.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (InvalidOperationException ex)
         {
-            return BadRequest("Sistem yöneticisi silinemez.");
+            TempData["ErrorMessage"] = ex.Message;
+            return RedirectToAction(nameof(Index));
         }
-
-        await _userManager.DeleteAsync(user);
-        return RedirectToAction(nameof(Index));
     }
 }
 

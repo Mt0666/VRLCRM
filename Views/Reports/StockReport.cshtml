@@ -1,0 +1,45 @@
+@model IEnumerable<VRLCRM.Domain.Entities.StockItem>
+@{
+    ViewData["Title"] = "Stok Durum Raporu";
+}
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Stok Durum Raporu</h5>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-primary">
+            <strong>Toplam Stok Kalemi:</strong> @Model.Count()
+            <span class="ms-4"><strong>Toplam Stok Değeri (Satış Fiyatı Üzerinden):</strong> @Model.Sum(s => s.StockQuantity * s.Price).ToString("C2")</span>
+        </div>
+
+        <div class="table-responsive text-nowrap mt-4">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Kategori</th>
+                        <th>Stok Kodu</th>
+                        <th>Ürün Adı</th>
+                        <th>Birim Fiyat</th>
+                        <th>Mevcut Miktar</th>
+                        <th>Toplam Değer</th>
+                    </tr>
+                </thead>
+                <tbody class="table-border-bottom-0">
+                    @foreach (var item in Model)
+                    {
+                        var rowClass = item.StockQuantity < 10 ? "table-danger" : "";
+                        <tr class="@rowClass">
+                            <td>@item.Category?.Name</td>
+                            <td><a asp-controller="Stocks" asp-action="Details" asp-route-id="@item.Id">@item.StockCode</a></td>
+                            <td>@item.Name</td>
+                            <td>@item.Price.ToString("C2")</td>
+                            <td><strong>@item.StockQuantity</strong></td>
+                            <td>@((item.StockQuantity * item.Price).ToString("C2"))</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
