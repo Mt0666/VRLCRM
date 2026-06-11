@@ -9,6 +9,7 @@ using VRLCRM.Application.Orders;
 using VRLCRM.Application.StockMovements;
 using VRLCRM.Application.Stocks;
 using VRLCRM.Application.Suppliers;
+using VRLCRM.Application.Users;
 using VRLCRM.Domain.Entities;
 using VRLCRM.Infrastructure.Categories;
 using VRLCRM.Infrastructure.Customers;
@@ -17,6 +18,7 @@ using VRLCRM.Infrastructure.Orders;
 using VRLCRM.Infrastructure.StockMovements;
 using VRLCRM.Infrastructure.Stocks;
 using VRLCRM.Infrastructure.Suppliers;
+using VRLCRM.Infrastructure.Users;
 using VRLCRM.Infrastructure.Data;
 using VRLCRM.Infrastructure.Options;
 
@@ -28,6 +30,7 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.AddHttpContextAccessor();
         services.Configure<SeedDataOptions>(configuration.GetSection(SeedDataOptions.SectionName));
 
         var connectionString = DatabaseConnection.Build(configuration);
@@ -45,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceService, InvoiceService>();
         services.AddScoped<IStockMovementService, StockMovementService>();
         services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<IUserService, UserService>();
 
         services
             .AddIdentity<ApplicationUser, ApplicationRole>(options =>

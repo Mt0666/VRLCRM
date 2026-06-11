@@ -1,0 +1,60 @@
+@model IEnumerable<VRLCRM.Domain.Entities.Invoice>
+@{
+    ViewData["Title"] = "Satış Raporu";
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Satış Raporu</h5>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row gx-3 gy-2 align-items-center mb-4">
+            <div class="col-auto">
+                <label class="visually-hidden" for="startDate">Başlangıç Tarihi</label>
+                <input type="date" class="form-control" id="startDate" name="startDate" value="@ViewBag.StartDate">
+            </div>
+            <div class="col-auto">
+                <label class="visually-hidden" for="endDate">Bitiş Tarihi</label>
+                <input type="date" class="form-control" id="endDate" name="endDate" value="@ViewBag.EndDate">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Filtrele</button>
+            </div>
+        </form>
+
+        <div class="alert alert-info">
+            <strong>Toplam Satış Tutarı:</strong> @Model.Sum(i => i.TotalAmount).ToString("C2")
+            <span class="ms-4"><strong>Fatura Sayısı:</strong> @Model.Count()</span>
+        </div>
+
+        <div class="table-responsive text-nowrap mt-4">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Fatura No</th>
+                        <th>Tarih</th>
+                        <th>Müşteri</th>
+                        <th>Tutar</th>
+                    </tr>
+                </thead>
+                <tbody class="table-border-bottom-0">
+                    @foreach (var invoice in Model)
+                    {
+                        <tr>
+                            <td><a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoice.Id">@invoice.InvoiceNumber</a></td>
+                            <td>@invoice.InvoiceDate.ToString("dd.MM.yyyy")</td>
+                            <td>@invoice.Customer?.FullName</td>
+                            <td><strong>@invoice.TotalAmount.ToString("C2")</strong></td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center">Bu tarih aralığında satış faturası bulunamadı.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
