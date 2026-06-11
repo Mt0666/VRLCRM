@@ -1,10 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using VRLCRM.Application.Categories;
 using VRLCRM.Models.Categories;
 
 namespace VRLCRM.Controllers;
 
+[Authorize]
 public class CategoriesController : Controller
 {
     private readonly ICategoryService _categoryService;

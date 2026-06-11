@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using VRLCRM.Application.Categories;
@@ -11,6 +12,7 @@ using VRLCRM.Services;
 
 namespace VRLCRM.Controllers;
 
+[Authorize]
 public class InvoicesController : Controller
 {
     private readonly IInvoiceService _invoiceService;

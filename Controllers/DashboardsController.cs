@@ -1,9 +1,9 @@
-using System.Diagnostics;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using VRLCRM.Models;
 
 namespace VRLCRM.Controllers;
 
+[Authorize]
 public class DashboardsController : Controller
 {
   public IActionResult Index() => View();

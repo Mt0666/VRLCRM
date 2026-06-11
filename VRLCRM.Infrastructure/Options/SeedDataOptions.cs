@@ -8,5 +8,5 @@ public class SeedDataOptions
 
     public string AdminPassword { get; set; } = string.Empty;
 
-    public string[] DefaultRoles { get; set; } = ["Admin", "User"];
+    public string[] DefaultRoles { get; set; } = ["Admin", "Personel"];
 }
