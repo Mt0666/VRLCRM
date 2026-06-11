@@ -14,6 +14,7 @@ public static class StockViewModelMapper
             ImageUrl = stockItem.ImageUrl,
             Name = stockItem.Name,
             Price = stockItem.Price,
+            VatRate = stockItem.VatRate,
             StockQuantity = stockItem.StockQuantity,
             Barcode = stockItem.Barcode,
             Description = stockItem.Description
@@ -30,6 +31,7 @@ public static class StockViewModelMapper
             ImageUrl = model.ImageUrl,
             Name = model.Name.Trim(),
             Price = model.Price,
+            VatRate = model.VatRate,
             StockQuantity = model.StockQuantity,
             Barcode = model.Barcode?.Trim(),
             Description = model.Description?.Trim()

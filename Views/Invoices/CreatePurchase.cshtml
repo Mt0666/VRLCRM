@@ -130,11 +130,31 @@
                   <th>Stok Kodu</th>
                   <th>Adet</th>
                   <th>Birim Fiyat</th>
+                  <th>KDV (%)</th>
+                  <th>Ara Toplam</th>
+                  <th>KDV Tutarı</th>
                   <th>Toplam</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody></tbody>
+              <tfoot>
+                <tr>
+                  <th colspan="5" class="text-end">Ara Toplam:</th>
+                  <th id="subTotal">0,00 ₺</th>
+                  <th colspan="3"></th>
+                </tr>
+                <tr>
+                  <th colspan="6" class="text-end">Toplam KDV:</th>
+                  <th id="vatTotal">0,00 ₺</th>
+                  <th colspan="2"></th>
+                </tr>
+                <tr>
+                  <th colspan="7" class="text-end">Genel Toplam:</th>
+                  <th id="grandTotal">0,00 ₺</th>
+                  <th></th>
+                </tr>
+              </tfoot>
             </table>
           </div>
 
@@ -155,7 +175,9 @@
     const stockPrices = Object.fromEntries(stockOptions.map(s => [String(s.Id ?? s.id), s.Price ?? s.price]));
     const stockNames = Object.fromEntries(stockOptions.map(s => [String(s.Id ?? s.id), s.Name ?? s.name]));
     const stockCodes = Object.fromEntries(stockOptions.map(s => [String(s.Id ?? s.id), s.StockCode ?? s.stockCode]));
+    const stockVatRates = Object.fromEntries(stockOptions.map(s => [String(s.Id ?? s.id), s.VatRate ?? s.vatRate]));
     let lineIndex = 0;
+    const linesData = [];
 
     function escapeHtml(value) {
       return String(value)
@@ -168,6 +190,22 @@
 
     function isValidPrice(value) {
       return value !== '' && !Number.isNaN(value) && value >= 0;
+    }
+
+    function updateTotals() {
+      let sub = 0;
+      let vat = 0;
+      linesData.forEach(item => {
+        const lineSub = item.qty * item.price;
+        const lineVat = lineSub * (item.vatRate / 100);
+        sub += lineSub;
+        vat += lineVat;
+      });
+      const grand = sub + vat;
+      
+      document.getElementById('subTotal').textContent = sub.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+      document.getElementById('vatTotal').textContent = vat.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+      document.getElementById('grandTotal').textContent = grand.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
     }
 
     document.getElementById('stockSelect').addEventListener('change', function () {
@@ -183,20 +221,32 @@
 
       const name = stockNames[stockId] || stockId;
       const code = stockCodes[stockId] || '-';
+      const vatRate = stockVatRates[stockId] || 0;
+      
       addLineRow({
         name,
         code,
         qty,
         price,
+        vatRate,
         isNew: false,
         inputs: `
           <input type="hidden" name="Lines[INDEX].IsNewProduct" value="false" />
           <input type="hidden" name="Lines[INDEX].StockItemId" value="${stockId}" />
           <input type="hidden" name="Lines[INDEX].StockName" value="${escapeHtml(name)}" />
           <input type="hidden" name="Lines[INDEX].Quantity" value="${qty}" />
-          <input type="hidden" name="Lines[INDEX].UnitPrice" value="${price}" />`
+          <input type="hidden" name="Lines[INDEX].UnitPrice" value="${price}" />
+          <input type="hidden" name="Lines[INDEX].VatRate" value="${vatRate}" />`
       });
     });
+
+    // Add VatRate to newProductTab before addNewBtn
+    document.getElementById('newPrice').parentElement.insertAdjacentHTML('afterend', `
+      <div class="col-md-2">
+        <label class="form-label" for="newVatRate">KDV Oranı (%)</label>
+        <input type="number" id="newVatRate" class="form-control" step="0.01" min="0" value="20" />
+      </div>
+    `);
 
     document.getElementById('addNewBtn').addEventListener('click', function () {
       const errorEl = document.getElementById('newProductError');
@@ -208,6 +258,7 @@
       const barcode = document.getElementById('newBarcode').value.trim();
       const qty = parseInt(document.getElementById('newQty').value, 10);
       const price = parseFloat(document.getElementById('newPrice').value);
+      const vatRate = parseFloat(document.getElementById('newVatRate').value);
 
       if (!stockCode || !name || !categoryId) {
         errorEl.textContent = 'Stok kodu, ürün adı ve kategori zorunludur.';
@@ -221,12 +272,17 @@
         errorEl.textContent = 'Geçerli bir alış fiyatı girin.';
         return;
       }
+      if (!isValidPrice(vatRate)) {
+        errorEl.textContent = 'Geçerli bir KDV oranı girin.';
+        return;
+      }
 
       addLineRow({
         name,
         code: stockCode,
         qty,
         price,
+        vatRate,
         isNew: true,
         inputs: `
           <input type="hidden" name="Lines[INDEX].IsNewProduct" value="true" />
@@ -236,7 +292,9 @@
           <input type="hidden" name="Lines[INDEX].NewBarcode" value="${escapeHtml(barcode)}" />
           <input type="hidden" name="Lines[INDEX].StockName" value="${escapeHtml(name)}" />
           <input type="hidden" name="Lines[INDEX].Quantity" value="${qty}" />
-          <input type="hidden" name="Lines[INDEX].UnitPrice" value="${price}" />`
+          <input type="hidden" name="Lines[INDEX].UnitPrice" value="${price}" />
+          <input type="hidden" name="Lines[INDEX].NewProduct.VatRate" value="${vatRate}" />
+          <input type="hidden" name="Lines[INDEX].VatRate" value="${vatRate}" />`
       });
 
       document.getElementById('newStockCode').value = '';
@@ -244,9 +302,14 @@
       document.getElementById('newBarcode').value = '';
       document.getElementById('newQty').value = '1';
       document.getElementById('newPrice').value = '0';
+      document.getElementById('newVatRate').value = '20';
     });
 
-    function addLineRow({ name, code, qty, price, isNew, inputs }) {
+    function addLineRow({ name, code, qty, price, vatRate, isNew, inputs }) {
+      const lineSub = qty * price;
+      const lineVat = lineSub * (vatRate / 100);
+      const lineTotal = lineSub + lineVat;
+      
       const tbody = document.querySelector('#linesTable tbody');
       const row = document.createElement('tr');
       const inputGroup = document.createElement('div');
@@ -258,17 +321,28 @@
         <td>${escapeHtml(name)}${badge}</td>
         <td>${escapeHtml(code)}</td>
         <td>${qty}</td>
-        <td>${price.toFixed(2)} ₺</td>
-        <td>${(qty * price).toFixed(2)} ₺</td>
+        <td>${price.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+        <td>%${vatRate}</td>
+        <td>${lineSub.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+        <td>${lineVat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+        <td>${lineTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
         <td><button type="button" class="btn btn-sm btn-outline-danger remove-line">Sil</button></td>`;
 
       tbody.appendChild(row);
       document.getElementById('lineInputs').appendChild(inputGroup);
+      
+      const currentIdx = lineIndex;
+      linesData.push({ id: currentIdx, qty, price, vatRate });
+      updateTotals();
+      
       lineIndex++;
 
       row.querySelector('.remove-line').addEventListener('click', () => {
         row.remove();
         inputGroup.remove();
+        const dataIdx = linesData.findIndex(d => d.id === currentIdx);
+        if (dataIdx > -1) linesData.splice(dataIdx, 1);
+        updateTotals();
       });
     }
   </script>

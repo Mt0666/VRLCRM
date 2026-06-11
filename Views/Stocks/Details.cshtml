@@ -37,19 +37,23 @@
           </div>
           <div class="col-md-8">
             <div class="row g-4 mb-4">
-              <div class="col-sm-6">
+              <div class="col-sm-4">
                 <h6 class="text-body-secondary mb-1">Kategori</h6>
                 <p class="mb-0">@Model.Category.Name</p>
               </div>
-              <div class="col-sm-6">
+              <div class="col-sm-4">
                 <h6 class="text-body-secondary mb-1">Fiyat</h6>
                 <p class="mb-0 fw-medium">@Model.Price.ToString("N2") ₺</p>
               </div>
-              <div class="col-sm-6">
+              <div class="col-sm-4">
+                <h6 class="text-body-secondary mb-1">KDV Oranı</h6>
+                <p class="mb-0">%@Model.VatRate.ToString("N0")</p>
+              </div>
+              <div class="col-sm-6 mt-4">
                 <h6 class="text-body-secondary mb-1">Stok Adedi</h6>
                 <p class="mb-0">@Model.StockQuantity</p>
               </div>
-              <div class="col-sm-6">
+              <div class="col-sm-6 mt-4">
                 <h6 class="text-body-secondary mb-1">Kayıt Tarihi</h6>
                 <p class="mb-0">@Model.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p>
               </div>
