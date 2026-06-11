@@ -32,13 +32,13 @@ public class Customer : BaseEntity
 
     public decimal? AvailableCredit => CreditLimit.HasValue ? CreditLimit.Value - Balance : null;
 
-    public bool CanPlaceOrder(decimal orderTotal)
+    public bool HasSufficientCredit(decimal amountToAdd)
     {
         if (!CreditLimit.HasValue)
         {
             return true;
         }
 
-        return Balance + orderTotal <= CreditLimit.Value;
+        return Balance + amountToAdd <= CreditLimit.Value;
     }
 }

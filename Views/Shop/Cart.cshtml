@@ -66,13 +66,6 @@
             <strong>Genel Toplam</strong>
             <strong>@cartTotal.ToString("N2") ₺</strong>
           </div>
-          @{
-            var canOrder = customer.CanPlaceOrder(cartTotal);
-          }
-          @if (!canOrder)
-          {
-            <div class="alert alert-warning">Cari limit yetersiz. Borç: @customer.Balance.ToString("N2") ₺, Sepet: @cartTotal.ToString("N2") ₺</div>
-          }
           <form asp-action="Checkout" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" name="customerId" value="@customer.Id" />
@@ -80,7 +73,7 @@
               <input type="text" name="notes" class="form-control" placeholder="Sipariş notu" />
               <label>Sipariş Notu</label>
             </div>
-            <button type="submit" class="btn btn-success" @(canOrder ? "" : "disabled")>Siparişi Onayla</button>
+            <button type="submit" class="btn btn-success">Siparişi Onayla</button>
           </form>
         </div>
       }
