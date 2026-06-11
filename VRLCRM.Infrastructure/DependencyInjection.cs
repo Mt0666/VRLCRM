@@ -6,6 +6,7 @@ using VRLCRM.Application.Categories;
 using VRLCRM.Application.Customers;
 using VRLCRM.Application.Invoices;
 using VRLCRM.Application.Orders;
+using VRLCRM.Application.Payments;
 using VRLCRM.Application.StockMovements;
 using VRLCRM.Application.Stocks;
 using VRLCRM.Application.Suppliers;
@@ -15,6 +16,7 @@ using VRLCRM.Infrastructure.Categories;
 using VRLCRM.Infrastructure.Customers;
 using VRLCRM.Infrastructure.Invoices;
 using VRLCRM.Infrastructure.Orders;
+using VRLCRM.Infrastructure.Payments;
 using VRLCRM.Infrastructure.StockMovements;
 using VRLCRM.Infrastructure.Stocks;
 using VRLCRM.Infrastructure.Suppliers;
@@ -48,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceService, InvoiceService>();
         services.AddScoped<IStockMovementService, StockMovementService>();
         services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IUserService, UserService>();
 
         services

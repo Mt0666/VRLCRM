@@ -1,0 +1,65 @@
+@model IEnumerable<VRLCRM.Domain.Entities.Payment>
+using VRLCRM.Domain.Enums
+@{
+    ViewData["Title"] = "Kasa & Banka Hareketleri";
+}
+
+<div class="card">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+        <h5 class="mb-0">Tahsilat ve Ödemeler</h5>
+        <div class="d-flex gap-2">
+            <a asp-action="CreateIncoming" class="btn btn-success"><i class="ri-arrow-down-circle-line me-1"></i> Yeni Tahsilat Al</a>
+            <a asp-action="CreateOutgoing" class="btn btn-danger"><i class="ri-arrow-up-circle-line me-1"></i> Yeni Ödeme Yap</a>
+        </div>
+    </div>
+    <div class="table-responsive text-nowrap">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Fiş No</th>
+                    <th>Tarih</th>
+                    <th>Tür</th>
+                    <th>Cari/Firma</th>
+                    <th>Yöntem</th>
+                    <th>Tutar</th>
+                    <th>Durum</th>
+                    <th>İşlemler</th>
+                </tr>
+            </thead>
+            <tbody class="table-border-bottom-0">
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td><strong>@item.PaymentNumber</strong></td>
+                        <td>@item.PaymentDate.ToString("dd.MM.yyyy")</td>
+                        <td>
+                            @if (item.Type == PaymentType.Incoming)
+                            {
+                                <span class="badge bg-label-success"><i class="ri-arrow-down-line me-1"></i> Tahsilat</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-label-danger"><i class="ri-arrow-up-line me-1"></i> Ödeme</span>
+                            }
+                        </td>
+                        <td>
+                            @(item.Type == PaymentType.Incoming ? item.Customer?.FullName : item.Supplier?.CompanyName)
+                        </td>
+                        <td>@item.Method.ToString()</td>
+                        <td><strong>@item.Amount.ToString("N2") ₺</strong></td>
+                        <td><partial name="_StatusBadge" model="item.IsActive" /></td>
+                        <td>
+                            @if (item.IsActive)
+                            {
+                                <form asp-action="Cancel" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Bu işlemi iptal etmek istediğinize emin misiniz? Bakiye geri alınacaktır.');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">İptal Et</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
