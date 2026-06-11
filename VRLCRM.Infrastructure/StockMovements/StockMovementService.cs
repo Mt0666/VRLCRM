@@ -20,7 +20,7 @@ public class StockMovementService : IStockMovementService
             .AsNoTracking()
             .Include(m => m.StockItem)
             .OrderByDescending(m => m.IsActive)
-            .ThenByDescending(m => m.MovementDate)
+            .ThenByDescending(m => m.UpdatedAt ?? m.CreatedAt)
             .ToListAsync(cancellationToken);
     }
 }

@@ -23,7 +23,7 @@ public class OrderService : IOrderService
             .Include(o => o.Lines)
             .ThenInclude(l => l.StockItem)
             .OrderByDescending(o => o.IsActive)
-            .ThenByDescending(o => o.OrderDate)
+            .ThenByDescending(o => o.UpdatedAt ?? o.CreatedAt)
             .ToListAsync(cancellationToken);
     }
 

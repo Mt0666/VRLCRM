@@ -24,7 +24,7 @@ public class InvoiceService : IInvoiceService
             .Include(i => i.Lines)
             .ThenInclude(l => l.StockItem)
             .OrderByDescending(i => i.IsActive)
-            .ThenByDescending(i => i.InvoiceDate)
+            .ThenByDescending(i => i.UpdatedAt ?? i.CreatedAt)
             .ToListAsync(cancellationToken);
     }
 
@@ -40,7 +40,7 @@ public class InvoiceService : IInvoiceService
             .ThenInclude(l => l.StockItem)
             .Where(i => i.InvoiceType == invoiceType)
             .OrderByDescending(i => i.IsActive)
-            .ThenByDescending(i => i.InvoiceDate)
+            .ThenByDescending(i => i.UpdatedAt ?? i.CreatedAt)
             .ToListAsync(cancellationToken);
     }
 

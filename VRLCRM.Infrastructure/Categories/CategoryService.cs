@@ -19,7 +19,7 @@ public class CategoryService : ICategoryService
         return await _context.Categories
             .AsNoTracking()
             .OrderByDescending(c => c.IsActive)
-            .ThenBy(c => c.Name)
+            .ThenByDescending(c => c.UpdatedAt ?? c.CreatedAt)
             .ToListAsync(cancellationToken);
     }
 

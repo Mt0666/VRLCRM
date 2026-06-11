@@ -13,13 +13,12 @@ public class SupplierService : ISupplierService
     {
         _context = context;
     }
-
     public async Task<IReadOnlyList<Supplier>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         return await _context.Suppliers
             .AsNoTracking()
             .OrderByDescending(s => s.IsActive)
-            .ThenBy(s => s.CompanyName)
+            .ThenByDescending(s => s.UpdatedAt ?? s.CreatedAt)
             .ToListAsync(cancellationToken);
     }
 
