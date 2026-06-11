@@ -20,7 +20,7 @@ public class CustomerService : ICustomerService
             .AsNoTracking()
             .Include(c => c.Address)
             .OrderByDescending(c => c.IsActive)
-            .ThenByDescending(c => c.CreatedAt)
+            .ThenByDescending(c => c.UpdatedAt ?? c.CreatedAt)
             .ToListAsync(cancellationToken);
     }
 

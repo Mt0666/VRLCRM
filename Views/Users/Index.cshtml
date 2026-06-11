@@ -8,8 +8,11 @@
         <h5 class="mb-0">Personel Listesi</h5>
         <a asp-action="Create" class="btn btn-primary">Yeni Personel Ekle</a>
     </div>
+    <div class="card-body pb-0">
+        <partial name="_TableToolbar" />
+    </div>
     <div class="table-responsive text-nowrap">
-        <table class="table table-hover">
+        <table class="table table-hover js-data-table">
             <thead>
                 <tr>
                     <th>Ad Soyad</th>

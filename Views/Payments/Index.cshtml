@@ -12,8 +12,11 @@ using VRLCRM.Domain.Enums
             <a asp-action="CreateOutgoing" class="btn btn-danger"><i class="ri-arrow-up-circle-line me-1"></i> Yeni Ödeme Yap</a>
         </div>
     </div>
+    <div class="card-body pb-0">
+        <partial name="_TableToolbar" />
+    </div>
     <div class="table-responsive text-nowrap">
-        <table class="table table-hover">
+        <table class="table table-hover js-data-table">
             <thead>
                 <tr>
                     <th>Fiş No</th>

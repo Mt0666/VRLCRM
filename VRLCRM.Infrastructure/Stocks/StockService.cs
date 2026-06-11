@@ -13,14 +13,13 @@ public class StockService : IStockService
     {
         _context = context;
     }
-
     public async Task<IReadOnlyList<StockItem>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         return await _context.StockItems
             .AsNoTracking()
             .Include(s => s.Category)
             .OrderByDescending(s => s.IsActive)
-            .ThenByDescending(s => s.CreatedAt)
+            .ThenByDescending(s => s.UpdatedAt ?? s.CreatedAt)
             .ToListAsync(cancellationToken);
     }
 

@@ -22,7 +22,7 @@ public class PaymentService : IPaymentService
             .Include(p => p.Customer)
             .Include(p => p.Supplier)
             .OrderByDescending(p => p.IsActive)
-            .ThenByDescending(p => p.PaymentDate)
+            .ThenByDescending(p => p.UpdatedAt ?? p.CreatedAt)
             .ToListAsync(cancellationToken);
     }
 
