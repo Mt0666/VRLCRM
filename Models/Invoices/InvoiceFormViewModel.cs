@@ -25,6 +25,9 @@ public class InvoiceLineFormItem
 
     [Range(0, double.MaxValue)]
     public decimal UnitPrice { get; set; }
+
+    [Range(0, 100)]
+    public decimal VatRate { get; set; }
 }
 
 public class InvoiceStockOption
@@ -36,6 +39,8 @@ public class InvoiceStockOption
     public string StockCode { get; set; } = string.Empty;
 
     public decimal Price { get; set; }
+
+    public decimal VatRate { get; set; }
 }
 
 public class InvoiceCategoryOption

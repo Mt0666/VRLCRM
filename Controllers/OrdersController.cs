@@ -108,6 +108,7 @@ public class OrdersController : Controller
             id = item.Id,
             name = item.Name,
             price = item.Price,
+            vatRate = item.VatRate,
             stockQuantity = item.StockQuantity,
             stockCode = item.StockCode
         });

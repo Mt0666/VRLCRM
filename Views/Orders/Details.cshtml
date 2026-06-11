@@ -58,6 +58,8 @@
                 <th>Ürün</th>
                 <th>Adet</th>
                 <th>Birim Fiyat</th>
+                <th>KDV (%)</th>
+                <th>KDV Tutarı</th>
                 <th>Toplam</th>
               </tr>
             </thead>
@@ -68,10 +70,26 @@
                   <td>@line.StockItem.Name</td>
                   <td>@line.Quantity</td>
                   <td>@line.UnitPrice.ToString("N2") ₺</td>
+                  <td>%@line.VatRate.ToString("N0")</td>
+                  <td>@line.VatAmount.ToString("N2") ₺</td>
                   <td>@line.LineTotal.ToString("N2") ₺</td>
                 </tr>
               }
             </tbody>
+            <tfoot>
+              <tr>
+                <th colspan="5" class="text-end">Ara Toplam:</th>
+                <th>@Model.SubTotal.ToString("N2") ₺</th>
+              </tr>
+              <tr>
+                <th colspan="5" class="text-end">Toplam KDV:</th>
+                <th>@Model.VatTotal.ToString("N2") ₺</th>
+              </tr>
+              <tr>
+                <th colspan="5" class="text-end">Genel Toplam:</th>
+                <th>@Model.TotalAmount.ToString("N2") ₺</th>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>

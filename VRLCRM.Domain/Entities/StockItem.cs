@@ -18,6 +18,8 @@ public class StockItem : BaseEntity
 
     public decimal Price { get; set; }
 
+    public decimal VatRate { get; set; } = 20m;
+
     public int StockQuantity { get; set; }
 
     public string? Description { get; set; }

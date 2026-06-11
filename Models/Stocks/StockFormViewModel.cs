@@ -34,6 +34,11 @@ public class StockFormViewModel
     [Range(0, double.MaxValue, ErrorMessage = "Fiyat 0 veya daha büyük olmalıdır.")]
     public decimal Price { get; set; }
 
+    [Required(ErrorMessage = "KDV Oranı zorunludur.")]
+    [Display(Name = "KDV Oranı (%)")]
+    [Range(0, 100, ErrorMessage = "KDV oranı 0-100 arasında olmalıdır.")]
+    public decimal VatRate { get; set; } = 20m;
+
     [Required(ErrorMessage = "Stok adedi zorunludur.")]
     [Display(Name = "Stok Adedi")]
     [Range(0, int.MaxValue, ErrorMessage = "Stok adedi 0 veya daha büyük olmalıdır.")]

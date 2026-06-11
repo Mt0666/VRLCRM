@@ -243,7 +243,8 @@ public class InvoicesController : Controller
             Id = s.Id,
             Name = s.Name,
             StockCode = s.StockCode,
-            Price = s.Price
+            Price = s.Price,
+            VatRate = s.VatRate
         }).ToList();
     }
 
@@ -271,7 +272,8 @@ public class InvoicesController : Controller
             Id = s.Id,
             Name = s.Name,
             StockCode = s.StockCode,
-            Price = s.Price
+            Price = s.Price,
+            VatRate = s.VatRate
         }).ToList();
 
         var categories = await _categoryService.GetAllAsync(cancellationToken);

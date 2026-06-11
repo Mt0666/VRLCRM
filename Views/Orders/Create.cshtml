@@ -58,6 +58,9 @@
                   <th>Ürün</th>
                   <th>Adet</th>
                   <th>Birim Fiyat</th>
+                  <th>KDV (%)</th>
+                  <th>Ara Toplam</th>
+                  <th>KDV Tutarı</th>
                   <th>Toplam</th>
                   <th></th>
                 </tr>
@@ -65,7 +68,17 @@
               <tbody></tbody>
               <tfoot>
                 <tr>
-                  <th colspan="3" class="text-end">Genel Toplam</th>
+                  <th colspan="4" class="text-end">Ara Toplam:</th>
+                  <th id="subTotal">0,00 ₺</th>
+                  <th colspan="3"></th>
+                </tr>
+                <tr>
+                  <th colspan="5" class="text-end">Toplam KDV:</th>
+                  <th id="vatTotal">0,00 ₺</th>
+                  <th colspan="2"></th>
+                </tr>
+                <tr>
+                  <th colspan="6" class="text-end">Genel Toplam:</th>
                   <th id="grandTotal">0,00 ₺</th>
                   <th></th>
                 </tr>
@@ -89,14 +102,29 @@
     let lineIndex = 0;
     const lines = new Map();
 
-    function updateGrandTotal() {
-      let total = 0;
-      lines.forEach(item => total += item.qty * item.price);
-      document.getElementById('grandTotal').textContent = total.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+    function updateTotals() {
+      let sub = 0;
+      let vat = 0;
+      
+      lines.forEach(item => {
+        const lineSub = item.qty * item.price;
+        const lineVat = lineSub * (item.vatRate / 100);
+        sub += lineSub;
+        vat += lineVat;
+      });
+      
+      const grand = sub + vat;
+      
+      document.getElementById('subTotal').textContent = sub.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+      document.getElementById('vatTotal').textContent = vat.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+      document.getElementById('grandTotal').textContent = grand.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
     }
 
-    function renderLine(stockId, name, qty, price) {
-      const total = qty * price;
+    function renderLine(stockId, name, qty, price, vatRate) {
+      const lineSub = qty * price;
+      const lineVat = lineSub * (vatRate / 100);
+      const lineTotal = lineSub + lineVat;
+      
       const tbody = document.querySelector('#linesTable tbody');
       const row = document.createElement('tr');
       row.dataset.stockId = stockId;
@@ -104,7 +132,10 @@
         <td>${name}</td>
         <td>${qty}</td>
         <td>${price.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-        <td>${total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+        <td>%${vatRate}</td>
+        <td>${lineSub.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+        <td>${lineVat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+        <td>${lineTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
         <td><button type="button" class="btn btn-sm btn-outline-danger remove-line">Sil</button></td>`;
       tbody.appendChild(row);
 
@@ -112,7 +143,7 @@
         lines.delete(stockId);
         row.remove();
         rebuildHiddenInputs();
-        updateGrandTotal();
+        updateTotals();
       });
     }
 
@@ -125,7 +156,8 @@
           <input type="hidden" name="Lines[${lineIndex}].StockItemId" value="${stockId}" />
           <input type="hidden" name="Lines[${lineIndex}].StockName" value="${item.name}" />
           <input type="hidden" name="Lines[${lineIndex}].Quantity" value="${item.qty}" />
-          <input type="hidden" name="Lines[${lineIndex}].UnitPrice" value="${item.price}" />`);
+          <input type="hidden" name="Lines[${lineIndex}].UnitPrice" value="${item.price}" />
+          <input type="hidden" name="Lines[${lineIndex}].VatRate" value="${item.vatRate}" />`);
         lineIndex++;
       });
     }
@@ -147,14 +179,14 @@
       const product = await response.json();
       const existing = lines.get(String(product.id));
       const newQty = (existing?.qty || 0) + qty;
-      lines.set(String(product.id), { name: product.name, qty: newQty, price: product.price });
+      lines.set(String(product.id), { name: product.name, qty: newQty, price: product.price, vatRate: product.vatRate });
 
       document.querySelectorAll('#linesTable tbody tr').forEach(r => {
         if (r.dataset.stockId === String(product.id)) r.remove();
       });
-      renderLine(String(product.id), product.name, newQty, product.price);
+      renderLine(String(product.id), product.name, newQty, product.price, product.vatRate);
       rebuildHiddenInputs();
-      updateGrandTotal();
+      updateTotals();
 
       document.getElementById('barcodeInput').value = '';
       document.getElementById('barcodeInput').focus();

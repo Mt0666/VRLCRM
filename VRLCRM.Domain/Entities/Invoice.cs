@@ -19,6 +19,10 @@ public class Invoice : BaseEntity
 
     public Supplier? Supplier { get; set; }
 
+    public decimal SubTotal { get; set; }
+
+    public decimal VatTotal { get; set; }
+
     public decimal TotalAmount { get; set; }
 
     public string? Notes { get; set; }

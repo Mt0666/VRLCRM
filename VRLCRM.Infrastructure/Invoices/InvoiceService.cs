@@ -97,7 +97,8 @@ public class InvoiceService : IInvoiceService
         }
 
         var invoiceLines = new List<InvoiceLine>();
-        decimal total = 0;
+        decimal subTotal = 0;
+        decimal vatTotal = 0;
 
         foreach (var line in lines)
         {
@@ -107,8 +108,14 @@ public class InvoiceService : IInvoiceService
             }
 
             var stock = await ResolveStockForLineAsync(invoiceType, line, cancellationToken);
-            var lineTotal = line.Quantity * line.UnitPrice;
-            total += lineTotal;
+            
+            var vatRate = stock.VatRate;
+            var lineSubTotal = line.Quantity * line.UnitPrice;
+            var lineVatAmount = lineSubTotal * (vatRate / 100m);
+            var lineTotal = lineSubTotal + lineVatAmount;
+
+            subTotal += lineSubTotal;
+            vatTotal += lineVatAmount;
 
             if (invoiceType == InvoiceType.Sales && stock.StockQuantity < line.Quantity)
             {
@@ -120,9 +127,13 @@ public class InvoiceService : IInvoiceService
                 StockItemId = stock.Id,
                 Quantity = line.Quantity,
                 UnitPrice = line.UnitPrice,
+                VatRate = vatRate,
+                VatAmount = lineVatAmount,
                 LineTotal = lineTotal
             });
         }
+
+        var totalAmount = subTotal + vatTotal;
 
         var invoice = new Invoice
         {
@@ -131,7 +142,9 @@ public class InvoiceService : IInvoiceService
             CustomerId = customerId,
             SupplierId = supplierId,
             Notes = notes?.Trim(),
-            TotalAmount = total,
+            SubTotal = subTotal,
+            VatTotal = vatTotal,
+            TotalAmount = totalAmount,
             Lines = invoiceLines,
             InvoiceNumber = await GenerateInvoiceNumberAsync(invoiceType, cancellationToken)
         };
@@ -166,12 +179,12 @@ public class InvoiceService : IInvoiceService
 
         if (invoiceType == InvoiceType.Sales && customer is not null)
         {
-            customer.Balance += total;
+            customer.Balance += totalAmount;
         }
 
         if (invoiceType == InvoiceType.Purchase && supplier is not null)
         {
-            supplier.Balance += total;
+            supplier.Balance += totalAmount;
         }
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -201,13 +214,26 @@ public class InvoiceService : IInvoiceService
             throw new InvalidOperationException("Bu sipariş zaten satış faturasına dönüştürülmüş.");
         }
 
-        var invoiceLines = order.Lines.Select(line => new InvoiceLine
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        var invoiceLines = new List<InvoiceLine>();
+        foreach (var line in order.Lines)
         {
-            StockItemId = line.StockItemId,
-            Quantity = line.Quantity,
-            UnitPrice = line.UnitPrice,
-            LineTotal = line.LineTotal
-        }).ToList();
+            if (line.StockItem.StockQuantity < line.Quantity)
+            {
+                throw new InvalidOperationException($"{line.StockItem.Name} için yeterli stok yok.");
+            }
+
+            invoiceLines.Add(new InvoiceLine
+            {
+                StockItemId = line.StockItemId,
+                Quantity = line.Quantity,
+                UnitPrice = line.UnitPrice,
+                VatRate = line.VatRate,
+                VatAmount = line.VatAmount,
+                LineTotal = line.LineTotal
+            });
+        }
 
         var invoice = new Invoice
         {
@@ -215,6 +241,8 @@ public class InvoiceService : IInvoiceService
             InvoiceDate = DateTime.UtcNow,
             CustomerId = order.CustomerId,
             Notes = $"Sipariş: {order.OrderNumber}" + (string.IsNullOrWhiteSpace(order.Notes) ? "" : $" | {order.Notes}"),
+            SubTotal = order.SubTotal,
+            VatTotal = order.VatTotal,
             TotalAmount = order.TotalAmount,
             Lines = invoiceLines,
             InvoiceNumber = await GenerateInvoiceNumberAsync(InvoiceType.Sales, cancellationToken)
@@ -223,8 +251,28 @@ public class InvoiceService : IInvoiceService
         _context.Invoices.Add(invoice);
         await _context.SaveChangesAsync(cancellationToken);
 
+        foreach (var line in invoiceLines)
+        {
+            var stock = await _context.StockItems.FirstAsync(s => s.Id == line.StockItemId, cancellationToken);
+            stock.StockQuantity -= line.Quantity;
+
+            _context.StockMovements.Add(new StockMovement
+            {
+                StockItemId = stock.Id,
+                MovementType = StockMovementType.Out,
+                Quantity = line.Quantity,
+                ReferenceType = StockMovementReferenceType.Invoice,
+                ReferenceId = invoice.Id,
+                MovementDate = invoice.InvoiceDate,
+                Notes = $"Siparişten Dönüştürülen Fatura: {invoice.InvoiceNumber}"
+            });
+        }
+
+        order.Customer.Balance += invoice.TotalAmount;
         order.SalesInvoiceId = invoice.Id;
+        
         await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return invoice;
     }
@@ -277,6 +325,7 @@ public class InvoiceService : IInvoiceService
                 CategoryId = input.CategoryId,
                 Barcode = input.Barcode?.Trim(),
                 Price = line.UnitPrice,
+                VatRate = input.VatRate,
                 StockQuantity = 0,
                 IsActive = true
             };
