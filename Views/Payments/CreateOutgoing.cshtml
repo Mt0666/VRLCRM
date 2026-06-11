@@ -1,0 +1,66 @@
+@model VRLCRM.Models.Payments.PaymentFormViewModel
+using VRLCRM.Domain.Enums
+@{
+  ViewData["Title"] = "Yeni Ödeme Yap";
+}
+
+<div class="row">
+  <div class="col-xl-8 col-lg-10">
+    <div class="card mb-6">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 text-danger"><i class="ri-arrow-up-circle-line me-2"></i>Yeni Ödeme (Tedarikçiye)</h5>
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Listeye Dön</a>
+      </div>
+      <div class="card-body">
+        <form asp-action="CreateOutgoing" method="post">
+          <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+          <div class="form-floating form-floating-outline mb-6">
+            <select asp-for="SupplierId" asp-items="Model.Suppliers" class="form-select select2">
+              <option value="">Tedarikçi seçin</option>
+            </select>
+            <label asp-for="SupplierId"></label>
+            <span asp-validation-for="SupplierId" class="text-danger"></span>
+          </div>
+
+          <div class="row g-4 mb-6">
+            <div class="col-md-6">
+              <div class="form-floating form-floating-outline">
+                <input asp-for="Amount" class="form-control" type="number" step="0.01" min="0.01" placeholder="0.00" />
+                <label asp-for="Amount">Tutar (₺)</label>
+                <span asp-validation-for="Amount" class="text-danger"></span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating form-floating-outline">
+                <input asp-for="PaymentDate" class="form-control" type="date" />
+                <label asp-for="PaymentDate"></label>
+                <span asp-validation-for="PaymentDate" class="text-danger"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-floating form-floating-outline mb-6">
+            <select asp-for="Method" class="form-select" asp-items="Html.GetEnumSelectList<PaymentMethod>()">
+            </select>
+            <label asp-for="Method"></label>
+            <span asp-validation-for="Method" class="text-danger"></span>
+          </div>
+
+          <div class="form-floating form-floating-outline mb-6">
+            <textarea asp-for="Notes" class="form-control h-px-100" placeholder="Açıklama (Opsiyonel)"></textarea>
+            <label asp-for="Notes"></label>
+            <span asp-validation-for="Notes" class="text-danger"></span>
+          </div>
+
+          <button type="submit" class="btn btn-danger me-3">Ödemeyi Kaydet</button>
+          <a asp-action="Index" class="btn btn-outline-secondary">İptal</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section PageScripts {
+  <partial name="_ValidationScriptsPartial" />
+}

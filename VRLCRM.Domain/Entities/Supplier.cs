@@ -27,5 +27,7 @@ public class Supplier : BaseEntity
 
     public ICollection<Invoice> PurchaseInvoices { get; set; } = [];
 
+    public ICollection<Payment> Payments { get; set; } = [];
+
     public decimal? AvailableCredit => CreditLimit.HasValue ? CreditLimit.Value - Balance : null;
 }

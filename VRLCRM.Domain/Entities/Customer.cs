@@ -26,6 +26,8 @@ public class Customer : BaseEntity
 
     public ICollection<Order> Orders { get; set; } = [];
 
+    public ICollection<Payment> Payments { get; set; } = [];
+
     public string FullName => $"{FirstName} {LastName}".Trim();
 
     public decimal? AvailableCredit => CreditLimit.HasValue ? CreditLimit.Value - Balance : null;

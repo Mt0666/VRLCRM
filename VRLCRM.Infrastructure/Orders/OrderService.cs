@@ -112,6 +112,11 @@ public class OrderService : IOrderService
 
         var totalAmount = subTotal + vatTotal;
 
+        if (!customer.CanPlaceOrder(totalAmount))
+        {
+            throw new InvalidOperationException($"Kredi limiti aşıldı! Mevcut bakiye: {customer.Balance:N2} ₺, Sipariş Tutarı: {totalAmount:N2} ₺, Limit: {customer.CreditLimit:N2} ₺");
+        }
+
         var order = new Order
         {
             CustomerId = customer.Id,
