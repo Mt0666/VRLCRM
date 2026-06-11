@@ -2,3 +2,14 @@
 // for details on configuring this project to bundle and minify static web assets.
 
 // Write your JavaScript code.
+
+$(document).ready(function () {
+    // Initialize Select2 globally with Turkish language and bootstrap-5 theme
+    if ($.fn.select2) {
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            language: 'tr',
+            width: '100%'
+        });
+    }
+});
