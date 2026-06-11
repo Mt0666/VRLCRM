@@ -135,6 +135,11 @@ public class InvoiceService : IInvoiceService
 
         var totalAmount = subTotal + vatTotal;
 
+        if (invoiceType == InvoiceType.Sales && customer is not null && !customer.HasSufficientCredit(totalAmount))
+        {
+            throw new InvalidOperationException($"Kredi limiti aşıldı! Mevcut bakiye: {customer.Balance:N2} ₺, Fatura Tutarı: {totalAmount:N2} ₺, Limit: {customer.CreditLimit:N2} ₺");
+        }
+
         var invoice = new Invoice
         {
             InvoiceType = invoiceType,
@@ -233,6 +238,11 @@ public class InvoiceService : IInvoiceService
                 VatAmount = line.VatAmount,
                 LineTotal = line.LineTotal
             });
+        }
+
+        if (!order.Customer.HasSufficientCredit(order.TotalAmount))
+        {
+            throw new InvalidOperationException($"Kredi limiti aşıldı! Mevcut bakiye: {order.Customer.Balance:N2} ₺, Fatura Tutarı: {order.TotalAmount:N2} ₺, Limit: {order.Customer.CreditLimit:N2} ₺");
         }
 
         var invoice = new Invoice
