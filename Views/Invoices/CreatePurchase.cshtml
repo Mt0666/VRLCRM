@@ -45,80 +45,32 @@
             <label asp-for="Notes"></label>
           </div>
 
-          <ul class="nav nav-pills mb-4" role="tablist">
-            <li class="nav-item" role="presentation">
-              <button type="button" class="nav-link active" id="existing-tab" data-bs-toggle="tab" data-bs-target="#existingProductTab" role="tab">Mevcut Ürün</button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button type="button" class="nav-link" id="new-tab" data-bs-toggle="tab" data-bs-target="#newProductTab" role="tab">Yeni Ürün (Stoğa Al)</button>
-            </li>
-          </ul>
-
-          <div class="tab-content mb-4">
-            <div class="tab-pane fade show active" id="existingProductTab" role="tabpanel">
-              <div class="row g-3 align-items-end">
-                <div class="col-md-5">
-                  <label class="form-label" for="stockSelect">Ürün</label>
-                  <select id="stockSelect" class="form-select">
-                    <option value="">Ürün seçin</option>
-                    @foreach (var stock in Model.Stocks)
-                    {
-                      <option value="@stock.Value">@stock.Text</option>
-                    }
-                  </select>
-                </div>
-                <div class="col-md-2">
-                  <label class="form-label" for="existingQty">Adet</label>
-                  <input type="number" id="existingQty" class="form-control" value="1" min="1" />
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label" for="existingPrice">Alış Fiyatı</label>
-                  <input type="number" id="existingPrice" class="form-control" step="0.01" min="0" value="0" />
-                </div>
-                <div class="col-md-2">
-                  <button type="button" id="addExistingBtn" class="btn btn-outline-primary w-100">Ekle</button>
-                </div>
+          <div class="row g-3 align-items-end mb-4">
+            <div class="col-md-5">
+              <label class="form-label" for="stockSelect">Ürün</label>
+              <div class="input-group">
+                <select id="stockSelect" class="form-select select2">
+                  <option value="">Ürün seçin</option>
+                  @foreach (var stock in Model.Stocks)
+                  {
+                    <option value="@stock.Value">@stock.Text</option>
+                  }
+                </select>
+                <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#newProductModal" title="Yeni Ürün Ekle">
+                  <i class="icon-base ri ri-add-line"></i>
+                </button>
               </div>
             </div>
-
-            <div class="tab-pane fade" id="newProductTab" role="tabpanel">
-              <div class="row g-3 align-items-end">
-                <div class="col-md-3">
-                  <label class="form-label" for="newStockCode">Stok Kodu</label>
-                  <input type="text" id="newStockCode" class="form-control" placeholder="STK-001" />
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label" for="newProductName">Ürün Adı</label>
-                  <input type="text" id="newProductName" class="form-control" />
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label" for="newCategoryId">Kategori</label>
-                  <select id="newCategoryId" class="form-select select2">
-                    <option value="">Kategori seçin</option>
-                    @foreach (var category in Model.Categories)
-                    {
-                      <option value="@category.Value">@category.Text</option>
-                    }
-                  </select>
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label" for="newBarcode">Barkod (opsiyonel)</label>
-                  <input type="text" id="newBarcode" class="form-control" />
-                </div>
-                <div class="col-md-2">
-                  <label class="form-label" for="newQty">Adet</label>
-                  <input type="number" id="newQty" class="form-control" value="1" min="1" />
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label" for="newPrice">Alış Fiyatı</label>
-                  <input type="number" id="newPrice" class="form-control" step="0.01" min="0" value="0" />
-                </div>
-                <div class="col-md-2">
-                  <button type="button" id="addNewBtn" class="btn btn-success w-100">Stoğa Ekle</button>
-                </div>
-              </div>
-              <div class="form-text mt-2">Yeni ürün kaydı oluşturulur ve alış faturası ile stoğa alınır.</div>
-              <div id="newProductError" class="text-danger small mt-2"></div>
+            <div class="col-md-2">
+              <label class="form-label" for="existingQty">Adet</label>
+              <input type="number" id="existingQty" class="form-control" value="1" min="1" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="existingPrice">Alış Fiyatı</label>
+              <input type="number" id="existingPrice" class="form-control" step="0.01" min="0" value="0" />
+            </div>
+            <div class="col-md-2">
+              <button type="button" id="addExistingBtn" class="btn btn-primary w-100">Kalem Ekle</button>
             </div>
           </div>
 
@@ -303,6 +255,12 @@
       document.getElementById('newQty').value = '1';
       document.getElementById('newPrice').value = '0';
       document.getElementById('newVatRate').value = '20';
+      
+      const modalElement = document.getElementById('newProductModal');
+      const modalInstance = bootstrap.Modal.getInstance(modalElement);
+      if (modalInstance) {
+          modalInstance.hide();
+      }
     });
 
     function addLineRow({ name, code, qty, price, vatRate, isNew, inputs }) {
