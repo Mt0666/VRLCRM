@@ -8,9 +8,9 @@ public interface ICustomerService
 
     Task<Customer?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
 
-    Task<Customer> CreateAsync(Customer customer, Address address, CancellationToken cancellationToken = default);
+    Task<Customer> CreateAsync(Customer customer, Address address, string? email = null, string? password = null, CancellationToken cancellationToken = default);
 
-    Task<bool> UpdateAsync(Customer customer, Address address, CancellationToken cancellationToken = default);
+    Task<bool> UpdateAsync(Customer customer, Address address, string? email = null, string? password = null, CancellationToken cancellationToken = default);
 
     Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
 }

@@ -47,6 +47,27 @@
   <span asp-validation-for="CreditLimit" class="text-danger"></span>
 </div>
 
+<h6 class="mb-4">B2B Giriş (E-Ticaret)</h6>
+
+<div class="row g-6">
+  <div class="col-md-6">
+    <div class="form-floating form-floating-outline mb-6">
+      <input asp-for="Email" class="form-control" placeholder="E-Posta" />
+      <label asp-for="Email"></label>
+      <div class="form-text">Müşteri B2B ekranına bu mail ile giriş yapar.</div>
+      <span asp-validation-for="Email" class="text-danger"></span>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="form-floating form-floating-outline mb-6">
+      <input asp-for="Password" class="form-control" placeholder="Şifre" />
+      <label asp-for="Password"></label>
+      <div class="form-text">Mevcut şifreyi değiştirmek istemiyorsanız boş bırakın.</div>
+      <span asp-validation-for="Password" class="text-danger"></span>
+    </div>
+  </div>
+</div>
+
 <h6 class="mb-4">Adres Bilgileri</h6>
 
 <div class="row g-6">

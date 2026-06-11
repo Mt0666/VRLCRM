@@ -5,4 +5,7 @@ namespace VRLCRM.Domain.Entities;
 public class ApplicationUser : IdentityUser
 {
     public string? FullName { get; set; }
+
+    public int? CustomerId { get; set; }
+    public Customer? Customer { get; set; }
 }

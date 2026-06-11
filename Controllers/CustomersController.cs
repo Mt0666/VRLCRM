@@ -46,13 +46,23 @@ public class CustomersController : Controller
             return View(model);
         }
 
-        await _customerService.CreateAsync(
-            CustomerViewModelMapper.ToCustomer(model),
-            CustomerViewModelMapper.ToAddress(model),
-            cancellationToken);
+        try
+        {
+            await _customerService.CreateAsync(
+                CustomerViewModelMapper.ToCustomer(model),
+                CustomerViewModelMapper.ToAddress(model),
+                model.Email,
+                model.Password,
+                cancellationToken);
 
-        TempData["SuccessMessage"] = "Müşteri başarıyla oluşturuldu.";
-        return RedirectToAction(nameof(Index));
+            TempData["SuccessMessage"] = "Müşteri başarıyla oluşturuldu.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View(model);
+        }
     }
 
     public async Task<IActionResult> Edit(int id, CancellationToken cancellationToken)
@@ -80,18 +90,28 @@ public class CustomersController : Controller
             return View(model);
         }
 
-        var updated = await _customerService.UpdateAsync(
-            CustomerViewModelMapper.ToCustomer(model),
-            CustomerViewModelMapper.ToAddress(model),
-            cancellationToken);
-
-        if (!updated)
+        try
         {
-            return NotFound();
-        }
+            var updated = await _customerService.UpdateAsync(
+                CustomerViewModelMapper.ToCustomer(model),
+                CustomerViewModelMapper.ToAddress(model),
+                model.Email,
+                model.Password,
+                cancellationToken);
 
-        TempData["SuccessMessage"] = "Müşteri başarıyla güncellendi.";
-        return RedirectToAction(nameof(Index));
+            if (!updated)
+            {
+                return NotFound();
+            }
+
+            TempData["SuccessMessage"] = "Müşteri başarıyla güncellendi.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View(model);
+        }
     }
 
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
