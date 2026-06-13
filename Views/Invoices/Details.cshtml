@@ -5,90 +5,153 @@
 }
 
 <div class="row g-6">
-  <div class="col-xl-10">
+  <div class="col-12">
     <div class="card">
-      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
-        <div>
-          <h5 class="mb-1">@Model.InvoiceNumber</h5>
-          <small class="text-body-secondary">@typeText</small>
+      <div class="card-header">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+          <div>
+            <h5 class="mb-1">@Model.InvoiceNumber</h5>
+            <small class="text-body-secondary">@typeText</small>
+          </div>
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <div class="btn-group btn-group-sm">
+              <a asp-action="ExportPdf" asp-route-id="@Model.Id" class="btn btn-outline-danger">
+                <i class="ri-file-pdf-line me-1"></i>PDF
+              </a>
+              <a asp-action="ExportExcel" asp-route-id="@Model.Id" class="btn btn-outline-success">
+                <i class="ri-file-excel-2-line me-1"></i>Excel
+              </a>
+            </div>
+            <button id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
+              <i class="ri-question-line"></i>
+            </button>
+            <a asp-action="@(Model.InvoiceType == InvoiceType.Sales ? "Sales" : "Purchase")" class="btn btn-outline-secondary btn-sm">
+              <i class="ri-arrow-left-line me-1"></i>Listeye Dön
+            </a>
+          </div>
         </div>
-        <div class="d-flex flex-wrap gap-2">
-          <a asp-action="ExportPdf" asp-route-id="@Model.Id" class="btn btn-outline-danger btn-sm">PDF</a>
-          <a asp-action="ExportExcel" asp-route-id="@Model.Id" class="btn btn-outline-success btn-sm">Excel</a>
-          <a asp-action="@(Model.InvoiceType == InvoiceType.Sales ? "Sales" : "Purchase")" class="btn btn-outline-secondary btn-sm">Listeye Dön</a>
-          @if (Model.IsActive)
-          {
+        @if (Model.IsActive)
+        {
+          <div class="d-flex flex-wrap gap-2 mt-3 pt-3 border-top">
             <form asp-action="Deactivate" asp-route-id="@Model.Id" asp-route-returnAction="@(Model.InvoiceType == InvoiceType.Sales ? "Sales" : "Purchase")" method="post" onsubmit="return confirm('Faturayı pasife almak istediğinize emin misiniz?');">
               @Html.AntiForgeryToken()
-              <button type="submit" class="btn btn-outline-danger btn-sm">Pasife Al</button>
+              <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="ri-close-circle-line me-1"></i>Pasife Al
+              </button>
             </form>
-          }
-        </div>
+          </div>
+        }
       </div>
       <div class="card-body">
-        <div class="row g-4 mb-6">
+        <div class="detail-info-strip">
           @if (Model.InvoiceType == InvoiceType.Sales)
           {
-            <div class="col-md-3"><strong>Müşteri:</strong> @(Model.Customer?.FullName ?? "-")</div>
+            <div class="detail-info-item">
+              <div class="detail-info-label">Müşteri</div>
+              <div class="detail-info-value">@(Model.Customer?.FullName ?? "-")</div>
+            </div>
           }
           else
           {
-            <div class="col-md-3"><strong>Tedarikçi:</strong> @(Model.Supplier?.CompanyName ?? "-")</div>
+            <div class="detail-info-item">
+              <div class="detail-info-label">Tedarikçi</div>
+              <div class="detail-info-value">@(Model.Supplier?.CompanyName ?? "-")</div>
+            </div>
             @if (Model.Supplier is not null)
             {
-              <div class="col-md-3"><strong>Tedarikçi Borcu:</strong> @Model.Supplier.Balance.ToString("N2") ₺</div>
+              <div class="detail-info-item">
+                <div class="detail-info-label">Tedarikçi Borcu</div>
+                <div class="detail-info-value">@Model.Supplier.Balance.ToString("N2") ₺</div>
+              </div>
             }
           }
-          <div class="col-md-3"><strong>Tarih:</strong> @Model.InvoiceDate.ToLocalTime().ToString("dd.MM.yyyy")</div>
-          <div class="col-md-3"><strong>Toplam:</strong> @Model.TotalAmount.ToString("N2") ₺</div>
-          <div class="col-md-3"><strong>Durum:</strong> <partial name="_StatusBadge" model="Model.IsActive" /></div>
+          <div class="detail-info-item">
+            <div class="detail-info-label">Tarih</div>
+            <div class="detail-info-value">@Model.InvoiceDate.ToLocalTime().ToString("dd.MM.yyyy")</div>
+          </div>
+          <div class="detail-info-item">
+            <div class="detail-info-label">Genel Toplam</div>
+            <div class="detail-info-value">@Model.TotalAmount.ToString("N2") ₺</div>
+          </div>
+          <div class="detail-info-item">
+            <div class="detail-info-label">Durum</div>
+            <div class="detail-info-value"><partial name="_StatusBadge" model="Model.IsActive" /></div>
+          </div>
         </div>
+
         @if (!string.IsNullOrWhiteSpace(Model.Notes))
         {
-          <p class="mb-4"><strong>Not:</strong> @Model.Notes</p>
+          <p class="mb-4 text-body-secondary"><i class="ri-sticky-note-line me-1"></i>@Model.Notes</p>
         }
-        <div class="table-responsive">
-          <table class="table">
-            <thead>
+
+        <div class="table-responsive mb-0">
+          <table class="table table-bordered table-sm align-middle js-lines-table">
+            <thead class="table-light">
               <tr>
                 <th>Ürün</th>
-                <th>Adet</th>
-                <th>Birim Fiyat</th>
-                <th>KDV (%)</th>
-                <th>KDV Tutarı</th>
-                <th>Toplam</th>
+                <th class="text-center" style="width:80px">Adet</th>
+                <th class="text-end" style="width:130px">Birim Fiyat</th>
+                <th class="text-center" style="width:80px">KDV %</th>
+                <th class="text-end" style="width:120px">KDV Tutarı</th>
+                <th class="text-end" style="width:130px">Toplam</th>
               </tr>
             </thead>
             <tbody>
               @foreach (var line in Model.Lines)
               {
                 <tr>
-                  <td>@line.StockItem.Name</td>
-                  <td>@line.Quantity</td>
-                  <td>@line.UnitPrice.ToString("N2") ₺</td>
-                  <td>%@line.VatRate.ToString("N0")</td>
-                  <td>@line.VatAmount.ToString("N2") ₺</td>
-                  <td>@line.LineTotal.ToString("N2") ₺</td>
+                  <td data-label="Ürün">@line.StockItem.Name</td>
+                  <td data-label="Adet" class="text-center">@line.Quantity</td>
+                  <td data-label="Birim Fiyat" class="text-end">@line.UnitPrice.ToString("N2") ₺</td>
+                  <td data-label="KDV %" class="text-center">%@line.VatRate.ToString("N0")</td>
+                  <td data-label="KDV Tutarı" class="text-end">@line.VatAmount.ToString("N2") ₺</td>
+                  <td data-label="Toplam" class="text-end fw-semibold">@line.LineTotal.ToString("N2") ₺</td>
                 </tr>
               }
             </tbody>
-            <tfoot>
-              <tr>
-                <th colspan="5" class="text-end">Ara Toplam:</th>
-                <th>@Model.SubTotal.ToString("N2") ₺</th>
-              </tr>
-              <tr>
-                <th colspan="5" class="text-end">Toplam KDV:</th>
-                <th>@Model.VatTotal.ToString("N2") ₺</th>
-              </tr>
-              <tr>
-                <th colspan="5" class="text-end">Genel Toplam:</th>
-                <th>@Model.TotalAmount.ToString("N2") ₺</th>
-              </tr>
-            </tfoot>
           </table>
+        </div>
+
+        <div class="d-flex justify-content-end mt-2">
+          <div class="order-totals-card">
+            <div class="order-totals-row">
+              <span>Ara Toplam</span>
+              <span>@Model.SubTotal.ToString("N2") ₺</span>
+            </div>
+            <div class="order-totals-row">
+              <span>Toplam KDV</span>
+              <span>@Model.VatTotal.ToString("N2") ₺</span>
+            </div>
+            <div class="order-totals-grand">
+              <span>Genel Toplam</span>
+              <span>@Model.TotalAmount.ToString("N2") ₺</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+@section PageScripts {
+<script>
+(function () {
+  const d = window.driver && window.driver.js && window.driver.js.driver;
+  if (!d) return;
+  const tour = d({
+    animate: true, smoothScroll: true, allowClose: true,
+    overlayOpacity: 0.4, stagePadding: 6, stageRadius: 8,
+    nextBtnText: 'İleri →', prevBtnText: '← Geri', doneBtnText: 'Tamam',
+    showProgress: true, progressText: '{{current}} / {{total}}',
+    steps: [
+      { element: '.detail-info-strip', popover: { title: 'Fatura Özeti', description: 'Müşteri/tedarikçi, tarih, ödeme yöntemi ve fatura toplamı.', side: 'bottom' } },
+      { element: 'a[href*="ExportPdf"]', popover: { title: 'PDF İndir', description: 'Faturayı müşteriye gönderebileceğiniz ya da arşivleyebileceğiniz PDF olarak indirin.', side: 'bottom' } },
+      { element: 'a[href*="ExportExcel"]', popover: { title: 'Excel İndir', description: 'Fatura kalemlerini Excel formatında dışa aktarın.', side: 'bottom' } },
+      { element: 'form[action*="Deactivate"] button', popover: { title: 'Pasife Al (Fatura İptali)', description: 'Faturayı iptal eder. Satış faturasıysa stok geri gelir, müşteri borcu düşer. Alış faturasıysa stok azalır, tedarikçi borcunuz düşer. Bu işlem geri alınamaz.', side: 'bottom' } },
+      { element: '.js-lines-table', popover: { title: 'Fatura Kalemleri', description: 'Faturadaki ürünler, miktar, birim fiyat ve KDV satır bazında listelenir.', side: 'top' } }
+    ]
+  });
+  document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());
+})();
+</script>
+}

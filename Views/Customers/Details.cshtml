@@ -4,80 +4,195 @@
 }
 
 <div class="row g-6">
-  <div class="col-xl-8 col-lg-10">
+
+  @* Sol: Müşteri bilgileri *@
+  <div class="col-xl-4 col-lg-5">
+
+    @* Profil kartı *@
     <div class="card mb-6">
-      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
-        <div>
-          <h5 class="mb-1">@Model.FullName</h5>
-          <small class="text-body-secondary">Müşteri detay bilgileri</small>
+      <div class="card-body pt-5 pb-4 text-center">
+        <div class="avatar avatar-xl mx-auto mb-3">
+          <span class="avatar-initial rounded-circle bg-label-primary" style="font-size:1.5rem;">
+            @(string.IsNullOrWhiteSpace(Model.FirstName) ? "?" : Model.FirstName[0].ToString().ToUpperInvariant())
+          </span>
         </div>
-        <div class="d-flex gap-2">
-          <a asp-controller="Shop" asp-action="Index" asp-route-customerId="@Model.Id" class="btn btn-success btn-sm">
-            <i class="icon-base ri ri-shopping-cart-line icon-16px me-1"></i> Mağaza
-          </a>
+        <h5 class="mb-1">@Model.FullName</h5>
+        @if (!string.IsNullOrWhiteSpace(Model.CompanyName))
+        {
+          <p class="text-body-secondary mb-2 small">@Model.CompanyName</p>
+        }
+        <partial name="_StatusBadge" model="Model.IsActive" />
+      </div>
+      <div class="card-footer d-flex justify-content-center gap-2 flex-wrap py-3">
+        @if (Model.IsActive)
+        {
           <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary btn-sm">
-            <i class="icon-base ri ri-pencil-line icon-16px me-1"></i> Düzenle
+            <i class="ri-pencil-line me-1"></i>Düzenle
           </a>
           <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger btn-sm">
-            <i class="icon-base ri ri-delete-bin-6-line icon-16px me-1"></i> Sil
+            <i class="ri-delete-bin-6-line me-1"></i>Pasife Al
           </a>
-          <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Listeye Dön</a>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="row g-6 mb-6">
-          <div class="col-md-6">
-            <h6 class="text-body-secondary mb-2">Ad Soyad</h6>
-            <p class="mb-0">@Model.FullName</p>
-          </div>
-          <div class="col-md-6">
-            <h6 class="text-body-secondary mb-2">Firma Adı</h6>
-            <p class="mb-0">@(Model.CompanyName ?? "-")</p>
-          </div>
-          <div class="col-md-6">
-            <h6 class="text-body-secondary mb-2">Telefon</h6>
-            <p class="mb-0">@Model.PhoneNumber</p>
-          </div>
-          <div class="col-md-6">
-            <h6 class="text-body-secondary mb-2">Kayıt Tarihi</h6>
-            <p class="mb-0">@Model.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p>
-          </div>
-          <div class="col-md-6">
-            <h6 class="text-body-secondary mb-2">Cari Borç</h6>
-            <p class="mb-0 fw-semibold text-danger">@Model.Balance.ToString("N2") ₺</p>
-          </div>
-          <div class="col-md-6">
-            <h6 class="text-body-secondary mb-2">Cari Limit</h6>
-            <p class="mb-0">@(Model.CreditLimit.HasValue ? $"{Model.CreditLimit:N2} ₺" : "Limitsiz")</p>
-          </div>
-          @if (Model.CreditLimit.HasValue)
-          {
-            <div class="col-md-6">
-              <h6 class="text-body-secondary mb-2">Kullanılabilir Limit</h6>
-              <p class="mb-0">@Model.AvailableCredit?.ToString("N2") ₺</p>
-            </div>
-          }
-        </div>
-
-        <h6 class="mb-3">Notlar</h6>
-        <div class="border rounded p-4 mb-6 bg-label-secondary">
-          @(string.IsNullOrWhiteSpace(Model.Notes) ? "Not girilmemiş." : Model.Notes)
-        </div>
-
-        <h6 class="mb-3">Adres</h6>
-        @if (Model.Address is not null)
-        {
-          <ul class="list-unstyled mb-0">
-            <li class="mb-2"><strong>İl:</strong> @Model.Address.City</li>
-            <li class="mb-2"><strong>İlçe:</strong> @Model.Address.District</li>
-            <li><strong>Açık Adres:</strong> @Model.Address.AddressLine</li>
-          </ul>
         }
         else
         {
-          <p class="text-body-secondary mb-0">Adres bilgisi girilmemiş.</p>
+          <form asp-action="Restore" asp-route-id="@Model.Id" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-success btn-sm">
+              <i class="ri-refresh-line me-1"></i>Aktif Yap
+            </button>
+          </form>
+          <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary btn-sm">
+            <i class="ri-pencil-line me-1"></i>Düzenle
+          </a>
+        }
+        <button id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
+          <i class="ri-question-line"></i>
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Listeye Dön</a>
+      </div>
+    </div>
+
+    @* Detay bilgileri *@
+    <div class="card mb-6">
+      <div class="card-header">
+        <h6 class="mb-0">Müşteri Bilgileri</h6>
+      </div>
+      <div class="detail-info-strip" style="border-radius:0; border-left:0; border-right:0; border-bottom:0; margin-bottom:0;">
+        <div class="detail-info-item">
+          <div class="detail-info-label">Telefon</div>
+          <div class="detail-info-value">@Model.PhoneNumber</div>
+        </div>
+        <div class="detail-info-item">
+          <div class="detail-info-label">Kayıt Tarihi</div>
+          <div class="detail-info-value">@Model.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")</div>
+        </div>
+        <div class="detail-info-item">
+          <div class="detail-info-label">Cari Borç</div>
+          <div class="detail-info-value @(Model.Balance > 0 ? "text-danger" : "")">@Model.Balance.ToString("N2") ₺</div>
+        </div>
+        <div class="detail-info-item">
+          <div class="detail-info-label">Cari Limit</div>
+          <div class="detail-info-value">@(Model.CreditLimit.HasValue ? $"{Model.CreditLimit:N2} ₺" : "Limitsiz")</div>
+        </div>
+        @if (Model.CreditLimit.HasValue)
+        {
+          <div class="detail-info-item">
+            <div class="detail-info-label">Kalan Limit</div>
+            <div class="detail-info-value @(Model.AvailableCredit < 0 ? "text-danger" : "")">@Model.AvailableCredit?.ToString("N2") ₺</div>
+          </div>
         }
       </div>
     </div>
+
+    @* Adres *@
+    <div class="card mb-6">
+      <div class="card-header">
+        <h6 class="mb-0">Adres</h6>
+      </div>
+      <div class="card-body small">
+        @if (Model.Address is not null)
+        {
+          <p class="mb-1"><i class="ri-map-pin-line me-1 text-body-secondary"></i>@Model.Address.City / @Model.Address.District</p>
+          <p class="mb-0 text-body-secondary">@Model.Address.AddressLine</p>
+        }
+        else
+        {
+          <p class="text-body-secondary mb-0">Adres girilmemiş.</p>
+        }
+      </div>
+    </div>
+
+    @* Notlar *@
+    @if (!string.IsNullOrWhiteSpace(Model.Notes))
+    {
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0">Notlar</h6>
+        </div>
+        <div class="card-body small text-body-secondary">
+          @Model.Notes
+        </div>
+      </div>
+    }
+
+  </div>
+
+  @* Sağ: Siparişler + Faturalar *@
+  <div class="col-xl-8 col-lg-7">
+
+    @* Siparişler *@
+    <div class="card mb-6">
+      <div class="card-header">
+        <h6 class="mb-0"><i class="ri-shopping-bag-line me-2 text-primary"></i>Siparişler</h6>
+      </div>
+      <div id="orders-container">
+        <div class="d-flex justify-content-center align-items-center py-5">
+          <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+          <span class="text-body-secondary small">Yükleniyor…</span>
+        </div>
+      </div>
+    </div>
+
+    @* Satış Faturaları *@
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0"><i class="ri-file-text-line me-2 text-success"></i>Satış Faturaları</h6>
+      </div>
+      <div id="invoices-container">
+        <div class="d-flex justify-content-center align-items-center py-5">
+          <div class="spinner-border spinner-border-sm text-success me-2"></div>
+          <span class="text-body-secondary small">Yükleniyor…</span>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
+
+@section PageScripts {
+  <script>
+    (function () {
+      const customerId = @Model.Id;
+
+      function loadPartial(url, containerId) {
+        fetch(url)
+          .then(function(r) { return r.ok ? r.text() : Promise.reject(r.status); })
+          .then(function(html) {
+            var container = document.getElementById(containerId);
+            container.innerHTML = html;
+            container.querySelectorAll('table.js-data-table').forEach(function(table) {
+              if (window._initTableFilter) window._initTableFilter(table);
+            });
+          })
+          .catch(function() {
+            document.getElementById(containerId).innerHTML =
+              '<p class="text-danger text-center py-4 small">Yüklenemedi.</p>';
+          });
+      }
+
+      loadPartial('/Customers/OrdersPartial/' + customerId, 'orders-container');
+      loadPartial('/Customers/InvoicesPartial/' + customerId, 'invoices-container');
+    })();
+  </script>
+  <script>
+  (function () {
+    const d = window.driver && window.driver.js && window.driver.js.driver;
+    if (!d) return;
+    const tour = d({
+      animate: true, smoothScroll: true, allowClose: true,
+      overlayOpacity: 0.4, stagePadding: 6, stageRadius: 8,
+      nextBtnText: 'İleri →', prevBtnText: '← Geri', doneBtnText: 'Tamam',
+      showProgress: true, progressText: '{{current}} / {{total}}',
+      steps: [
+        { element: '.avatar-initial', popover: { title: 'Müşteri Profili', description: 'Müşteri adı, firma ve durum bilgisi. Aktif müşteriler satış faturasında seçilebilir.', side: 'bottom' } },
+        { element: 'a[href*="Edit"]', popover: { title: 'Düzenle', description: 'Müşteri bilgilerini güncellemek için tıklayın.', side: 'right' } },
+        { element: '.btn-outline-danger, .btn-success', popover: { title: 'Pasife Al / Aktif Yap', description: '"Pasife Al" müşteriyi devre dışı bırakır — yeni fatura oluşturulamaz ama mevcut kayıtlar korunur. "Aktif Yap" ile geri döndürebilirsiniz.', side: 'right' } },
+        { element: '.detail-info-strip', popover: { title: 'Cari Bilgiler', description: 'Müşterinin mevcut borcu, cari limiti ve kalan kullanılabilir limiti burada görünür. Borç fatura kesince artar, ödeme alınınca düşer.', side: 'right' } },
+        { element: '#orders-container', popover: { title: 'Sipariş Geçmişi', description: 'Bu müşteriye ait tüm siparişler. Sipariş numarasına tıklayarak detaya gidebilirsiniz.', side: 'top' } },
+        { element: '#invoices-container', popover: { title: 'Fatura Geçmişi', description: 'Bu müşteriye kesilmiş tüm satış faturaları. Fatura numarasına tıklayarak detaya gidebilirsiniz.', side: 'top' } }
+      ]
+    });
+    document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());
+  })();
+  </script>
+}

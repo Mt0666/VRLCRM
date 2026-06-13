@@ -18,7 +18,7 @@
         <div class="app-brand justify-content-center mt-5">
           <a href="/" class="app-brand-link gap-3">
             <span class="app-brand-logo demo">@await Html.PartialAsync("../_Partials/_Macros")</span>
-            <span class="app-brand-text demo text-heading fw-semibold">VRLCRM</span>
+            <span class="app-brand-text demo text-heading fw-semibold">Mete Varol</span>
           </a>
         </div>
         <!-- /Logo -->
@@ -32,7 +32,7 @@
             <input type="hidden" asp-for="ReturnUrl" />
             
             <div class="form-floating form-floating-outline mb-5">
-              <input asp-for="Email" class="form-control" placeholder="Email adresinizi giriniz" autofocus />
+              <input asp-for="Email" class="form-control" placeholder="Email adresinizi giriniz" autofocus autocomplete="section-admin username" />
               <label asp-for="Email">Email</label>
               <span asp-validation-for="Email" class="text-danger"></span>
             </div>
@@ -41,7 +41,7 @@
               <div class="form-password-toggle">
                 <div class="input-group input-group-merge">
                   <div class="form-floating form-floating-outline">
-                    <input asp-for="Password" class="form-control" placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;" />
+                    <input asp-for="Password" class="form-control" placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;" autocomplete="section-admin current-password" />
                     <label asp-for="Password">Şifre</label>
                   </div>
                   <span class="input-group-text cursor-pointer"><i class="icon-base ri ri-eye-off-line icon-20px"></i></span>

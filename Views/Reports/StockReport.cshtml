@@ -1,45 +1,361 @@
 @model IEnumerable<VRLCRM.Domain.Entities.StockItem>
 @{
-    ViewData["Title"] = "Stok Durum Raporu";
+  ViewData["Title"] = "Stok Durum Raporu";
+
+  var totalItems    = Model.Count();
+  var totalValue    = Model.Sum(s => s.StockQuantity * s.Price);
+  var criticalCount = Model.Count(s => s.StockQuantity <= 5);
+  var lowCount      = Model.Count(s => s.StockQuantity > 5 && s.StockQuantity <= 20);
+
+  var categoryValues = Model
+    .GroupBy(s => s.Category?.Name ?? "Diğer")
+    .Select(g => new { name = g.Key, value = g.Sum(s => (double)(s.StockQuantity * s.Price)), count = g.Count() })
+    .OrderByDescending(x => x.value)
+    .ToList();
+
+  var lowStockItems = Model
+    .Where(s => s.StockQuantity <= 20)
+    .OrderBy(s => s.StockQuantity)
+    .Take(12)
+    .Select(s => new { name = s.Name.Length > 22 ? s.Name[..22] + "…" : s.Name, qty = s.StockQuantity, critical = s.StockQuantity <= 5 })
+    .ToList();
 }
 
 <div class="card">
-    <div class="card-header">
-        <h5 class="mb-0">Stok Durum Raporu</h5>
+  <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+      <h5 class="mb-0">Stok Durum Raporu</h5>
+      <small class="text-body-secondary">Aktif ürünlerin anlık stok durumu</small>
     </div>
-    <div class="card-body">
-        <div class="alert alert-primary">
-            <strong>Toplam Stok Kalemi:</strong> @Model.Count()
-            <span class="ms-4"><strong>Toplam Stok Değeri (Satış Fiyatı Üzerinden):</strong> @Model.Sum(s => s.StockQuantity * s.Price).ToString("C2")</span>
-        </div>
+    <button id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
+      <i class="ri-question-line"></i>
+    </button>
+  </div>
 
-        <div class="table-responsive text-nowrap mt-4">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Kategori</th>
-                        <th>Stok Kodu</th>
-                        <th>Ürün Adı</th>
-                        <th>Birim Fiyat</th>
-                        <th>Mevcut Miktar</th>
-                        <th>Toplam Değer</th>
-                    </tr>
-                </thead>
-                <tbody class="table-border-bottom-0">
-                    @foreach (var item in Model)
-                    {
-                        var rowClass = item.StockQuantity < 10 ? "table-danger" : "";
-                        <tr class="@rowClass">
-                            <td>@item.Category?.Name</td>
-                            <td><a asp-controller="Stocks" asp-action="Details" asp-route-id="@item.Id">@item.StockCode</a></td>
-                            <td>@item.Name</td>
-                            <td>@item.Price.ToString("C2")</td>
-                            <td><strong>@item.StockQuantity</strong></td>
-                            <td>@((item.StockQuantity * item.Price).ToString("C2"))</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+  <div class="card-body">
+
+    @* ── Özet şeridi ─────────────────────────────────────────────── *@
+    <div class="detail-info-strip mb-4">
+      <div class="detail-info-item">
+        <div class="detail-info-label">Toplam Ürün</div>
+        <div class="detail-info-value">@totalItems adet</div>
+      </div>
+      <div class="detail-info-item">
+        <div class="detail-info-label">Toplam Stok Değeri</div>
+        <div class="detail-info-value">@totalValue.ToString("N2") ₺</div>
+      </div>
+      <div class="detail-info-item">
+        <div class="detail-info-label">Kritik Stok</div>
+        <div class="detail-info-value">
+          @if (criticalCount > 0)
+          {
+            <span class="badge bg-label-danger">@criticalCount ürün</span>
+          }
+          else
+          {
+            <span class="badge bg-label-success">Yok</span>
+          }
         </div>
+      </div>
+      <div class="detail-info-item">
+        <div class="detail-info-label">Az Stok</div>
+        <div class="detail-info-value">
+          @if (lowCount > 0)
+          {
+            <span class="badge bg-label-warning">@lowCount ürün</span>
+          }
+          else
+          {
+            <span class="badge bg-label-success">Yok</span>
+          }
+        </div>
+      </div>
     </div>
+
+    @if (Model.Any())
+    {
+      @* ── Grafikler ──────────────────────────────────────────────── *@
+      <div class="row g-4 mb-4">
+        <div class="col-lg-4">
+          <div class="card border h-100">
+            <div class="card-header py-2">
+              <h6 class="mb-0">Kategori Bazlı Değer</h6>
+            </div>
+            <div class="card-body p-3 d-flex align-items-center justify-content-center">
+              <canvas id="categoryChart" style="max-height:260px;"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-8">
+          <div class="card border h-100">
+            <div class="card-header py-2">
+              <h6 class="mb-0">
+                Kritik &amp; Az Stoklu Ürünler
+                <span class="badge bg-label-secondary ms-1" style="font-size:.7rem;">≤ 20 adet</span>
+              </h6>
+            </div>
+            <div class="card-body p-3" style="min-height:260px;">
+              @if (lowStockItems.Any())
+              {
+                <canvas id="lowStockChart"></canvas>
+              }
+              else
+              {
+                <div class="d-flex align-items-center justify-content-center h-100 text-body-secondary">
+                  <div class="text-center">
+                    <i class="ri-checkbox-circle-line" style="font-size:2.5rem; color: #71dd37;"></i>
+                    <p class="mt-2 mb-0">Tüm ürünler yeterli stok seviyesinde</p>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    @* ── Stok tablosu ───────────────────────────────────────────── *@
+    <div class="table-responsive mb-0">
+      <table class="table table-bordered table-sm align-middle js-lines-table" id="stockTable">
+        <thead class="table-light">
+          <tr>
+            <th>Kategori</th>
+            <th>Stok Kodu</th>
+            <th>Ürün Adı</th>
+            <th class="text-end" style="width:120px">Birim Fiyat</th>
+            <th class="text-center" style="width:90px">Miktar</th>
+            <th class="text-end" style="width:140px">Toplam Değer</th>
+          </tr>
+        </thead>
+        <tbody id="stockTableBody">
+          @if (!Model.Any())
+          {
+            <tr id="stockEmptyRow">
+              <td colspan="6" class="text-center text-body-secondary py-4">
+                <i class="ri-inbox-line me-1"></i>Stok kaydı bulunamadı.
+              </td>
+            </tr>
+          }
+          else
+          {
+            @foreach (var item in Model)
+            {
+              var rowClass = item.StockQuantity <= 5 ? "table-danger" : item.StockQuantity <= 20 ? "table-warning" : "";
+              <tr class="@rowClass">
+                <td data-label="Kategori">@(item.Category?.Name ?? "-")</td>
+                <td data-label="Stok Kodu">
+                  <a asp-controller="Stocks" asp-action="Details" asp-route-id="@item.Id" class="fw-semibold">
+                    @item.StockCode
+                  </a>
+                </td>
+                <td data-label="Ürün Adı">@item.Name</td>
+                <td data-label="Birim Fiyat" class="text-end">@item.Price.ToString("N2") ₺</td>
+                <td data-label="Miktar" class="text-center">
+                  @if (item.StockQuantity <= 5)
+                  {
+                    <span class="badge bg-danger">@item.StockQuantity</span>
+                  }
+                  else if (item.StockQuantity <= 20)
+                  {
+                    <span class="badge bg-warning text-dark">@item.StockQuantity</span>
+                  }
+                  else
+                  {
+                    <strong>@item.StockQuantity</strong>
+                  }
+                </td>
+                <td data-label="Toplam Değer" class="text-end">@((item.StockQuantity * item.Price).ToString("N2")) ₺</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @* ── Pagination bar ─────────────────────────────────────────── *@
+    @if (Model.Any())
+    {
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-3">
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-body-secondary small" id="stockCounter"></span>
+          <select class="form-select form-select-sm" id="stockPageSize" style="width:auto;">
+            <option value="15" selected>15 satır</option>
+            <option value="30">30 satır</option>
+            <option value="50">50 satır</option>
+            <option value="99999">Tümü</option>
+          </select>
+        </div>
+        <nav aria-label="Stok sayfalama">
+          <ul class="pagination pagination-sm mb-0" id="stockPagination"></ul>
+        </nav>
+      </div>
+    }
+
+  </div>
 </div>
+
+@section PageScripts {
+  @if (Model.Any())
+  {
+    <script src="/vendor/libs/chart.js/chart.umd.min.js"></script>
+    <script>
+      const PALETTE = ['#696cff','#03c3ec','#71dd37','#ffab00','#ff3e1d','#8592a3','#26c6da','#a389d4','#ff9f43','#28c76f'];
+
+      // ── Kategori dağılımı (Doughnut) ───────────────────────────
+      const catLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(categoryValues.Select(c => c.name)));
+      const catData   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(categoryValues.Select(c => c.value)));
+
+      new Chart(document.getElementById('categoryChart'), {
+        type: 'doughnut',
+        data: {
+          labels: catLabels,
+          datasets: [{
+            data: catData,
+            backgroundColor: PALETTE,
+            borderWidth: 2,
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 10, boxWidth: 12 } },
+            tooltip: {
+              callbacks: {
+                label: ctx => ' ' + Number(ctx.raw).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'
+              }
+            }
+          },
+          cutout: '58%'
+        }
+      });
+
+      // ── Kritik stok (Yatay Bar) ────────────────────────────────
+      @if (lowStockItems.Any())
+      {
+        <text>
+      const lowLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(lowStockItems.Select(x => x.name)));
+      const lowData   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(lowStockItems.Select(x => x.qty)));
+      const lowColors = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(lowStockItems.Select(x => x.critical ? "#ff3e1d" : "#ffab00")));
+
+      new Chart(document.getElementById('lowStockChart'), {
+        type: 'bar',
+        data: {
+          labels: lowLabels,
+          datasets: [{
+            label: 'Stok Adedi',
+            data: lowData,
+            backgroundColor: lowColors,
+            borderRadius: 4,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ' ' + ctx.raw + ' adet' } }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(0,0,0,0.05)' },
+              ticks: { stepSize: 1, font: { size: 11 } },
+              title: { display: true, text: 'Stok Adedi', font: { size: 11 } }
+            },
+            y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+          }
+        }
+      });
+        </text>
+      }
+
+      // ── Pagination ─────────────────────────────────────────────
+      (function () {
+        const tbody      = document.getElementById('stockTableBody');
+        const pagEl      = document.getElementById('stockPagination');
+        const counterEl  = document.getElementById('stockCounter');
+        const sizeSelect = document.getElementById('stockPageSize');
+
+        const dataRows = () => Array.from(tbody.querySelectorAll('tr:not(#stockEmptyRow)'));
+        let page = 1;
+
+        function pageSize() { return parseInt(sizeSelect.value, 10); }
+
+        function render() {
+          const rows  = dataRows();
+          const total = rows.length;
+          const ps    = pageSize();
+          const pages = ps >= 99999 ? 1 : Math.ceil(total / ps) || 1;
+          page = Math.min(page, pages);
+
+          const start = (page - 1) * ps;
+          rows.forEach((r, i) => {
+            r.style.display = (ps >= 99999 || (i >= start && i < start + ps)) ? '' : 'none';
+          });
+
+          if (total === 0) {
+            counterEl.textContent = '';
+          } else if (ps >= 99999) {
+            counterEl.textContent = total + ' ürün';
+          } else {
+            counterEl.textContent = (start + 1) + '–' + Math.min(start + ps, total) + ' / ' + total + ' ürün';
+          }
+
+          pagEl.innerHTML = '';
+          if (pages <= 1) return;
+
+          const addBtn = (html, target, disabled, active) => {
+            const li  = document.createElement('li');
+            li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+            const btn = document.createElement('button');
+            btn.type      = 'button';
+            btn.className = 'page-link';
+            btn.innerHTML = html;
+            if (!disabled && !active) btn.onclick = () => { page = target; render(); };
+            li.appendChild(btn);
+            pagEl.appendChild(li);
+          };
+
+          addBtn('&#8249;', page - 1, page === 1, false);
+
+          const maxV = 5;
+          let s = Math.max(1, page - Math.floor(maxV / 2));
+          let e = Math.min(pages, s + maxV - 1);
+          if (e - s < maxV - 1) s = Math.max(1, e - maxV + 1);
+
+          if (s > 1) { addBtn('1', 1, false, false); if (s > 2) addBtn('&hellip;', 0, true, false); }
+          for (let p = s; p <= e; p++) addBtn(String(p), p, false, p === page);
+          if (e < pages) { if (e < pages - 1) addBtn('&hellip;', 0, true, false); addBtn(String(pages), pages, false, false); }
+
+          addBtn('&#8250;', page + 1, page === pages, false);
+        }
+
+        sizeSelect.addEventListener('change', () => { page = 1; render(); });
+        render();
+      })();
+    </script>
+    <script>
+    (function () {
+      const d = window.driver && window.driver.js && window.driver.js.driver;
+      if (!d) return;
+      const tour = d({
+        animate: true, smoothScroll: true, allowClose: true,
+        overlayOpacity: 0.4, stagePadding: 6, stageRadius: 8,
+        nextBtnText: 'İleri →', prevBtnText: '← Geri', doneBtnText: 'Tamam',
+        showProgress: true, progressText: '{{current}} / {{total}}',
+        steps: [
+          { element: '.detail-info-strip', popover: { title: 'Stok Özeti', description: 'Toplam ürün sayısı, toplam stok değeri, kritik (≤5 adet) ve az stok (≤20 adet) ürün sayıları.', side: 'bottom' } },
+          { element: '#categoryChart', popover: { title: 'Kategori Bazlı Değer', description: 'Her kategorinin toplam stok değerinin yüzdesel payı. Hangi grubun en değerli olduğunu gösterir.', side: 'top' } },
+          { element: '#lowStockChart', popover: { title: 'Kritik & Az Stoklu Ürünler', description: 'Kırmızı çubuk ≤5 adet (kritik), sarı ≤20 adet (az stok) demektir. Bu ürünleri en kısa sürede temin etmeniz gerekiyor.', side: 'top' } },
+          { element: '#stockTable', popover: { title: 'Ürün Tablosu', description: 'Tüm aktif ürünlerin anlık listesi. Kırmızı satır kritik stok, sarı satır az stok anlamına gelir. Stok koduna tıklayarak ürün detayına gidebilirsiniz.', side: 'top' } },
+          { element: '#stockPageSize', popover: { title: 'Sayfa Boyutu', description: 'Listede kaç ürün görüneceğini seçin. "Tümü" seçeneği tüm ürünleri gösterir.', side: 'top' } }
+        ]
+      });
+      document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());
+    })();
+    </script>
+  }
+}

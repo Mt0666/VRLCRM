@@ -6,7 +6,12 @@
 <div class="card">
   <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
     <h5 class="mb-0">Alış Faturaları</h5>
-    <a asp-action="CreatePurchase" class="btn btn-primary btn-sm">Yeni Alış Faturası</a>
+    <div class="d-flex gap-2 align-items-center">
+      <button id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
+        <i class="ri-question-line"></i>
+      </button>
+      <a asp-action="CreatePurchase" class="btn btn-primary btn-sm">Yeni Alış Faturası</a>
+    </div>
   </div>
   <div class="card-body pb-0">
     <partial name="_TableToolbar" />
@@ -48,3 +53,24 @@
     </table>
   </div>
 </div>
+
+@section PageScripts {
+<script>
+(function () {
+  const d = window.driver && window.driver.js && window.driver.js.driver;
+  if (!d) return;
+  const tour = d({
+    animate: true, smoothScroll: true, allowClose: true,
+    overlayOpacity: 0.4, stagePadding: 6, stageRadius: 8,
+    nextBtnText: 'İleri →', prevBtnText: '← Geri', doneBtnText: 'Tamam',
+    showProgress: true, progressText: '{{current}} / {{total}}',
+    steps: [
+      { element: '.js-data-table', popover: { title: 'Alış Faturaları', description: 'Tedarikçilerden aldığınız ürünlere ait tüm alış faturaları burada listelenir. Fatura oluşturulunca seçilen ürünlerin stok miktarı artar, tedarikçi cari hesabı artar.', side: 'top' } },
+      { element: '.js-search-input', popover: { title: 'Hızlı Arama', description: 'Fatura numarası veya tedarikçi adıyla arama yapın.', side: 'bottom' } },
+      { element: 'a[href*="CreatePurchase"]', popover: { title: 'Yeni Alış Faturası', description: 'Tedarikçiden mal geldiğinde alış faturası oluşturun. Stok artar, tedarikçi borcunuz artar.', side: 'left' } }
+    ]
+  });
+  document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());
+})();
+</script>
+}

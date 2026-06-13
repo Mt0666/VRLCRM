@@ -18,7 +18,8 @@ public static class CustomerViewModelMapper
             City = customer.Address?.City ?? string.Empty,
             District = customer.Address?.District ?? string.Empty,
             AddressLine = customer.Address?.AddressLine ?? string.Empty,
-            CreditLimit = customer.CreditLimit
+            CreditLimit = customer.CreditLimit,
+            Email = null
         };
     }
 

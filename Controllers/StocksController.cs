@@ -192,6 +192,18 @@ public class StocksController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Restore(int id, CancellationToken cancellationToken)
+    {
+        var restored = await _stockService.RestoreAsync(id, cancellationToken);
+        if (!restored)
+            return NotFound();
+
+        TempData["SuccessMessage"] = "Stok kaydı tekrar aktif edildi.";
+        return RedirectToAction(nameof(Index));
+    }
+
     private async Task PopulateCategoriesAsync(StockFormViewModel model, CancellationToken cancellationToken)
     {
         var categories = await _categoryService.GetAllAsync(cancellationToken);

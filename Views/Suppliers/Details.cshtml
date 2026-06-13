@@ -2,68 +2,167 @@
 @{ ViewData["Title"] = "Tedarikçi Detayı"; }
 
 <div class="row g-6">
-  <div class="col-xl-8 col-lg-10">
-    <div class="card">
-      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
-        <div>
-          <h5 class="mb-1">@Model.CompanyName</h5>
-          <small class="text-body-secondary">Tedarikçi detayı</small>
+
+  @* Sol: Tedarikçi bilgileri *@
+  <div class="col-xl-4 col-lg-5">
+
+    @* Profil kartı *@
+    <div class="card mb-6">
+      <div class="card-body pt-5 pb-4 text-center">
+        <div class="avatar avatar-xl mx-auto mb-3">
+          <span class="avatar-initial rounded-circle bg-label-warning" style="font-size:1.5rem;">
+            @(string.IsNullOrWhiteSpace(Model.CompanyName) ? "?" : Model.CompanyName[0].ToString().ToUpperInvariant())
+          </span>
         </div>
-        <div class="d-flex gap-2">
-          <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary btn-sm">Düzenle</a>
-          <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Listeye Dön</a>
-        </div>
+        <h5 class="mb-1">@Model.CompanyName</h5>
+        @if (!string.IsNullOrWhiteSpace(Model.ContactName))
+        {
+          <p class="text-body-secondary mb-2 small">@Model.ContactName</p>
+        }
+        <partial name="_StatusBadge" model="Model.IsActive" />
       </div>
-      <div class="card-body">
-        <div class="row g-4 mb-6">
-          <div class="col-md-6"><strong>Yetkili:</strong> @(Model.ContactName ?? "-")</div>
-          <div class="col-md-6"><strong>Telefon:</strong> @Model.PhoneNumber</div>
-          <div class="col-md-6"><strong>Vergi No:</strong> @(Model.TaxNumber ?? "-")</div>
-          <div class="col-md-6"><strong>Cari Borç:</strong> <span class="text-danger fw-semibold">@Model.Balance.ToString("N2") ₺</span></div>
-          <div class="col-md-6"><strong>Cari Limit:</strong> @(Model.CreditLimit.HasValue ? $"{Model.CreditLimit:N2} ₺" : "Limitsiz")</div>
-          @if (Model.CreditLimit.HasValue)
-          {
-            <div class="col-md-6"><strong>Kullanılabilir:</strong> @Model.AvailableCredit?.ToString("N2") ₺</div>
-          }
-          <div class="col-md-6"><strong>Durum:</strong> <partial name="_StatusBadge" model="Model.IsActive" /></div>
+      <div class="card-footer d-flex justify-content-center gap-2 flex-wrap py-3">
+        @if (!Model.IsActive)
+        {
+          <form asp-action="Restore" asp-route-id="@Model.Id" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-success btn-sm">
+              <i class="ri-refresh-line me-1"></i>Aktif Yap
+            </button>
+          </form>
+        }
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary btn-sm">
+          <i class="ri-pencil-line me-1"></i>Düzenle
+        </a>
+        @if (Model.IsActive)
+        {
+          <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger btn-sm">
+            <i class="ri-delete-bin-6-line me-1"></i>Pasife Al
+          </a>
+        }
+        <button id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
+          <i class="ri-question-line"></i>
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Listeye Dön</a>
+      </div>
+    </div>
+
+    @* Cari bilgiler *@
+    <div class="card mb-6">
+      <div class="card-header">
+        <h6 class="mb-0">Cari Bilgiler</h6>
+      </div>
+      <div class="detail-info-strip" style="border-radius:0; border-left:0; border-right:0; border-bottom:0; margin-bottom:0;">
+        <div class="detail-info-item">
+          <div class="detail-info-label">Telefon</div>
+          <div class="detail-info-value">@(Model.PhoneNumber ?? "-")</div>
         </div>
-        @if (!string.IsNullOrWhiteSpace(Model.AddressLine) || !string.IsNullOrWhiteSpace(Model.City))
+        <div class="detail-info-item">
+          <div class="detail-info-label">Vergi No</div>
+          <div class="detail-info-value">@(Model.TaxNumber ?? "-")</div>
+        </div>
+        <div class="detail-info-item">
+          <div class="detail-info-label">Cari Borç</div>
+          <div class="detail-info-value @(Model.Balance > 0 ? "text-danger" : "")">@Model.Balance.ToString("N2") ₺</div>
+        </div>
+        <div class="detail-info-item">
+          <div class="detail-info-label">Cari Limit</div>
+          <div class="detail-info-value">@(Model.CreditLimit.HasValue ? $"{Model.CreditLimit:N2} ₺" : "Limitsiz")</div>
+        </div>
+        @if (Model.CreditLimit.HasValue)
         {
-          <h6 class="mb-3">Adres</h6>
-          <p class="mb-4">@(Model.City ?? "-") / @(Model.District ?? "-") — @(Model.AddressLine ?? "-")</p>
-        }
-        @if (!string.IsNullOrWhiteSpace(Model.Notes))
-        {
-          <h6 class="mb-3">Notlar</h6>
-          <p class="mb-4">@Model.Notes</p>
-        }
-        <h6 class="mb-3">Alış Faturaları (@Model.PurchaseInvoices.Count)</h6>
-        @if (!Model.PurchaseInvoices.Any())
-        {
-          <p class="text-body-secondary">Henüz alış faturası yok.</p>
-        }
-        else
-        {
-          <div class="table-responsive">
-            <table class="table table-sm">
-              <thead>
-                <tr><th>Fatura No</th><th>Tarih</th><th>Tutar</th><th></th></tr>
-              </thead>
-              <tbody>
-                @foreach (var invoice in Model.PurchaseInvoices.OrderByDescending(i => i.InvoiceDate).Take(10))
-                {
-                  <tr>
-                    <td>@invoice.InvoiceNumber</td>
-                    <td>@invoice.InvoiceDate.ToLocalTime().ToString("dd.MM.yyyy")</td>
-                    <td>@invoice.TotalAmount.ToString("N2") ₺</td>
-                    <td><a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoice.Id">Detay</a></td>
-                  </tr>
-                }
-              </tbody>
-            </table>
+          <div class="detail-info-item">
+            <div class="detail-info-label">Kullanılabilir</div>
+            <div class="detail-info-value @(Model.AvailableCredit < 0 ? "text-danger" : "")">@Model.AvailableCredit?.ToString("N2") ₺</div>
           </div>
         }
       </div>
     </div>
+
+    @* Adres *@
+    @if (!string.IsNullOrWhiteSpace(Model.City) || !string.IsNullOrWhiteSpace(Model.AddressLine))
+    {
+      <div class="card mb-6">
+        <div class="card-header">
+          <h6 class="mb-0">Adres</h6>
+        </div>
+        <div class="card-body small">
+          <p class="mb-1"><i class="ri-map-pin-line me-1 text-body-secondary"></i>@(Model.City ?? "-") / @(Model.District ?? "-")</p>
+          @if (!string.IsNullOrWhiteSpace(Model.AddressLine))
+          {
+            <p class="mb-0 text-body-secondary">@Model.AddressLine</p>
+          }
+        </div>
+      </div>
+    }
+
+    @* Notlar *@
+    @if (!string.IsNullOrWhiteSpace(Model.Notes))
+    {
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0">Notlar</h6>
+        </div>
+        <div class="card-body small text-body-secondary">
+          @Model.Notes
+        </div>
+      </div>
+    }
+
   </div>
+
+  @* Sağ: Alış Faturaları *@
+  <div class="col-xl-8 col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0"><i class="ri-file-list-3-line me-2 text-warning"></i>Alış Faturaları</h6>
+      </div>
+      <div id="invoices-container">
+        <div class="d-flex justify-content-center align-items-center py-5">
+          <div class="spinner-border spinner-border-sm text-warning me-2"></div>
+          <span class="text-body-secondary small">Yükleniyor…</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
+
+@section PageScripts {
+  <script>
+    (function () {
+      fetch('/Suppliers/InvoicesPartial/@Model.Id')
+        .then(function(r) { return r.ok ? r.text() : Promise.reject(r.status); })
+        .then(function(html) {
+          var container = document.getElementById('invoices-container');
+          container.innerHTML = html;
+          container.querySelectorAll('table.js-data-table').forEach(function(table) {
+            if (window._initTableFilter) window._initTableFilter(table);
+          });
+        })
+        .catch(function() {
+          document.getElementById('invoices-container').innerHTML =
+            '<p class="text-danger text-center py-4 small">Yüklenemedi.</p>';
+        });
+    })();
+  </script>
+  <script>
+  (function () {
+    const d = window.driver && window.driver.js && window.driver.js.driver;
+    if (!d) return;
+    const tour = d({
+      animate: true, smoothScroll: true, allowClose: true,
+      overlayOpacity: 0.4, stagePadding: 6, stageRadius: 8,
+      nextBtnText: 'İleri →', prevBtnText: '← Geri', doneBtnText: 'Tamam',
+      showProgress: true, progressText: '{{current}} / {{total}}',
+      steps: [
+        { element: '.avatar-initial', popover: { title: 'Tedarikçi Profili', description: 'Tedarikçi firma adı, yetkili kişi ve durum bilgisi.', side: 'bottom' } },
+        { element: 'a[href*="Edit"]', popover: { title: 'Düzenle', description: 'Tedarikçi bilgilerini güncellemek için tıklayın.', side: 'right' } },
+        { element: '.detail-info-strip', popover: { title: 'Cari Bilgiler', description: 'Tedarikçiye olan borcunuz (cari hesap), vergi numarası ve limit bilgileri. Borç alış faturasında artar, ödeme yapınca düşer.', side: 'right' } },
+        { element: '#invoices-container', popover: { title: 'Alış Fatura Geçmişi', description: 'Bu tedarikçiden alınan tüm alış faturaları. Fatura numarasına tıklayarak detaya gidebilirsiniz.', side: 'top' } }
+      ]
+    });
+    document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());
+  })();
+  </script>
+}

@@ -1,78 +1,356 @@
 @model IReadOnlyList<StockItem>
 @{
-  var customer = (Customer)ViewBag.Customer!;
-  var cartItems = (IReadOnlyList<VRLCRM.Services.CartItem>)ViewBag.CartItems;
-  var cartTotal = (decimal)ViewBag.CartTotal;
-  ViewData["Title"] = $"{customer.FullName} - Mağaza";
+  Layout = "_ShopLayout";
+  var customer = (VRLCRM.Domain.Entities.Customer)ViewBag.Customer!;
+  ViewData["Title"] = "Ürünler";
+
+  var categories = Model
+    .Select(s => s.Category?.Name ?? "Diğer")
+    .Distinct()
+    .OrderBy(c => c)
+    .ToList();
 }
 
-<div class="row g-6">
-  <div class="col-lg-8">
-    <div class="card">
-      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
-        <div>
-          <h5 class="mb-1">Ürünler</h5>
-          <small class="text-body-secondary">@customer.FullName</small>
-        </div>
-        <div class="d-flex gap-2">
-          <a asp-controller="Customers" asp-action="Details" asp-route-id="@customer.Id" class="btn btn-outline-secondary btn-sm">Müşteri</a>
-          <a asp-action="Cart" asp-route-customerId="@customer.Id" class="btn btn-primary btn-sm">
-            Sepet (@cartItems.Count) — @cartTotal.ToString("N2") ₺
-          </a>
-        </div>
+@* ── Welcome bar ──────────────────────────────────────────────────── *@
+<div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+  <div>
+    <h5 class="fw-bold mb-1">Hoş geldiniz, @customer.FullName</h5>
+    <p class="text-body-secondary small mb-0">
+      <i class="ri-store-2-line me-1"></i>Tüm aktif ürünleri aşağıdan inceleyip sipariş verebilirsiniz.
+    </p>
+  </div>
+  @if (customer.CreditLimit.HasValue)
+  {
+    <div class="mv-credit-widget" style="min-width:220px;">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span style="font-size:.68rem; opacity:.85; text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Kredi Durumu</span>
+        <i class="ri-shield-check-line" style="opacity:.7; font-size:1rem;"></i>
       </div>
-      <div class="card-body">
-        <div class="row g-4">
-          @foreach (var stock in Model)
-          {
-            var inStock = stock.StockQuantity > 0;
-            <div class="col-md-6 col-xl-4">
-              <div class="card h-100 border">
-                @if (!string.IsNullOrWhiteSpace(stock.ImageUrl))
-                {
-                  <img src="@stock.ImageUrl" class="card-img-top" alt="@stock.Name" style="height: 160px; object-fit: cover;" />
-                }
-                <div class="card-body d-flex flex-column">
-                  <h6 class="card-title">@stock.Name</h6>
-                  <p class="text-body-secondary small mb-2">@stock.StockCode</p>
-                  <p class="fw-semibold mb-2">@stock.Price.ToString("N2") ₺</p>
-                  @if (inStock)
-                  {
-                    <span class="badge bg-label-success align-self-start mb-3">Stokta (@stock.StockQuantity)</span>
-                  }
-                  else
-                  {
-                    <span class="badge bg-label-danger align-self-start mb-3">Stokta yok</span>
-                  }
-                  @if (inStock && customer.IsActive)
-                  {
-                    <form asp-action="AddToCart" method="post" class="mt-auto d-flex gap-2">
-                      @Html.AntiForgeryToken()
-                      <input type="hidden" name="customerId" value="@customer.Id" />
-                      <input type="hidden" name="stockItemId" value="@stock.Id" />
-                      <input type="number" name="quantity" value="1" min="1" max="@stock.StockQuantity" class="form-control form-control-sm" style="width: 70px;" />
-                      <button type="submit" class="btn btn-sm btn-primary flex-grow-1">Sepete Ekle</button>
-                    </form>
-                  }
-                </div>
-              </div>
-            </div>
-          }
+      <div class="d-flex gap-4">
+        <div>
+          <div style="font-size:.7rem; opacity:.8; margin-bottom:.1rem;">Kullanılabilir</div>
+          <div class="fw-bold" style="font-size:1.1rem;">@customer.AvailableCredit?.ToString("N0") ₺</div>
+        </div>
+        <div style="opacity:.7;">
+          <div style="font-size:.7rem; margin-bottom:.1rem;">Toplam Limit</div>
+          <div class="fw-semibold">@customer.CreditLimit?.ToString("N0") ₺</div>
         </div>
       </div>
     </div>
+  }
+</div>
+
+@if (!Model.Any())
+{
+  <div class="card text-center py-6">
+    <div class="card-body">
+      <i class="ri-inbox-line d-block mb-3" style="font-size:3rem; color:#c8cadc;"></i>
+      <p class="text-body-secondary mb-0">Şu an görüntülenecek ürün bulunmuyor.</p>
+    </div>
   </div>
-  <div class="col-lg-4">
-    <div class="card">
-      <div class="card-header"><h6 class="mb-0">Cari Özet</h6></div>
-      <div class="card-body">
-        <p class="mb-2"><strong>Borç:</strong> @customer.Balance.ToString("N2") ₺</p>
-        <p class="mb-2"><strong>Limit:</strong> @(customer.CreditLimit.HasValue ? $"{customer.CreditLimit:N2} ₺" : "Limitsiz")</p>
-        @if (customer.CreditLimit.HasValue)
+}
+else
+{
+  @* ── Toolbar ──────────────────────────────────────────────────────── *@
+  <div class="bg-white px-3 py-3 mb-4" style="border-radius:14px; border:1px solid #e8eaef; box-shadow:0 2px 10px rgba(0,0,0,.04);">
+
+    @* Row 1: search + utility filters *@
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+      <div class="mv-search" style="min-width:180px; max-width:280px; flex-grow:1;">
+        <i class="ri-search-line mv-search-icon"></i>
+        <input type="text" id="productSearch" class="form-control form-control-sm"
+               placeholder="Ürün adı veya kodu…" autocomplete="off" />
+      </div>
+
+      <span id="chip-instock" class="mv-cat-chip" data-filter="instock" title="Sadece stokta olan ürünleri göster">
+        <i class="ri-checkbox-circle-line me-1"></i>Stokta Var
+      </span>
+
+      <select id="sortSelect" class="form-select form-select-sm"
+              style="width:auto; border-radius:20px; font-size:.8rem; border-color:#dde0ed; padding-left:.85rem; padding-right:1.8rem; color:#5d6279;">
+        <option value="default">Sıralama: Varsayılan</option>
+        <option value="az">İsim A→Z</option>
+        <option value="za">İsim Z→A</option>
+        <option value="price-asc">Fiyat ↑</option>
+        <option value="price-desc">Fiyat ↓</option>
+      </select>
+    </div>
+
+    @* Row 2: category chips *@
+    @if (categories.Count > 1)
+    {
+      <div class="mv-cat-bar mb-2">
+        <span class="mv-cat-chip" data-cat="__all__">
+          <i class="ri-apps-line me-1"></i>Tümü
+        </span>
+        @foreach (var cat in categories)
         {
-          <p class="mb-0"><strong>Kullanılabilir:</strong> @customer.AvailableCredit?.ToString("N2") ₺</p>
+          <span class="mv-cat-chip" data-cat="@cat">@cat</span>
         }
       </div>
-    </div>
+    }
+
+    <p class="mb-0 text-body-secondary" style="font-size:.78rem;">
+      <span id="productCounter">@Model.Count</span> ürün listeleniyor
+    </p>
   </div>
-</div>
+
+  @* ── Toast container ──────────────────────────────────────────────── *@
+  <div id="mv-toast-wrap" style="position:fixed; bottom:1.5rem; right:1.5rem; z-index:2000; display:flex; flex-direction:column; gap:.5rem; pointer-events:none;"></div>
+
+  @* ── Products grid ────────────────────────────────────────────────── *@
+  <div class="row g-4" id="productsGrid">
+    @foreach (var stock in Model)
+    {
+      var inStock = stock.StockQuantity > 0;
+      var catName = stock.Category?.Name ?? "Diğer";
+      <div class="col-sm-6 col-lg-4 col-xl-3 mv-product-col"
+           data-name="@stock.Name.ToLower() @stock.StockCode.ToLower()"
+           data-cat="@catName"
+           data-instock="@(inStock ? "1" : "0")"
+           data-price="@stock.Price.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+        <div class="card h-100 mv-product-card">
+          @if (!string.IsNullOrWhiteSpace(stock.ImageUrl))
+          {
+            <img src="@stock.ImageUrl" class="mv-product-img" alt="@stock.Name" />
+          }
+          else
+          {
+            <div class="mv-product-placeholder">
+              <i class="ri-box-3-line" style="font-size:2.8rem; color:#b5b9d4;"></i>
+            </div>
+          }
+
+          <div class="card-body d-flex flex-column p-3">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="badge bg-label-secondary" style="font-size:.68rem; font-weight:500;">@catName</span>
+              @if (inStock)
+              {
+                <span class="badge bg-label-success" style="font-size:.68rem;">
+                  <i class="ri-check-line"></i> @stock.StockQuantity adet
+                </span>
+              }
+              else
+              {
+                <span class="badge bg-label-danger" style="font-size:.68rem;">Tükendi</span>
+              }
+            </div>
+
+            <h6 class="fw-semibold lh-sm mb-1" style="font-size:.92rem;">@stock.Name</h6>
+            <p class="text-body-secondary mb-3" style="font-size:.75rem;">@stock.StockCode</p>
+
+            <div class="mt-auto mb-3">
+              <span class="fw-bold text-primary" style="font-size:1.2rem;">@stock.Price.ToString("N2") ₺</span>
+              @if (stock.VatRate > 0)
+              {
+                <span class="text-body-secondary ms-1" style="font-size:.72rem;">+%@stock.VatRate.ToString("N0") KDV</span>
+              }
+            </div>
+
+            @if (inStock && customer.IsActive)
+            {
+              <form class="d-flex gap-2 mv-cart-form" data-ajax-url="@Url.Action("AddToCartAjax", "Shop")">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="stockItemId" value="@stock.Id" />
+                <input type="number" name="quantity" value="1" min="1" max="@stock.StockQuantity"
+                       class="form-control form-control-sm text-center fw-semibold"
+                       style="width:60px; border-radius:8px; flex-shrink:0;" />
+                <button type="submit" class="btn btn-primary btn-sm flex-grow-1" style="border-radius:8px; font-size:.82rem;">
+                  <i class="ri-shopping-cart-add-line me-1"></i>Sepete Ekle
+                </button>
+              </form>
+            }
+            else if (!inStock)
+            {
+              <button disabled class="btn btn-outline-secondary btn-sm w-100" style="border-radius:8px; font-size:.82rem;">
+                <i class="ri-time-line me-1"></i>Stok Bekleniyor
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div id="noResults" class="text-center py-5" style="display:none;">
+    <i class="ri-search-line d-block mb-2" style="font-size:2.5rem; color:#c8cadc;"></i>
+    <p class="text-body-secondary mb-0">Arama kriterlerinize uygun ürün bulunamadı.</p>
+    <button class="btn btn-outline-primary btn-sm mt-3" onclick="resetFilters()">
+      <i class="ri-refresh-line me-1"></i>Filtreleri Temizle
+    </button>
+  </div>
+}
+
+@section PageScripts {
+<script>
+(function () {
+  const grid      = document.getElementById('productsGrid');
+  const noRes     = document.getElementById('noResults');
+  const counter   = document.getElementById('productCounter');
+  const search    = document.getElementById('productSearch');
+  const sortSel   = document.getElementById('sortSelect');
+  const instockChip = document.getElementById('chip-instock');
+  const catChips  = document.querySelectorAll('.mv-cat-chip[data-cat]');
+  const toastWrap = document.getElementById('mv-toast-wrap');
+  if (!grid) return;
+
+  // ── State (restored from URL) ──────────────────────────────────
+  const urlParams = new URLSearchParams(window.location.search);
+  let activeCat   = urlParams.get('cat') || '__all__';
+  let onlyInStock = urlParams.get('instock') === '1';
+  let searchVal   = '';
+  let sortMode    = 'default';
+
+  // ── Activate initial chip state ────────────────────────────────
+  catChips.forEach(c => {
+    c.classList.toggle('active', c.dataset.cat === activeCat);
+  });
+  if (onlyInStock && instockChip) instockChip.classList.add('active');
+
+  // ── URL persistence helper ─────────────────────────────────────
+  function saveToUrl() {
+    const p = new URLSearchParams();
+    if (activeCat !== '__all__') p.set('cat', activeCat);
+    if (onlyInStock) p.set('instock', '1');
+    const qs = p.toString();
+    history.replaceState({}, '', qs ? '?' + qs : window.location.pathname);
+  }
+
+  // ── Filter + sort ──────────────────────────────────────────────
+  function filter() {
+    const cols = Array.from(grid.querySelectorAll('.mv-product-col'));
+
+    // hide/show
+    let visible = 0;
+    cols.forEach(col => {
+      const matchCat    = activeCat === '__all__' || col.dataset.cat === activeCat;
+      const matchSearch = !searchVal || col.dataset.name.includes(searchVal);
+      const matchStock  = !onlyInStock || col.dataset.instock === '1';
+      col.style.display = (matchCat && matchSearch && matchStock) ? '' : 'none';
+      if (matchCat && matchSearch && matchStock) visible++;
+    });
+
+    // sort visible cols
+    const visibleCols = cols.filter(c => c.style.display !== 'none');
+    visibleCols.sort((a, b) => {
+      if (sortMode === 'az')         return a.dataset.name.localeCompare(b.dataset.name);
+      if (sortMode === 'za')         return b.dataset.name.localeCompare(a.dataset.name);
+      if (sortMode === 'price-asc')  return parseFloat(a.dataset.price) - parseFloat(b.dataset.price);
+      if (sortMode === 'price-desc') return parseFloat(b.dataset.price) - parseFloat(a.dataset.price);
+      return 0;
+    });
+    visibleCols.forEach(col => grid.appendChild(col));
+
+    if (counter) counter.textContent = visible;
+    if (noRes)   noRes.style.display = visible === 0 ? '' : 'none';
+  }
+
+  // ── Category chips ─────────────────────────────────────────────
+  catChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      catChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeCat = chip.dataset.cat;
+      saveToUrl();
+      filter();
+    });
+  });
+
+  // ── In-stock toggle ────────────────────────────────────────────
+  if (instockChip) {
+    instockChip.addEventListener('click', () => {
+      onlyInStock = !onlyInStock;
+      instockChip.classList.toggle('active', onlyInStock);
+      saveToUrl();
+      filter();
+    });
+  }
+
+  // ── Search ─────────────────────────────────────────────────────
+  if (search) {
+    search.addEventListener('input', () => {
+      searchVal = search.value.toLowerCase().trim();
+      filter();
+    });
+  }
+
+  // ── Sort ───────────────────────────────────────────────────────
+  if (sortSel) {
+    sortSel.addEventListener('change', () => {
+      sortMode = sortSel.value;
+      filter();
+    });
+  }
+
+  // ── Reset ──────────────────────────────────────────────────────
+  window.resetFilters = function () {
+    searchVal = ''; activeCat = '__all__'; onlyInStock = false; sortMode = 'default';
+    if (search)  search.value = '';
+    if (sortSel) sortSel.value = 'default';
+    catChips.forEach(c => c.classList.toggle('active', c.dataset.cat === '__all__'));
+    if (instockChip) instockChip.classList.remove('active');
+    saveToUrl();
+    filter();
+  };
+
+  // ── Toast helper ───────────────────────────────────────────────
+  function showToast(msg, type) {
+    if (!toastWrap) return;
+    const t = document.createElement('div');
+    t.style.cssText = 'background:#fff;border-radius:10px;padding:.65rem 1rem;font-size:.82rem;font-weight:500;box-shadow:0 4px 18px rgba(0,0,0,.13);display:flex;align-items:center;gap:.5rem;pointer-events:auto;min-width:200px;max-width:280px;border-left:4px solid ' + (type === 'success' ? '#71dd37' : '#ff3e1d');
+    t.innerHTML = '<i class="ri-' + (type === 'success' ? 'check-double' : 'error-warning') + '-line" style="color:' + (type === 'success' ? '#71dd37' : '#ff3e1d') + ';font-size:1.1rem;flex-shrink:0;"></i><span>' + msg + '</span>';
+    toastWrap.appendChild(t);
+    setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 2800);
+  }
+
+  // ── Cart badge updater ─────────────────────────────────────────
+  function updateCartBadge(count, totalStr) {
+    const badge = document.getElementById('nav-cart-count');
+    const label = document.getElementById('nav-cart-total');
+    if (badge) {
+      badge.textContent = count > 9 ? '9+' : String(count);
+      badge.style.display = count > 0 ? '' : 'none';
+    }
+    if (label) {
+      label.textContent = count > 0 ? totalStr + ' ₺' : 'Sepet';
+      label.className = count > 0 ? 'ms-1 d-none d-sm-inline fw-semibold' : 'ms-1 d-none d-sm-inline';
+    }
+  }
+
+  // ── AJAX add to cart ───────────────────────────────────────────
+  document.querySelectorAll('.mv-cart-form').forEach(form => {
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const btn = form.querySelector('button[type="submit"]');
+      const origHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:.9rem;height:.9rem;"></span>';
+
+      try {
+        const fd = new FormData(form);
+        const res = await fetch(form.dataset.ajaxUrl, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.success) {
+          updateCartBadge(data.cartCount, data.cartTotal);
+          showToast(data.message, 'success');
+          // flash the button green briefly
+          btn.innerHTML = '<i class="ri-check-line me-1"></i>Eklendi';
+          btn.classList.replace('btn-primary', 'btn-success');
+          setTimeout(() => { btn.innerHTML = origHtml; btn.classList.replace('btn-success', 'btn-primary'); btn.disabled = false; }, 1400);
+          return;
+        } else {
+          showToast(data.message, 'danger');
+        }
+      } catch {
+        showToast('Bir hata oluştu, lütfen tekrar deneyin.', 'danger');
+      }
+      btn.innerHTML = origHtml;
+      btn.disabled = false;
+    });
+  });
+
+  // ── Initial filter pass (activate URL state) ───────────────────
+  filter();
+})();
+</script>
+}

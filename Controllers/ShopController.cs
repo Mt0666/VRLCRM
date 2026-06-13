@@ -1,37 +1,54 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using VRLCRM.Application.Customers;
 using VRLCRM.Application.Orders;
 using VRLCRM.Application.Stocks;
+using VRLCRM.Domain.Entities;
 using VRLCRM.Services;
 
 namespace VRLCRM.Controllers;
 
+[Authorize(Roles = "Customer")]
 public class ShopController : Controller
 {
     private readonly ICustomerService _customerService;
     private readonly IStockService _stockService;
     private readonly IOrderService _orderService;
     private readonly CustomerCartService _cartService;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public ShopController(
         ICustomerService customerService,
         IStockService stockService,
         IOrderService orderService,
-        CustomerCartService cartService)
+        CustomerCartService cartService,
+        UserManager<ApplicationUser> userManager)
     {
         _customerService = customerService;
         _stockService = stockService;
         _orderService = orderService;
         _cartService = cartService;
+        _userManager = userManager;
     }
 
-    public async Task<IActionResult> Index(int customerId, CancellationToken cancellationToken)
+    private async Task<(Customer? customer, IActionResult? error)> GetCurrentCustomerAsync(CancellationToken cancellationToken)
     {
-        var customer = await _customerService.GetByIdAsync(customerId, cancellationToken);
+        var user = await _userManager.GetUserAsync(User);
+        if (user?.CustomerId is null)
+            return (null, Forbid());
+
+        var customer = await _customerService.GetByIdAsync(user.CustomerId.Value, cancellationToken);
         if (customer is null || !customer.IsActive)
-        {
-            return NotFound();
-        }
+            return (null, Forbid());
+
+        return (customer, null);
+    }
+
+    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    {
+        var (customer, error) = await GetCurrentCustomerAsync(cancellationToken);
+        if (error is not null) return error;
 
         var stocks = (await _stockService.GetAllAsync(cancellationToken))
             .Where(s => s.IsActive)
@@ -39,35 +56,29 @@ public class ShopController : Controller
             .ToList();
 
         ViewBag.Customer = customer;
-        ViewBag.CartItems = _cartService.GetItems(customerId);
-        ViewBag.CartTotal = _cartService.GetTotal(customerId);
+        ViewBag.CartCount = _cartService.GetItems(customer!.Id).Count;
+        ViewBag.CartTotal = _cartService.GetTotal(customer.Id);
 
         return View(stocks);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddToCart(int customerId, int stockItemId, int quantity, CancellationToken cancellationToken)
+    public async Task<IActionResult> AddToCart(int stockItemId, int quantity, CancellationToken cancellationToken)
     {
-        var customer = await _customerService.GetByIdAsync(customerId, cancellationToken);
-        if (customer is null || !customer.IsActive)
-        {
-            return NotFound();
-        }
+        var (customer, error) = await GetCurrentCustomerAsync(cancellationToken);
+        if (error is not null) return error;
 
         var stock = await _stockService.GetByIdAsync(stockItemId, cancellationToken);
         if (stock is null || !stock.IsActive)
         {
             TempData["ErrorMessage"] = "Ürün bulunamadı.";
-            return RedirectToAction(nameof(Index), new { customerId });
+            return RedirectToAction(nameof(Index));
         }
 
-        if (quantity <= 0)
-        {
-            quantity = 1;
-        }
+        if (quantity <= 0) quantity = 1;
 
-        _cartService.AddItem(customerId, new CartItem
+        _cartService.AddItem(customer!.Id, new CartItem
         {
             StockItemId = stock.Id,
             Name = stock.Name,
@@ -76,55 +87,82 @@ public class ShopController : Controller
         });
 
         TempData["SuccessMessage"] = $"{stock.Name} sepete eklendi.";
-        return RedirectToAction(nameof(Index), new { customerId });
+        return RedirectToAction(nameof(Index));
     }
 
-    public async Task<IActionResult> Cart(int customerId, CancellationToken cancellationToken)
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddToCartAjax(int stockItemId, int quantity, CancellationToken cancellationToken)
     {
-        var customer = await _customerService.GetByIdAsync(customerId, cancellationToken);
-        if (customer is null || !customer.IsActive)
+        var (customer, error) = await GetCurrentCustomerAsync(cancellationToken);
+        if (error is not null) return Json(new { success = false, message = "Yetki hatası." });
+
+        var stock = await _stockService.GetByIdAsync(stockItemId, cancellationToken);
+        if (stock is null || !stock.IsActive)
+            return Json(new { success = false, message = "Ürün bulunamadı." });
+
+        if (quantity <= 0) quantity = 1;
+
+        _cartService.AddItem(customer!.Id, new CartItem
         {
-            return NotFound();
-        }
+            StockItemId = stock.Id,
+            Name = stock.Name,
+            UnitPrice = stock.Price,
+            Quantity = quantity
+        });
+
+        var cartCount = _cartService.GetItems(customer.Id).Count;
+        var cartTotal = _cartService.GetTotal(customer.Id);
+        return Json(new { success = true, message = $"{stock.Name} sepete eklendi.", cartCount, cartTotal = cartTotal.ToString("N2") });
+    }
+
+    public async Task<IActionResult> Cart(CancellationToken cancellationToken)
+    {
+        var (customer, error) = await GetCurrentCustomerAsync(cancellationToken);
+        if (error is not null) return error;
 
         ViewBag.Customer = customer;
-        ViewBag.CartItems = _cartService.GetItems(customerId);
-        ViewBag.CartTotal = _cartService.GetTotal(customerId);
+        ViewBag.CartItems = _cartService.GetItems(customer!.Id);
+        ViewBag.CartTotal = _cartService.GetTotal(customer.Id);
+        ViewBag.CartCount = _cartService.GetItems(customer.Id).Count;
 
         return View();
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult UpdateCart(int customerId, int stockItemId, int quantity)
+    public async Task<IActionResult> UpdateCart(int stockItemId, int quantity, CancellationToken cancellationToken)
     {
-        _cartService.UpdateQuantity(customerId, stockItemId, quantity);
-        return RedirectToAction(nameof(Cart), new { customerId });
+        var (customer, error) = await GetCurrentCustomerAsync(cancellationToken);
+        if (error is not null) return error;
+
+        _cartService.UpdateQuantity(customer!.Id, stockItemId, quantity);
+        return RedirectToAction(nameof(Cart));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult RemoveFromCart(int customerId, int stockItemId)
+    public async Task<IActionResult> RemoveFromCart(int stockItemId, CancellationToken cancellationToken)
     {
-        _cartService.RemoveItem(customerId, stockItemId);
-        return RedirectToAction(nameof(Cart), new { customerId });
+        var (customer, error) = await GetCurrentCustomerAsync(cancellationToken);
+        if (error is not null) return error;
+
+        _cartService.RemoveItem(customer!.Id, stockItemId);
+        return RedirectToAction(nameof(Cart));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Checkout(int customerId, string? notes, CancellationToken cancellationToken)
+    public async Task<IActionResult> Checkout(string? notes, CancellationToken cancellationToken)
     {
-        var customer = await _customerService.GetByIdAsync(customerId, cancellationToken);
-        if (customer is null || !customer.IsActive)
-        {
-            return NotFound();
-        }
+        var (customer, error) = await GetCurrentCustomerAsync(cancellationToken);
+        if (error is not null) return error;
 
-        var cartItems = _cartService.GetItems(customerId);
+        var cartItems = _cartService.GetItems(customer!.Id);
         if (cartItems.Count == 0)
         {
             TempData["ErrorMessage"] = "Sepetiniz boş.";
-            return RedirectToAction(nameof(Cart), new { customerId });
+            return RedirectToAction(nameof(Cart));
         }
 
         try
@@ -136,16 +174,22 @@ public class ShopController : Controller
                 UnitPrice = i.UnitPrice
             }).ToList();
 
-            var order = await _orderService.CreateAndApproveAsync(customerId, notes, lines, cancellationToken);
-            _cartService.Clear(customerId);
+            var order = await _orderService.CreateAndApproveAsync(customer.Id, notes, lines, cancellationToken);
+            _cartService.Clear(customer.Id);
 
-            TempData["SuccessMessage"] = $"Sipariş {order.OrderNumber} onaylandı.";
-            return RedirectToAction("Details", "Orders", new { id = order.Id });
+            return RedirectToAction(nameof(OrderConfirmation), new { orderNumber = order.OrderNumber, total = order.SubTotal });
         }
         catch (InvalidOperationException ex)
         {
             TempData["ErrorMessage"] = ex.Message;
-            return RedirectToAction(nameof(Cart), new { customerId });
+            return RedirectToAction(nameof(Cart));
         }
+    }
+
+    public IActionResult OrderConfirmation(string orderNumber, decimal total)
+    {
+        ViewBag.OrderNumber = orderNumber;
+        ViewBag.Total = total;
+        return View();
     }
 }

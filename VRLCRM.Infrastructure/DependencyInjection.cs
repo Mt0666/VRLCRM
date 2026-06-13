@@ -73,6 +73,27 @@ public static class DependencyInjection
             options.AccessDeniedPath = "/Pages/MiscNotAuthorized";
             options.SlidingExpiration = true;
             options.ExpireTimeSpan = TimeSpan.FromHours(8);
+            options.Events.OnRedirectToLogin = context =>
+            {
+                if (context.Request.Path.StartsWithSegments("/Shop"))
+                {
+                    var returnUrl = Uri.EscapeDataString(context.Request.Path + context.Request.QueryString);
+                    context.Response.Redirect($"/ShopAuth/Login?returnUrl={returnUrl}");
+                }
+                else
+                {
+                    context.Response.Redirect(context.RedirectUri);
+                }
+                return Task.CompletedTask;
+            };
+            options.Events.OnRedirectToAccessDenied = context =>
+            {
+                if (context.Request.Path.StartsWithSegments("/Shop"))
+                    context.Response.Redirect("/ShopAuth/Login");
+                else
+                    context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            };
         });
 
         return services;

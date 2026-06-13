@@ -15,4 +15,6 @@ public interface IStockService
     Task<bool> UpdateAsync(StockItem stockItem, CancellationToken cancellationToken = default);
 
     Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<bool> RestoreAsync(int id, CancellationToken cancellationToken = default);
 }

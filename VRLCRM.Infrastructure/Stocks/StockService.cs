@@ -91,4 +91,17 @@ public class StockService : IStockService
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    public async Task<bool> RestoreAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var stockItem = await _context.StockItems
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+
+        if (stockItem is null || stockItem.IsActive)
+            return false;
+
+        stockItem.IsActive = true;
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
 }

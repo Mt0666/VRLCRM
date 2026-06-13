@@ -93,4 +93,17 @@ public class CategoryService : ICategoryService
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    public async Task<bool> RestoreAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var category = await _context.Categories
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+        if (category is null || category.IsActive)
+            return false;
+
+        category.IsActive = true;
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
 }

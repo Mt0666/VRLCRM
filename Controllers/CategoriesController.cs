@@ -128,4 +128,16 @@ public class CategoriesController : Controller
         TempData["SuccessMessage"] = "Kategori pasif duruma alındı.";
         return RedirectToAction(nameof(Index));
     }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Restore(int id, CancellationToken cancellationToken)
+    {
+        var restored = await _categoryService.RestoreAsync(id, cancellationToken);
+        if (!restored)
+            return NotFound();
+
+        TempData["SuccessMessage"] = "Kategori tekrar aktif edildi.";
+        return RedirectToAction(nameof(Index));
+    }
 }

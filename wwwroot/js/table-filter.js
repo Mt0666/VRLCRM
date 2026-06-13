@@ -1,7 +1,18 @@
 (function () {
+  function applyDataLabels(table) {
+    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+    table.querySelectorAll('tbody tr').forEach(function(row) {
+      Array.from(row.querySelectorAll('td')).forEach(function(td, i) {
+        if (headers[i]) td.setAttribute('data-label', headers[i]);
+      });
+    });
+  }
+
   function initTableFilter(table) {
     const tbody = table.querySelector('tbody');
     if (!tbody) return;
+
+    applyDataLabels(table);
 
     const toolbar = table.closest('.card')?.querySelector('.table-toolbar');
     const searchInput = toolbar?.querySelector('.js-table-search');
@@ -50,13 +61,14 @@
         }
 
         let paginationHtml = '';
+        let gotoHtml = '';
         if (totalPages > 1) {
           paginationHtml += `<ul class="pagination pagination-sm mb-0">`;
-          
+
           paginationHtml += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
                                <a class="page-link js-page-link" href="javascript:void(0);" data-page="${currentPage - 1}">Önceki</a>
                              </li>`;
-          
+
           for (let i = 1; i <= totalPages; i++) {
              if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
                  paginationHtml += `<li class="page-item ${i === currentPage ? 'active' : ''}">
@@ -70,11 +82,17 @@
           paginationHtml += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
                                <a class="page-link js-page-link" href="javascript:void(0);" data-page="${currentPage + 1}">Sonraki</a>
                              </li>`;
-                             
+
           paginationHtml += `</ul>`;
+
+          gotoHtml = `<div class="pagination-goto text-body-secondary">
+                        <span>Git:</span>
+                        <input type="number" class="js-goto-page" min="1" max="${totalPages}" value="${currentPage}" />
+                        <span>/ ${totalPages}</span>
+                      </div>`;
         }
 
-        paginationContainer.innerHTML = `${infoHtml}<nav>${paginationHtml}</nav>`;
+        paginationContainer.innerHTML = `${infoHtml}<nav class="d-flex align-items-center flex-wrap gap-2">${paginationHtml}${gotoHtml}</nav>`;
 
         paginationContainer.querySelectorAll('.js-page-link').forEach(link => {
             link.addEventListener('click', function(e) {
@@ -86,6 +104,22 @@
                 }
             });
         });
+
+        const gotoInput = paginationContainer.querySelector('.js-goto-page');
+        if (gotoInput) {
+            gotoInput.addEventListener('change', function() {
+                const page = parseInt(this.value, 10);
+                if (page >= 1 && page <= totalPages && page !== currentPage) {
+                    currentPage = page;
+                    render();
+                } else {
+                    this.value = currentPage;
+                }
+            });
+            gotoInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') this.blur();
+            });
+        }
       }
     }
 
@@ -105,6 +139,7 @@
     render();
   }
 
+  window._initTableFilter = initTableFilter;
   document.querySelectorAll('table.js-data-table').forEach(initTableFilter);
 
   document.querySelectorAll('.js-flash-alert').forEach(alertEl => {

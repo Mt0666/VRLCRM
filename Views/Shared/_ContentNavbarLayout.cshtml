@@ -60,12 +60,6 @@
         </div>
         <!-- / Content -->
 
-        <!-- Footer -->
-        @if (@ViewData["isFooter"] != null && Convert.ToBoolean(@ViewData["isFooter"]))
-        {
-          @await Html.PartialAsync("Sections/Footer/_Footer")
-        }
-        <!-- / Footer -->
         <div class="content-backdrop fade"></div>
       </div>
       <!--/ Content wrapper -->

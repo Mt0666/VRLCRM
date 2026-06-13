@@ -6,9 +6,14 @@
 <div class="card">
   <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
     <h5 class="mb-0">Sipariş Listesi</h5>
-    <a asp-action="Create" class="btn btn-primary btn-sm">
-      <i class="icon-base ri ri-add-line icon-16px me-1"></i> Yeni Sipariş (Barkod)
-    </a>
+    <div class="d-flex gap-2 align-items-center">
+      <button id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
+        <i class="ri-question-line"></i>
+      </button>
+      <a asp-action="Create" class="btn btn-primary btn-sm">
+        <i class="icon-base ri ri-add-line icon-16px me-1"></i> Yeni Sipariş
+      </a>
+    </div>
   </div>
   <div class="card-body pb-0">
     <partial name="_TableToolbar" />
@@ -63,3 +68,53 @@
     </table>
   </div>
 </div>
+
+@section PageScripts {
+<script>
+(function () {
+  const d = window.driver && window.driver.js && window.driver.js.driver;
+  if (!d) return;
+  const tour = d({
+    animate: true, smoothScroll: true, allowClose: true,
+    overlayOpacity: 0.4, stagePadding: 6, stageRadius: 8,
+    nextBtnText: 'İleri →', prevBtnText: '← Geri', doneBtnText: 'Tamam',
+    showProgress: true, progressText: '{{current}} / {{total}}',
+    steps: [
+      {
+        element: '.js-data-table',
+        popover: {
+          title: 'Sipariş Listesi',
+          description: 'Tüm siparişler burada listelenir. Durum renkleri: sarı = bekliyor, yeşil = onaylı, kırmızı = iptal.',
+          side: 'top'
+        }
+      },
+      {
+        element: '.js-search-input',
+        popover: {
+          title: 'Hızlı Arama',
+          description: 'Sipariş numarası veya müşteri adıyla anında filtrele.',
+          side: 'bottom'
+        }
+      },
+      {
+        element: '.js-sort-select',
+        popover: {
+          title: 'Sıralama',
+          description: 'Siparişleri en yeni veya en eski önce sıralayabilirsiniz.',
+          side: 'bottom'
+        }
+      },
+      {
+        element: 'a[href*="Create"]',
+        popover: {
+          title: 'Yeni Sipariş',
+          description: 'Müşteriden gelen siparişi buradan oluşturun. Onaylandıktan sonra satış faturasına dönüştürebilirsiniz.',
+          side: 'left'
+        }
+      }
+    ]
+  });
+  document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());
+})();
+</script>
+}

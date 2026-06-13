@@ -45,7 +45,14 @@ public class CustomerFormViewModel
     [StringLength(500)]
     public string AddressLine { get; set; } = string.Empty;
 
-    [Display(Name = "Cari Limit (₺)")]
+    [Display(Name = "Kredi Limiti")]
     [Range(0, double.MaxValue, ErrorMessage = "Limit 0 veya daha büyük olmalıdır.")]
     public decimal? CreditLimit { get; set; }
-}
+
+    [Display(Name = "Şifre (B2B Girişi İçin)")]
+    [DataType(DataType.Password)]
+    [StringLength(100, ErrorMessage = "{0} en az {2} ve en fazla {1} karakter uzunluğunda olmalıdır.", MinimumLength = 8)]
+    public string? Password { get; set; }
+
+    public string? Email { get; set; }
+    }

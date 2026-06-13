@@ -6,10 +6,14 @@
 <div class="card">
   <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
     <h5 class="mb-0">Müşteri Listesi</h5>
-    <a asp-action="Create" class="btn btn-primary">
-      <i class="icon-base ri ri-add-line icon-16px me-1"></i>
-      Yeni Müşteri
-    </a>
+    <div class="d-flex gap-2 align-items-center">
+      <button id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
+        <i class="ri-question-line"></i>
+      </button>
+      <a asp-action="Create" class="btn btn-primary btn-sm">
+        <i class="ri-add-line me-1"></i>Yeni Müşteri
+      </a>
+    </div>
   </div>
   <div class="card-body pb-0">
     <partial name="_TableToolbar" />
@@ -24,7 +28,7 @@
           <th>Cari Borç</th>
           <th>İl / İlçe</th>
           <th>Durum</th>
-          <th>İşlemler</th>
+          <th></th>
         </tr>
       </thead>
       <tbody class="table-border-bottom-0">
@@ -68,28 +72,10 @@
                 <partial name="_StatusBadge" model="customer.IsActive" />
               </td>
               <td>
-                <div class="dropdown">
-                  <button type="button" class="btn p-0 dropdown-toggle hide-arrow shadow-none" data-bs-toggle="dropdown">
-                    <i class="icon-base ri ri-more-2-line icon-18px"></i>
-                  </button>
-                  <div class="dropdown-menu">
-                    <a class="dropdown-item" asp-action="Details" asp-route-id="@customer.Id">
-                      <i class="icon-base ri ri-eye-line icon-18px me-1"></i> Detay
-                    </a>
-                    @if (customer.IsActive)
-                    {
-                      <a class="dropdown-item" asp-controller="Shop" asp-action="Index" asp-route-customerId="@customer.Id">
-                        <i class="icon-base ri ri-shopping-cart-line icon-18px me-1"></i> Mağaza
-                      </a>
-                      <a class="dropdown-item" asp-action="Edit" asp-route-id="@customer.Id">
-                        <i class="icon-base ri ri-pencil-line icon-18px me-1"></i> Düzenle
-                      </a>
-                      <a class="dropdown-item text-danger" asp-action="Delete" asp-route-id="@customer.Id">
-                        <i class="icon-base ri ri-delete-bin-6-line icon-18px me-1"></i> Pasife Al
-                      </a>
-                    }
-                  </div>
-                </div>
+                <a asp-action="Details" asp-route-id="@customer.Id"
+                   class="btn btn-sm btn-outline-primary">
+                  <i class="ri ri-eye-line me-1"></i>Detay
+                </a>
               </td>
             </tr>
           }
@@ -98,3 +84,53 @@
     </table>
   </div>
 </div>
+
+@section PageScripts {
+<script>
+(function () {
+  const d = window.driver && window.driver.js && window.driver.js.driver;
+  if (!d) return;
+  const tour = d({
+    animate: true, smoothScroll: true, allowClose: true,
+    overlayOpacity: 0.4, stagePadding: 6, stageRadius: 8,
+    nextBtnText: 'İleri →', prevBtnText: '← Geri', doneBtnText: 'Tamam',
+    showProgress: true, progressText: '{{current}} / {{total}}',
+    steps: [
+      {
+        element: '.js-data-table',
+        popover: {
+          title: 'Müşteri Tablosu',
+          description: 'Tüm müşteriler burada listelenir. Pasif müşteriler gri arka planla gösterilir.',
+          side: 'top'
+        }
+      },
+      {
+        element: '.js-search-input',
+        popover: {
+          title: 'Hızlı Arama',
+          description: 'Müşteri adı, firma veya telefon numarasıyla anında filtreleme yapabilirsiniz.',
+          side: 'bottom'
+        }
+      },
+      {
+        element: 'th:nth-child(4)',
+        popover: {
+          title: 'Cari Borç',
+          description: 'Müşterinin size olan bakiyesi. Fatura kesince artar, ödeme yapınca düşer. Detay sayfasından hareket geçmişini görebilirsiniz.',
+          side: 'bottom'
+        }
+      },
+      {
+        element: 'a[href*="Create"]',
+        popover: {
+          title: 'Yeni Müşteri',
+          description: 'Yeni bir müşteri kaydı açmak için bu butona tıklayın. Cari limit ve kredi bilgilerini buradan girebilirsiniz.',
+          side: 'left'
+        }
+      }
+    ]
+  });
+  document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());
+})();
+</script>
+}

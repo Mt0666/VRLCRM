@@ -24,6 +24,8 @@ public class AuthController : Controller
     {
         if (_signInManager.IsSignedIn(User))
         {
+            if (User.IsInRole("Customer"))
+                return RedirectToAction("Index", "Shop");
             return RedirectToAction("Index", "Dashboards");
         }
 
@@ -41,14 +43,20 @@ public class AuthController : Controller
             return View(model);
         }
 
+        var user = await _userManager.FindByEmailAsync(model.Email);
+        if (user is not null && await _userManager.IsInRoleAsync(user, "Customer"))
+        {
+            ModelState.AddModelError(string.Empty, "Müşteri hesabıyla yönetim paneline giriş yapılamaz. B2B Mağaza girişini kullanınız.");
+            return View(model);
+        }
+
         var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, lockoutOnFailure: false);
 
         if (result.Succeeded)
         {
             if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
-            {
                 return Redirect(model.ReturnUrl);
-            }
+
             return RedirectToAction("Index", "Dashboards");
         }
 

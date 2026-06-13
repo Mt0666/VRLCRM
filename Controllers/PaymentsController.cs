@@ -32,6 +32,13 @@ public class PaymentsController : Controller
         return View(payments);
     }
 
+    public async Task<IActionResult> Details(int id, CancellationToken cancellationToken)
+    {
+        var payment = await _paymentService.GetByIdAsync(id, cancellationToken);
+        if (payment is null) return NotFound();
+        return View(payment);
+    }
+
     public async Task<IActionResult> CreateIncoming(CancellationToken cancellationToken)
     {
         var model = new PaymentFormViewModel { Type = PaymentType.Incoming };

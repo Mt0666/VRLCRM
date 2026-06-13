@@ -1,0 +1,141 @@
+@inject IHttpContextAccessor HttpContextAccessor
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>@(ViewData["Title"] != null ? $"{ViewData["Title"]} | " : "")B2B | Mete Varol</title>
+  <link rel="icon" type="image/x-icon" href="~/img/favicon/favicon.ico" />
+  <link rel="stylesheet" href="~/vendor/fonts/inter/inter.css" />
+  <link rel="stylesheet" href="~/vendor/fonts/remixicon/remixicon.css" />
+  <link rel="stylesheet" href="~/vendor/css/core.css" />
+  <link rel="stylesheet" href="~/css/demo.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { background: #f4f5fb; font-family: 'Inter', sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* Navbar */
+    .mv-nav { background: #fff; box-shadow: 0 1px 16px rgba(105,108,255,.09); padding: .65rem 1.5rem; position: sticky; top: 0; z-index: 200; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .mv-brand { display: flex; align-items: center; gap: .65rem; text-decoration: none; }
+    .mv-brand-logo { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; flex-shrink: 0; box-shadow: 0 2px 8px rgba(105,108,255,.2); }
+    .mv-brand-name { font-weight: 700; font-size: 1rem; color: #2c2d3f; line-height: 1.15; }
+    .mv-brand-tag { font-size: .62rem; font-weight: 500; color: #696cff; letter-spacing: .05em; text-transform: uppercase; }
+    .mv-nav-right { display: flex; align-items: center; gap: .5rem; }
+    .mv-user-chip { display: flex; align-items: center; gap: .4rem; font-size: .82rem; color: #5d6279; background: #f4f5fb; border-radius: 20px; padding: .3rem .75rem; }
+
+    /* Cart badge */
+    .mv-cart-btn { position: relative; }
+    .mv-cart-count { position: absolute; top: -5px; right: -6px; background: #ff3e1d; color: #fff; font-size: .58rem; font-weight: 700; min-width: 17px; height: 17px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; line-height: 1; }
+
+    /* Content & layout */
+    .mv-alerts { padding: .75rem 1.5rem 0; max-width: 1440px; margin: 0 auto; width: 100%; }
+    .mv-main { flex: 1; padding: 1.75rem 1.5rem; max-width: 1440px; margin: 0 auto; width: 100%; }
+    .mv-footer { text-align: center; padding: 1.5rem; color: #9095ac; font-size: .8rem; border-top: 1px solid #e6e8f0; margin-top: auto; }
+
+    /* Product cards */
+    .mv-product-card { border: 1px solid #e8eaef !important; border-radius: 12px !important; overflow: hidden; transition: box-shadow .18s, transform .18s; }
+    .mv-product-card:hover { box-shadow: 0 6px 28px rgba(105,108,255,.14) !important; transform: translateY(-3px); }
+    .mv-product-img { height: 170px; object-fit: cover; width: 100%; }
+    .mv-product-placeholder { height: 170px; background: linear-gradient(135deg,#f0f1fb 0%,#e8eaf7 100%); display: flex; align-items: center; justify-content: center; }
+
+    /* Category chips */
+    .mv-cat-bar { display: flex; gap: .45rem; overflow-x: auto; padding-bottom: .2rem; scrollbar-width: none; flex-wrap: nowrap; }
+    .mv-cat-bar::-webkit-scrollbar { display: none; }
+    .mv-cat-chip { flex-shrink: 0; padding: .3rem .85rem; border-radius: 20px; font-size: .8rem; font-weight: 500; cursor: pointer; border: 1.5px solid #dde0ed; background: #fff; color: #5d6279; transition: all .15s; white-space: nowrap; user-select: none; }
+    .mv-cat-chip:hover { border-color: #696cff; color: #696cff; }
+    .mv-cat-chip.active { background: #696cff; border-color: #696cff; color: #fff; box-shadow: 0 2px 10px rgba(105,108,255,.3); }
+
+    /* Search */
+    .mv-search { position: relative; }
+    .mv-search .mv-search-icon { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: #9095ac; pointer-events: none; font-size: .9rem; }
+    .mv-search input { border-radius: 20px; padding-left: 2.2rem !important; font-size: .85rem; border-color: #dde0ed; }
+    .mv-search input:focus { border-color: #696cff; box-shadow: 0 0 0 3px rgba(105,108,255,.12); outline: none; }
+
+    /* Credit card (gradient) */
+    .mv-credit-widget { background: linear-gradient(135deg,#696cff 0%,#9155fd 100%); border-radius: 14px; padding: 1rem 1.25rem; color: #fff; }
+
+    /* Cart items */
+    .mv-cart-row { background: #fff; border: 1px solid #e8eaef; border-radius: 12px; padding: 1rem 1.25rem; transition: box-shadow .15s; }
+    .mv-cart-row:hover { box-shadow: 0 3px 14px rgba(0,0,0,.06); }
+
+    /* Order summary */
+    .mv-summary-box { border: 1px solid #e0e2ed; border-radius: 14px; overflow: hidden; }
+    .mv-summary-head { background: linear-gradient(135deg,#696cff,#9155fd); color: #fff; padding: .9rem 1.25rem; font-weight: 600; }
+    .mv-summary-body { background: #fff; padding: 1.25rem; }
+    .mv-total-row { display: flex; justify-content: space-between; font-size: .88rem; color: #5d6279; margin-bottom: .5rem; }
+    .mv-total-grand { display: flex; justify-content: space-between; font-weight: 700; font-size: 1.1rem; color: #696cff; padding-top: .75rem; border-top: 1.5px solid #eaecf5; }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="mv-nav">
+    <a asp-controller="Shop" asp-action="Index" class="mv-brand">
+      <img src="~/img/mete_varol.png" alt="MV" class="mv-brand-logo" />
+      <div>
+        <div class="mv-brand-name">Mete Varol</div>
+        <div class="mv-brand-tag">B2B Sipariş Portalı</div>
+      </div>
+    </a>
+
+    <div class="mv-nav-right">
+      @if (ViewBag.Customer is VRLCRM.Domain.Entities.Customer customer)
+      {
+        <div class="mv-user-chip d-none d-md-flex">
+          <i class="ri-user-3-line"></i>
+          <span>@customer.FullName</span>
+        </div>
+      }
+
+      @{
+        var cartCount = ViewBag.CartCount as int? ?? 0;
+        var cartTotal = ViewBag.CartTotal as decimal? ?? 0m;
+      }
+      <a asp-controller="Shop" asp-action="Cart" class="btn btn-outline-primary btn-sm mv-cart-btn" id="nav-cart-link">
+        <i class="ri-shopping-cart-line"></i>
+        <span id="nav-cart-count" class="mv-cart-count" style="@(cartCount == 0 ? "display:none;" : "")">@(cartCount > 9 ? "9+" : cartCount.ToString())</span>
+        <span id="nav-cart-total" class="ms-1 d-none d-sm-inline fw-semibold">@(cartCount > 0 ? cartTotal.ToString("N2") + " ₺" : "Sepet")</span>
+      </a>
+
+      <form asp-controller="ShopAuth" asp-action="Logout" method="post" class="mb-0">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-sm btn-outline-secondary">
+          <i class="ri-logout-box-r-line"></i><span class="d-none d-sm-inline ms-1">Çıkış</span>
+        </button>
+      </form>
+    </div>
+  </nav>
+
+  <!-- Alerts -->
+  <div class="mv-alerts">
+    @if (TempData["SuccessMessage"] is string success)
+    {
+      <div class="alert alert-success alert-dismissible mb-0 mt-3" role="alert">
+        <i class="ri-check-double-line me-2"></i>@success
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    }
+    @if (TempData["ErrorMessage"] is string errMsg)
+    {
+      <div class="alert alert-danger alert-dismissible mb-0 mt-3" role="alert">
+        <i class="ri-error-warning-line me-2"></i>@errMsg
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    }
+  </div>
+
+  <!-- Content -->
+  <main class="mv-main">
+    @RenderBody()
+  </main>
+
+  <footer class="mv-footer">
+    &copy; @DateTime.Now.Year <strong style="color:#696cff;">Mete Varol</strong> — B2B Sipariş Portalı
+  </footer>
+
+  <script src="~/vendor/libs/jquery/jquery.js"></script>
+  <script src="~/vendor/libs/popper/popper.js"></script>
+  <script src="~/vendor/js/bootstrap.js"></script>
+  @RenderSection("PageScripts", required: false)
+</body>
+</html>

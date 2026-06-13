@@ -1,15 +1,17 @@
-// Please see documentation at https://docs.microsoft.com/aspnet/core/client-side/bundling-and-minification
-// for details on configuring this project to bundle and minify static web assets.
+// Global TomSelect initialization for all .select2 elements
+document.addEventListener('DOMContentLoaded', function () {
+  if (typeof TomSelect === 'undefined') return;
 
-// Write your JavaScript code.
-
-$(document).ready(function () {
-    // Initialize Select2 globally with Turkish language and bootstrap-5 theme
-    if ($.fn.select2) {
-        $('.select2').select2({
-            theme: 'bootstrap-5',
-            language: 'tr',
-            width: '100%'
-        });
-    }
+  document.querySelectorAll('select.select2').forEach(function (el) {
+    if (el.tomselect) return; // already initialized
+    new TomSelect(el, {
+      create: false,
+      allowEmptyOption: true,
+      render: {
+        no_results: function () {
+          return '<div class="no-results">Sonuç bulunamadı.</div>';
+        }
+      }
+    });
+  });
 });

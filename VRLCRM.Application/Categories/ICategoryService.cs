@@ -17,4 +17,6 @@ public interface ICategoryService
     Task<bool> UpdateAsync(Category category, CancellationToken cancellationToken = default);
 
     Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<bool> RestoreAsync(int id, CancellationToken cancellationToken = default);
 }

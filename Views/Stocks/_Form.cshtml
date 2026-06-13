@@ -1,86 +1,81 @@
 @model StockFormViewModel
 
-<div class="row g-6">
+<div class="row g-3 mb-3">
   <div class="col-md-6">
-    <div class="form-floating form-floating-outline mb-6">
-      <input asp-for="StockCode" class="form-control" placeholder="STK-001" />
-      <label asp-for="StockCode"></label>
-      <span asp-validation-for="StockCode" class="text-danger"></span>
-    </div>
+    <label asp-for="StockCode" class="form-label"></label>
+    <input asp-for="StockCode" class="form-control" placeholder="STK-001" />
+    <span asp-validation-for="StockCode" class="text-danger small"></span>
   </div>
   <div class="col-md-6">
-    <div class="form-floating form-floating-outline mb-6">
-      <input asp-for="Barcode" class="form-control" placeholder="Barkod" />
-      <label asp-for="Barcode"></label>
-      <span asp-validation-for="Barcode" class="text-danger"></span>
-    </div>
+    <label asp-for="Barcode" class="form-label"></label>
+    <input asp-for="Barcode" class="form-control" placeholder="Barkod numarası" />
+    <span asp-validation-for="Barcode" class="text-danger small"></span>
   </div>
 </div>
 
-<div class="row g-6">
+<div class="row g-3 mb-3">
   <div class="col-md-6">
-    <div class="form-floating form-floating-outline mb-6">
-      <select asp-for="CategoryId" asp-items="Model.Categories" class="form-select select2">
-        <option value="">Kategori seçin</option>
-      </select>
-      <label asp-for="CategoryId"></label>
-      <span asp-validation-for="CategoryId" class="text-danger"></span>
-    </div>
+    <label asp-for="CategoryId" class="form-label"></label>
+    <select asp-for="CategoryId" asp-items="Model.Categories" class="form-select select2">
+      <option value="">Kategori seçin</option>
+    </select>
     @if (!Model.Categories.Any())
     {
-      <div class="form-text mb-4">
+      <div class="form-text">
         Henüz kategori yok.
         <a asp-controller="Categories" asp-action="Create">Kategori oluştur</a>
       </div>
     }
+    <span asp-validation-for="CategoryId" class="text-danger small"></span>
+  </div>
+  <div class="col-md-6">
+    <label asp-for="Name" class="form-label"></label>
+    <input asp-for="Name" class="form-control" placeholder="Ürün adı" />
+    <span asp-validation-for="Name" class="text-danger small"></span>
   </div>
 </div>
 
-<div class="form-floating form-floating-outline mb-6">
-  <input asp-for="Name" class="form-control" placeholder="Ürün adı" />
-  <label asp-for="Name"></label>
-  <span asp-validation-for="Name" class="text-danger"></span>
-</div>
-
-<div class="row g-6">
+<div class="row g-3 mb-3">
   <div class="col-md-4">
-    <div class="form-floating form-floating-outline mb-6">
-      <input asp-for="Price" class="form-control" placeholder="0.00" step="0.01" />
-      <label asp-for="Price"></label>
-      <span asp-validation-for="Price" class="text-danger"></span>
-    </div>
+    <label asp-for="Price" class="form-label"></label>
+    <input asp-for="Price" class="form-control" placeholder="0,00" step="0.01" />
+    <span asp-validation-for="Price" class="text-danger small"></span>
   </div>
   <div class="col-md-4">
-    <div class="form-floating form-floating-outline mb-6">
-      <input asp-for="VatRate" class="form-control" placeholder="20" step="0.01" />
-      <label asp-for="VatRate"></label>
-      <span asp-validation-for="VatRate" class="text-danger"></span>
-    </div>
+    <label asp-for="VatRate" class="form-label"></label>
+    <input asp-for="VatRate" class="form-control" placeholder="20" step="0.01" />
+    <span asp-validation-for="VatRate" class="text-danger small"></span>
   </div>
   <div class="col-md-4">
-    <div class="form-floating form-floating-outline mb-6">
-      <input asp-for="StockQuantity" class="form-control" placeholder="0" />
-      <label asp-for="StockQuantity"></label>
-      <span asp-validation-for="StockQuantity" class="text-danger"></span>
-    </div>
+    <label asp-for="StockQuantity" class="form-label"></label>
+    <input asp-for="StockQuantity" class="form-control" placeholder="0" />
+    <span asp-validation-for="StockQuantity" class="text-danger small"></span>
   </div>
 </div>
 
-<div class="mb-6">
+<div class="mb-3">
   <label asp-for="ImageFile" class="form-label"></label>
   @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
   {
-    <div class="mb-3">
-      <img src="@Model.ImageUrl" alt="@Model.Name" class="rounded border" style="max-height: 120px;" />
+    <div class="mb-2">
+      <img src="@Model.ImageUrl" alt="@Model.Name" class="rounded border" style="max-height:100px; object-fit:cover;" />
+      <div class="form-text">Yeni fotoğraf seçerseniz mevcut görsel değiştirilir.</div>
     </div>
   }
-  <input asp-for="ImageFile" type="file" class="form-control" accept="image/*" />
-  <div class="form-text">JPG, PNG, WEBP veya GIF. Maksimum 5 MB.</div>
-  <span asp-validation-for="ImageFile" class="text-danger"></span>
+  <label class="d-flex align-items-center gap-2 border rounded px-3 py-2" for="ImageFile"
+         style="cursor:pointer; background:var(--bs-body-bg);">
+    <i class="ri-image-add-line text-primary fs-5"></i>
+    <span id="imageFileLabel" class="text-body-secondary">
+      @(string.IsNullOrWhiteSpace(Model.ImageUrl) ? "Fotoğraf seçmek için tıklayın" : "Farklı fotoğraf seç")
+    </span>
+  </label>
+  <input asp-for="ImageFile" type="file" accept="image/*" class="d-none"
+         onchange="document.getElementById('imageFileLabel').textContent = this.files[0] ? this.files[0].name : '@(string.IsNullOrWhiteSpace(Model.ImageUrl) ? "Fotoğraf seçmek için tıklayın" : "Farklı fotoğraf seç")'" />
+  <span asp-validation-for="ImageFile" class="text-danger small d-block mt-1"></span>
 </div>
 
-<div class="form-floating form-floating-outline mb-6">
-  <textarea asp-for="Description" class="form-control h-px-100" placeholder="Açıklama"></textarea>
-  <label asp-for="Description"></label>
-  <span asp-validation-for="Description" class="text-danger"></span>
+<div class="mb-4">
+  <label asp-for="Description" class="form-label"></label>
+  <textarea asp-for="Description" class="form-control" rows="3" placeholder="Açıklama (opsiyonel)"></textarea>
+  <span asp-validation-for="Description" class="text-danger small"></span>
 </div>
