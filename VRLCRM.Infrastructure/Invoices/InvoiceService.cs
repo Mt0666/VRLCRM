@@ -392,6 +392,7 @@ public class InvoiceService : IInvoiceService
                 Price = line.UnitPrice,
                 VatRate = input.VatRate,
                 StockQuantity = 0,
+                CriticalStockLevel = 5,
                 IsActive = true
             };
 

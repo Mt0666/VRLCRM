@@ -5,12 +5,13 @@ using VRLCRM.Application.Customers;
 using VRLCRM.Application.Invoices;
 using VRLCRM.Application.Orders;
 using VRLCRM.Application.Stocks;
+using VRLCRM.Domain.Constants;
 using VRLCRM.Models.Orders;
 using VRLCRM.Services;
 
 namespace VRLCRM.Controllers;
 
-[Authorize]
+[Authorize(Roles = AppRoles.AdminAndPersonel)]
 public class OrdersController : Controller
 {
     private readonly IOrderService _orderService;

@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VRLCRM.Application.Users;
+using VRLCRM.Domain.Constants;
 using VRLCRM.Domain.Entities;
 using VRLCRM.Models.Auth;
 
 namespace VRLCRM.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = AppRoles.Admin)]
 public class UsersController : Controller
 {
     private readonly IUserService _userService;

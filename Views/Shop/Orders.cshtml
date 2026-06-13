@@ -1,0 +1,61 @@
+@model IReadOnlyList<Order>
+@using VRLCRM.Domain.Enums
+@{
+  Layout = "_ShopLayout";
+  ViewData["Title"] = "Siparişlerim";
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h5 class="fw-bold mb-1">Siparişlerim</h5>
+    <p class="text-body-secondary small mb-0">Geçmiş siparişlerinizi buradan görüntüleyebilirsiniz.</p>
+  </div>
+  <a asp-action="Index" class="btn btn-outline-primary btn-sm">
+    <i class="ri-store-2-line me-1"></i>Kataloğa Dön
+  </a>
+</div>
+
+@if (!Model.Any())
+{
+  <div class="card text-center py-6 border-0" style="border-radius:14px;">
+    <div class="card-body">
+      <i class="ri-file-list-3-line d-block mb-3" style="font-size:3rem; color:#c8cadc;"></i>
+      <h6 class="fw-semibold mb-2">Henüz siparişiniz yok</h6>
+      <p class="text-body-secondary mb-4">İlk siparişinizi oluşturmak için ürün kataloğuna göz atın.</p>
+      <a asp-action="Index" class="btn btn-primary px-4">Ürünlere Git</a>
+    </div>
+  </div>
+}
+else
+{
+  <div class="d-flex flex-column gap-3">
+    @foreach (var order in Model)
+    {
+      <div class="mv-order-card">
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+          <div>
+            <div class="fw-semibold mb-1">@order.OrderNumber</div>
+            <div class="text-body-secondary small">
+              <i class="ri-calendar-line me-1"></i>@order.OrderDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+            </div>
+          </div>
+          <div class="text-end">
+            <partial name="_OrderStatusBadge" model="order" view-data='new ViewDataDictionary(ViewData) { { "BadgeClass", "mb-2" } }' />
+            <div class="fw-bold text-primary">@order.TotalAmount.ToString("N2") ₺</div>
+          </div>
+        </div>
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 pt-3 border-top">
+          <span class="text-body-secondary small">
+            @if (!order.IsActive && order.Status != OrderStatus.Cancelled)
+            {
+              <span class="text-danger">Pasif kayıt</span>
+            }
+          </span>
+          <a asp-action="OrderDetails" asp-route-id="@order.Id" class="btn btn-sm btn-outline-primary">
+            <i class="ri-eye-line me-1"></i>Detay
+          </a>
+        </div>
+      </div>
+    }
+  </div>
+}

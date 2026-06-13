@@ -40,7 +40,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - stock-uploads:/app/wwwroot/uploads
     restart: unless-stopped
 
 volumes:
   sqldata:
+  stock-uploads:

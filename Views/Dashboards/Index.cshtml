@@ -247,7 +247,7 @@
             }
             Kritik Stok
           </h5>
-          <small class="text-body-secondary">10 adetten az kalan ürünler</small>
+          <small class="text-body-secondary">Ürün bazlı kritik seviyenin altındakiler</small>
         </div>
         <a asp-controller="Stocks" asp-action="Index" class="small fw-medium">Tümü</a>
       </div>
@@ -261,18 +261,20 @@
         }
         else
         {
-          <ul class="list-unstyled mb-0">
+          <div class="px-3 pt-3" style="height:180px;">
+            <canvas id="criticalStockChart"></canvas>
+          </div>
+          <ul class="list-unstyled mb-0 border-top">
             @foreach (var item in Model.CriticalStocks)
             {
-              var badgeClass = item.StockQuantity <= 3 ? "bg-danger" : "bg-warning text-dark";
-              <li class="d-flex justify-content-between align-items-center px-4 py-3 border-bottom">
-                <div>
-                  <a asp-controller="Stocks" asp-action="Details" asp-route-id="@item.Id" class="fw-semibold text-body text-decoration-none d-block">
+              <li class="d-flex justify-content-between align-items-center px-4 py-2 border-bottom">
+                <div class="pe-2">
+                  <a asp-controller="Stocks" asp-action="Details" asp-route-id="@item.Id" class="fw-semibold text-body text-decoration-none d-block small">
                     @item.Name
                   </a>
-                  <small class="text-body-secondary">@item.StockCode</small>
+                  <small class="text-body-secondary">Kritik: @item.CriticalStockLevel adet</small>
                 </div>
-                <span class="badge @badgeClass">@item.StockQuantity adet</span>
+                <span class="badge bg-danger">@item.StockQuantity adet</span>
               </li>
             }
           </ul>
@@ -428,6 +430,58 @@
     });
       </text>
     }
+
+    @if (Model.CriticalStockChart.Any())
+    {
+      <text>
+    const criticalLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CriticalStockChart.Select(x => x.Name)));
+    const criticalQty    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CriticalStockChart.Select(x => x.Quantity)));
+    const criticalLevels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CriticalStockChart.Select(x => x.CriticalLevel)));
+
+    new Chart(document.getElementById('criticalStockChart'), {
+      type: 'bar',
+      data: {
+        labels: criticalLabels,
+        datasets: [
+          {
+            label: 'Mevcut Stok',
+            data: criticalQty,
+            backgroundColor: 'rgba(255,62,29,0.85)',
+            borderRadius: 4,
+            borderSkipped: false
+          },
+          {
+            label: 'Kritik Seviye',
+            data: criticalLevels,
+            backgroundColor: 'rgba(133,146,163,0.35)',
+            borderRadius: 4,
+            borderSkipped: false
+          }
+        ]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.raw + ' adet'
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(0,0,0,0.05)' },
+            ticks: { stepSize: 1, font: { size: 10 } }
+          },
+          y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+        }
+      }
+    });
+      </text>
+    }
   </script>
 
   <script>
@@ -489,7 +543,7 @@
         element: '#stock-col',
         popover: {
           title: 'Kritik Stok',
-          description: '10 adetten az kalan ürünler burada listelenir. Kırmızı etiket 3 adetten az demektir; bunları acil temin etmeniz gerekiyor.',
+          description: 'Her ürün için tanımlanan kritik seviyenin altına düşen ürünler grafikte gösterilir. Kırmızı çubuk mevcut stok, gri çubuk kritik seviyedir.',
           side: 'top'
         }
       },

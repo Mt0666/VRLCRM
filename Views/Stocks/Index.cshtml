@@ -27,6 +27,7 @@
           <th>Kategori</th>
           <th>Fiyat</th>
           <th>Stok Adedi</th>
+          <th>Kritik Seviye</th>
           <th>Durum</th>
           <th>İşlemler</th>
         </tr>
@@ -35,7 +36,7 @@
         @if (!Model.Any())
         {
           <tr>
-            <td colspan="7" class="text-center py-5 text-body-secondary">Henüz ürün kaydı yok.</td>
+            <td colspan="8" class="text-center py-5 text-body-secondary">Henüz ürün kaydı yok.</td>
           </tr>
         }
         else
@@ -64,11 +65,11 @@
               <td>@(stock.Category?.Name ?? "-")</td>
               <td>@stock.Price.ToString("N2") ₺</td>
               <td>
-                @if (stock.StockQuantity <= 5)
+                @if (stock.IsCritical)
                 {
                   <span class="badge bg-label-danger">@stock.StockQuantity</span>
                 }
-                else if (stock.StockQuantity <= 20)
+                else if (stock.StockQuantity <= stock.CriticalStockLevel * 2)
                 {
                   <span class="badge bg-label-warning">@stock.StockQuantity</span>
                 }
@@ -77,6 +78,7 @@
                   <span class="badge bg-label-success">@stock.StockQuantity</span>
                 }
               </td>
+              <td>@stock.CriticalStockLevel</td>
               <td><partial name="_StatusBadge" model="stock.IsActive" /></td>
               <td>
                 <a asp-action="Details" asp-route-id="@stock.Id"
@@ -107,7 +109,7 @@
         element: '.js-data-table',
         popover: {
           title: 'Ürün Listesi',
-          description: 'Tüm stok kalemleri burada listelenir. Kırmızı miktar = kritik stok (≤5), sarı = az stok (≤20).',
+          description: 'Tüm stok kalemleri burada listelenir. Kırmızı miktar = kritik seviyenin altı, sarı = kritik seviyenin 2 katına kadar.',
           side: 'top'
         }
       },

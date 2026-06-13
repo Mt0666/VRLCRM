@@ -1,13 +1,18 @@
 @using Microsoft.AspNetCore.Identity
+@using VRLCRM.Domain.Constants
 @using VRLCRM.Domain.Entities
 @inject UserManager<ApplicationUser> UserManager
 @inject SignInManager<ApplicationUser> SignInManager
+@{
+  var isAdmin = User.IsInRole(AppRoles.Admin);
+  var homeController = isAdmin ? "Dashboards" : "Orders";
+}
 
 @* ! Brand demo (display only for navbar-full and hide on below xl) *@
 @if (ViewData["navbarFull"] != null)
 {
   <div class="navbar-brand app-brand demo d-none d-xl-flex py-0 me-6">
-    <a asp-controller="Dashboards" asp-action="Index" class="app-brand-link gap-2">
+    <a asp-controller="@homeController" asp-action="Index" class="app-brand-link gap-2">
       <span class="app-brand-logo demo">
         @await Html.PartialAsync("../_Partials/_Macros")
       </span>

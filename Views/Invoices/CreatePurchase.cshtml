@@ -147,7 +147,9 @@
   <partial name="_ValidationScriptsPartial" />
   <script src="/vendor/libs/html5-qrcode/html5-qrcode.min.js"></script>
   <script>
-    const stockOptions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StockOptions));
+    const stockOptions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+      Model.StockOptions,
+      new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
     const stockPrices  = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.price]; }));
     const stockNames   = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.name]; }));
     const stockVatRates = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.vatRate]; }));

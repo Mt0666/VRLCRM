@@ -64,6 +64,20 @@
     .mv-summary-body { background: #fff; padding: 1.25rem; }
     .mv-total-row { display: flex; justify-content: space-between; font-size: .88rem; color: #5d6279; margin-bottom: .5rem; }
     .mv-total-grand { display: flex; justify-content: space-between; font-weight: 700; font-size: 1.1rem; color: #696cff; padding-top: .75rem; border-top: 1.5px solid #eaecf5; }
+
+    /* Quantity inputs */
+    .mv-qty-input {
+      width: 5.5rem;
+      min-width: 5.5rem;
+      max-width: 6rem;
+      padding: .35rem .4rem;
+      font-size: .875rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Shop order cards */
+    .mv-order-card { background: #fff; border: 1px solid #e8eaef; border-radius: 12px; padding: 1rem 1.25rem; transition: box-shadow .15s; }
+    .mv-order-card:hover { box-shadow: 0 3px 14px rgba(0,0,0,.06); }
   </style>
 </head>
 <body>
@@ -91,6 +105,9 @@
         var cartCount = ViewBag.CartCount as int? ?? 0;
         var cartTotal = ViewBag.CartTotal as decimal? ?? 0m;
       }
+      <a asp-controller="Shop" asp-action="Orders" class="btn btn-outline-secondary btn-sm" title="Siparişlerim">
+        <i class="ri-file-list-3-line"></i><span class="d-none d-md-inline ms-1">Siparişlerim</span>
+      </a>
       <a asp-controller="Shop" asp-action="Cart" class="btn btn-outline-primary btn-sm mv-cart-btn" id="nav-cart-link">
         <i class="ri-shopping-cart-line"></i>
         <span id="nav-cart-count" class="mv-cart-count" style="@(cartCount == 0 ? "display:none;" : "")">@(cartCount > 9 ? "9+" : cartCount.ToString())</span>

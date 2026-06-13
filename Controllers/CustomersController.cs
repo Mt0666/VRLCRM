@@ -3,12 +3,13 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VRLCRM.Application.Customers;
+using VRLCRM.Domain.Constants;
 using VRLCRM.Domain.Entities;
 using VRLCRM.Models.Customers;
 
 namespace VRLCRM.Controllers;
 
-[Authorize]
+[Authorize(Roles = AppRoles.Admin)]
 public class CustomersController : Controller
 {
     private readonly ICustomerService _customerService;

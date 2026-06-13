@@ -32,6 +32,12 @@ public class StockItemConfiguration : IEntityTypeConfiguration<StockItem>
         builder.Property(s => s.Price)
             .HasPrecision(18, 2);
 
+        builder.Property(s => s.VatRate)
+            .HasPrecision(5, 2);
+
+        builder.Property(s => s.CriticalStockLevel)
+            .HasDefaultValue(5);
+
         builder.Property(s => s.Description)
             .HasMaxLength(2000);
 

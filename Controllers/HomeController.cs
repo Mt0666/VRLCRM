@@ -1,11 +1,12 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using VRLCRM.Domain.Constants;
 using VRLCRM.Models;
 
 namespace VRLCRM.Controllers;
 
-[Authorize]
+[Authorize(Roles = AppRoles.AdminAndPersonel)]
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;

@@ -154,6 +154,7 @@ public static class MockDataSeeder
                     Price = price,
                     VatRate = vat,
                     StockQuantity = 0,
+                    CriticalStockLevel = rng.Next(5, 21),
                     IsActive = true,
                     CreatedAt = now.AddDays(-rng.Next(100, 350)),
                     CreatedBy = "sistem"
@@ -173,6 +174,7 @@ public static class MockDataSeeder
                 Price = price,
                 VatRate = 20,
                 StockQuantity = 0,
+                CriticalStockLevel = rng.Next(5, 21),
                 IsActive = true,
                 CreatedAt = now.AddDays(-rng.Next(100, 350)),
                 CreatedBy = "sistem"

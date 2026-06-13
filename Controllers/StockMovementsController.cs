@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VRLCRM.Application.StockMovements;
+using VRLCRM.Domain.Constants;
 
 namespace VRLCRM.Controllers;
 
-[Authorize]
+[Authorize(Roles = AppRoles.AdminAndPersonel)]
 public class StockMovementsController : Controller
 {
     private readonly IStockMovementService _stockMovementService;

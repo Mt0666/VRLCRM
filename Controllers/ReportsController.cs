@@ -2,11 +2,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VRLCRM.Infrastructure.Data;
+using VRLCRM.Domain.Constants;
 using VRLCRM.Domain.Enums;
 
 namespace VRLCRM.Controllers;
 
-[Authorize]
+[Authorize(Roles = AppRoles.Admin)]
 public class ReportsController : Controller
 {
     private readonly ApplicationDbContext _context;

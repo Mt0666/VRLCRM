@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using VRLCRM.Domain.Constants;
 using VRLCRM.Domain.Entities;
 using VRLCRM.Models.Auth;
 
@@ -24,8 +25,10 @@ public class AuthController : Controller
     {
         if (_signInManager.IsSignedIn(User))
         {
-            if (User.IsInRole("Customer"))
+            if (User.IsInRole(AppRoles.Customer))
                 return RedirectToAction("Index", "Shop");
+            if (User.IsInRole(AppRoles.Personel))
+                return RedirectToAction("Index", "Orders");
             return RedirectToAction("Index", "Dashboards");
         }
 
@@ -56,6 +59,9 @@ public class AuthController : Controller
         {
             if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
                 return Redirect(model.ReturnUrl);
+
+            if (User.IsInRole(AppRoles.Personel))
+                return RedirectToAction("Index", "Orders");
 
             return RedirectToAction("Index", "Dashboards");
         }

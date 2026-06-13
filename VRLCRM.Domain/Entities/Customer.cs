@@ -17,7 +17,7 @@ public class Customer : BaseEntity
     /// <summary>Müşterinin güncel borç bakiyesi (TL).</summary>
     public decimal Balance { get; set; }
 
-    /// <summary>Null ise limit yok; aksi halde Balance + yeni sipariş bu limiti aşamaz.</summary>
+    /// <summary>Boş bırakılırsa 0 kabul edilir; Balance + yeni sipariş bu limiti aşamaz.</summary>
     public decimal? CreditLimit { get; set; }
 
     public Address? Address { get; set; }
@@ -30,15 +30,10 @@ public class Customer : BaseEntity
 
     public string FullName => $"{FirstName} {LastName}".Trim();
 
-    public decimal? AvailableCredit => CreditLimit.HasValue ? CreditLimit.Value - Balance : null;
+    public decimal EffectiveCreditLimit => CreditLimit ?? 0;
 
-    public bool HasSufficientCredit(decimal amountToAdd)
-    {
-        if (!CreditLimit.HasValue)
-        {
-            return true;
-        }
+    public decimal AvailableCredit => EffectiveCreditLimit - Balance;
 
-        return Balance + amountToAdd <= CreditLimit.Value;
-    }
+    public bool HasSufficientCredit(decimal amountToAdd) =>
+        Balance + amountToAdd <= EffectiveCreditLimit;
 }

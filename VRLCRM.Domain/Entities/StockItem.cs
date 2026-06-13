@@ -22,5 +22,10 @@ public class StockItem : BaseEntity
 
     public int StockQuantity { get; set; }
 
+    /// <summary>Stok bu seviyenin altına düştüğünde kritik kabul edilir.</summary>
+    public int CriticalStockLevel { get; set; } = 5;
+
     public string? Description { get; set; }
+
+    public bool IsCritical => StockQuantity <= CriticalStockLevel;
 }

@@ -16,6 +16,7 @@ public static class StockViewModelMapper
             Price = stockItem.Price,
             VatRate = stockItem.VatRate,
             StockQuantity = stockItem.StockQuantity,
+            CriticalStockLevel = stockItem.CriticalStockLevel,
             Barcode = stockItem.Barcode,
             Description = stockItem.Description
         };
@@ -33,6 +34,7 @@ public static class StockViewModelMapper
             Price = model.Price,
             VatRate = model.VatRate,
             StockQuantity = model.StockQuantity,
+            CriticalStockLevel = model.CriticalStockLevel,
             Barcode = model.Barcode?.Trim(),
             Description = model.Description?.Trim()
         };

@@ -4,12 +4,13 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using VRLCRM.Application.Customers;
 using VRLCRM.Application.Payments;
 using VRLCRM.Application.Suppliers;
+using VRLCRM.Domain.Constants;
 using VRLCRM.Domain.Enums;
 using VRLCRM.Models.Payments;
 
 namespace VRLCRM.Controllers;
 
-[Authorize]
+[Authorize(Roles = AppRoles.Admin)]
 public class PaymentsController : Controller
 {
     private readonly IPaymentService _paymentService;

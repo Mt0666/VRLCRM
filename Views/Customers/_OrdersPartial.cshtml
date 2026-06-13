@@ -41,18 +41,7 @@
             <td>@order.OrderNumber</td>
             <td>@order.OrderDate.ToLocalTime().ToString("dd.MM.yyyy")</td>
             <td>
-              @switch (order.Status)
-              {
-                case OrderStatus.Approved:
-                  <span class="badge bg-label-success">Onaylandı</span>
-                  break;
-                case OrderStatus.Cancelled:
-                  <span class="badge bg-label-danger">İptal</span>
-                  break;
-                default:
-                  <span class="badge bg-label-warning">Bekliyor</span>
-                  break;
-              }
+              <partial name="_OrderStatusBadge" model="order" />
             </td>
             <td class="fw-semibold">@order.TotalAmount.ToString("N2") ₺</td>
             <td>

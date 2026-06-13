@@ -44,6 +44,11 @@ public class StockFormViewModel
     [Range(0, int.MaxValue, ErrorMessage = "Stok adedi 0 veya daha büyük olmalıdır.")]
     public int StockQuantity { get; set; }
 
+    [Required(ErrorMessage = "Kritik stok seviyesi zorunludur.")]
+    [Display(Name = "Kritik Stok Seviyesi")]
+    [Range(0, int.MaxValue, ErrorMessage = "Kritik stok seviyesi 0 veya daha büyük olmalıdır.")]
+    public int CriticalStockLevel { get; set; } = 5;
+
     [Display(Name = "Barkod")]
     [StringLength(100)]
     public string? Barcode { get; set; }

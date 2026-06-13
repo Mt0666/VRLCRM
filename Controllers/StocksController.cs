@@ -3,12 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using VRLCRM.Application.Categories;
 using VRLCRM.Application.Stocks;
+using VRLCRM.Domain.Constants;
 using VRLCRM.Models.Stocks;
 using VRLCRM.Services;
 
 namespace VRLCRM.Controllers;
 
-[Authorize]
+[Authorize(Roles = AppRoles.AdminAndPersonel)]
 public class StocksController : Controller
 {
     private readonly IStockService _stockService;

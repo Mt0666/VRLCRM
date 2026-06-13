@@ -81,11 +81,11 @@
               <div class="detail-info-item">
                 <div class="detail-info-label">Stok Adedi</div>
                 <div class="detail-info-value">
-                  @if (Model.StockQuantity <= 5)
+                  @if (Model.IsCritical)
                   {
                     <span class="badge bg-label-danger">@Model.StockQuantity</span>
                   }
-                  else if (Model.StockQuantity <= 20)
+                  else if (Model.StockQuantity <= Model.CriticalStockLevel * 2)
                   {
                     <span class="badge bg-label-warning">@Model.StockQuantity</span>
                   }
@@ -94,6 +94,10 @@
                     <span class="badge bg-label-success">@Model.StockQuantity</span>
                   }
                 </div>
+              </div>
+              <div class="detail-info-item">
+                <div class="detail-info-label">Kritik Stok Seviyesi</div>
+                <div class="detail-info-value">@Model.CriticalStockLevel adet</div>
               </div>
               <div class="detail-info-item">
                 <div class="detail-info-label">Kayıt Tarihi</div>

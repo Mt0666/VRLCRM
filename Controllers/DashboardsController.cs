@@ -7,12 +7,13 @@ using VRLCRM.Application.Orders;
 using VRLCRM.Application.Payments;
 using VRLCRM.Application.Stocks;
 using VRLCRM.Application.Suppliers;
+using VRLCRM.Domain.Constants;
 using VRLCRM.Domain.Enums;
 using VRLCRM.Models.Dashboards;
 
 namespace VRLCRM.Controllers;
 
-[Authorize]
+[Authorize(Roles = AppRoles.AdminAndPersonel)]
 public class DashboardsController : Controller
 {
     private readonly ICustomerService _customerService;
@@ -115,7 +116,11 @@ public class DashboardsController : Controller
 
         // ── Liste: kritik stok & son siparişler ──────────────────────
         var activeStocks  = stocks.Where(s => s.IsActive).ToList();
-        var criticalItems = activeStocks.Where(s => s.StockQuantity < 10).OrderBy(s => s.StockQuantity).Take(6).ToList();
+        var criticalItems = activeStocks
+            .Where(s => s.StockQuantity <= s.CriticalStockLevel)
+            .OrderBy(s => s.StockQuantity)
+            .ThenBy(s => s.Name)
+            .ToList();
         var recentOrders  = activeOrders.OrderByDescending(o => o.OrderDate).Take(6).ToList();
 
         var model = new DashboardViewModel
@@ -136,7 +141,16 @@ public class DashboardsController : Controller
 
             TopDebtorCustomers = topDebtors,
             RecentOrders       = recentOrders,
-            CriticalStocks     = criticalItems
+            CriticalStocks     = criticalItems.Take(6).ToList(),
+            CriticalStockChart = criticalItems
+                .Take(8)
+                .Select(s => new CriticalStockChartItem
+                {
+                    Name = s.Name.Length > 22 ? s.Name[..22] + "…" : s.Name,
+                    Quantity = s.StockQuantity,
+                    CriticalLevel = s.CriticalStockLevel
+                })
+                .ToList()
         };
 
         return View(model);

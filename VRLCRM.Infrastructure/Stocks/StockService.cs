@@ -65,7 +65,9 @@ public class StockService : IStockService
         existing.ImageUrl = stockItem.ImageUrl;
         existing.Name = stockItem.Name;
         existing.Price = stockItem.Price;
+        existing.VatRate = stockItem.VatRate;
         existing.StockQuantity = stockItem.StockQuantity;
+        existing.CriticalStockLevel = stockItem.CriticalStockLevel;
         existing.Description = stockItem.Description;
 
         await _context.SaveChangesAsync(cancellationToken);

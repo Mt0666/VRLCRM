@@ -4,8 +4,8 @@
 
   var totalItems    = Model.Count();
   var totalValue    = Model.Sum(s => s.StockQuantity * s.Price);
-  var criticalCount = Model.Count(s => s.StockQuantity <= 5);
-  var lowCount      = Model.Count(s => s.StockQuantity > 5 && s.StockQuantity <= 20);
+  var criticalCount = Model.Count(s => s.StockQuantity <= s.CriticalStockLevel);
+  var lowCount      = Model.Count(s => s.StockQuantity > s.CriticalStockLevel && s.StockQuantity <= s.CriticalStockLevel * 2);
 
   var categoryValues = Model
     .GroupBy(s => s.Category?.Name ?? "Diğer")
@@ -14,10 +14,10 @@
     .ToList();
 
   var lowStockItems = Model
-    .Where(s => s.StockQuantity <= 20)
+    .Where(s => s.StockQuantity <= s.CriticalStockLevel * 2)
     .OrderBy(s => s.StockQuantity)
     .Take(12)
-    .Select(s => new { name = s.Name.Length > 22 ? s.Name[..22] + "…" : s.Name, qty = s.StockQuantity, critical = s.StockQuantity <= 5 })
+    .Select(s => new { name = s.Name.Length > 22 ? s.Name[..22] + "…" : s.Name, qty = s.StockQuantity, critical = s.StockQuantity <= s.CriticalStockLevel })
     .ToList();
 }
 
@@ -91,7 +91,7 @@
             <div class="card-header py-2">
               <h6 class="mb-0">
                 Kritik &amp; Az Stoklu Ürünler
-                <span class="badge bg-label-secondary ms-1" style="font-size:.7rem;">≤ 20 adet</span>
+                <span class="badge bg-label-secondary ms-1" style="font-size:.7rem;">ürün bazlı seviye</span>
               </h6>
             </div>
             <div class="card-body p-3" style="min-height:260px;">
@@ -140,7 +140,7 @@
           {
             @foreach (var item in Model)
             {
-              var rowClass = item.StockQuantity <= 5 ? "table-danger" : item.StockQuantity <= 20 ? "table-warning" : "";
+              var rowClass = item.IsCritical ? "table-danger" : item.StockQuantity <= item.CriticalStockLevel * 2 ? "table-warning" : "";
               <tr class="@rowClass">
                 <td data-label="Kategori">@(item.Category?.Name ?? "-")</td>
                 <td data-label="Stok Kodu">
@@ -151,11 +151,11 @@
                 <td data-label="Ürün Adı">@item.Name</td>
                 <td data-label="Birim Fiyat" class="text-end">@item.Price.ToString("N2") ₺</td>
                 <td data-label="Miktar" class="text-center">
-                  @if (item.StockQuantity <= 5)
+                  @if (item.IsCritical)
                   {
                     <span class="badge bg-danger">@item.StockQuantity</span>
                   }
-                  else if (item.StockQuantity <= 20)
+                  else if (item.StockQuantity <= item.CriticalStockLevel * 2)
                   {
                     <span class="badge bg-warning text-dark">@item.StockQuantity</span>
                   }
@@ -347,10 +347,10 @@
         nextBtnText: 'İleri →', prevBtnText: '← Geri', doneBtnText: 'Tamam',
         showProgress: true, progressText: '{{current}} / {{total}}',
         steps: [
-          { element: '.detail-info-strip', popover: { title: 'Stok Özeti', description: 'Toplam ürün sayısı, toplam stok değeri, kritik (≤5 adet) ve az stok (≤20 adet) ürün sayıları.', side: 'bottom' } },
+          { element: '.detail-info-strip', popover: { title: 'Stok Özeti', description: 'Toplam ürün sayısı, toplam stok değeri, ürün bazlı kritik seviyenin altındaki ve az stoklu ürün sayıları.', side: 'bottom' } },
           { element: '#categoryChart', popover: { title: 'Kategori Bazlı Değer', description: 'Her kategorinin toplam stok değerinin yüzdesel payı. Hangi grubun en değerli olduğunu gösterir.', side: 'top' } },
-          { element: '#lowStockChart', popover: { title: 'Kritik & Az Stoklu Ürünler', description: 'Kırmızı çubuk ≤5 adet (kritik), sarı ≤20 adet (az stok) demektir. Bu ürünleri en kısa sürede temin etmeniz gerekiyor.', side: 'top' } },
-          { element: '#stockTable', popover: { title: 'Ürün Tablosu', description: 'Tüm aktif ürünlerin anlık listesi. Kırmızı satır kritik stok, sarı satır az stok anlamına gelir. Stok koduna tıklayarak ürün detayına gidebilirsiniz.', side: 'top' } },
+          { element: '#lowStockChart', popover: { title: 'Kritik & Az Stoklu Ürünler', description: 'Kırmızı çubuk ürünün kritik seviyesinin altında, sarı çubuk az stok bölgesinde demektir.', side: 'top' } },
+          { element: '#stockTable', popover: { title: 'Ürün Tablosu', description: 'Tüm aktif ürünlerin anlık listesi. Kırmızı satır kritik seviyenin altı, sarı satır az stok anlamına gelir.', side: 'top' } },
           { element: '#stockPageSize', popover: { title: 'Sayfa Boyutu', description: 'Listede kaç ürün görüneceğini seçin. "Tümü" seçeneği tüm ürünleri gösterir.', side: 'top' } }
         ]
       });

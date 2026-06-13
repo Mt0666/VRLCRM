@@ -53,6 +53,15 @@
   </div>
 </div>
 
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <label asp-for="CriticalStockLevel" class="form-label"></label>
+    <input asp-for="CriticalStockLevel" class="form-control" placeholder="5" min="0" />
+    <div class="form-text">Stok bu adedin altına düşünce kritik uyarı verilir.</div>
+    <span asp-validation-for="CriticalStockLevel" class="text-danger small"></span>
+  </div>
+</div>
+
 <div class="mb-3">
   <label asp-for="ImageFile" class="form-label"></label>
   @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))

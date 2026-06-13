@@ -27,6 +27,16 @@ public class DashboardViewModel
     public IReadOnlyList<Customer> TopDebtorCustomers { get; set; } = new List<Customer>();
     public IReadOnlyList<Order> RecentOrders { get; set; } = new List<Order>();
     public IReadOnlyList<StockItem> CriticalStocks { get; set; } = new List<StockItem>();
+    public List<CriticalStockChartItem> CriticalStockChart { get; set; } = new();
+}
+
+public class CriticalStockChartItem
+{
+    public string Name { get; set; } = string.Empty;
+
+    public int Quantity { get; set; }
+
+    public int CriticalLevel { get; set; }
 }
 
 public class MonthlyTrendItem

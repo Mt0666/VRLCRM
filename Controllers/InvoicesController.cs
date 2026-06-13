@@ -6,13 +6,14 @@ using VRLCRM.Application.Customers;
 using VRLCRM.Application.Invoices;
 using VRLCRM.Application.Stocks;
 using VRLCRM.Application.Suppliers;
+using VRLCRM.Domain.Constants;
 using VRLCRM.Domain.Enums;
 using VRLCRM.Models.Invoices;
 using VRLCRM.Services;
 
 namespace VRLCRM.Controllers;
 
-[Authorize]
+[Authorize(Roles = AppRoles.Admin)]
 public class InvoicesController : Controller
 {
     private readonly IInvoiceService _invoiceService;

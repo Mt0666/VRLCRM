@@ -1,0 +1,22 @@
+@model Order
+@using VRLCRM.Domain.Enums
+@{
+  var extraClass = ViewData["BadgeClass"] as string ?? string.Empty;
+}
+
+@if (Model.Status == OrderStatus.Cancelled || !Model.IsActive)
+{
+  <span class="badge bg-label-danger @extraClass">İptal</span>
+}
+else if (Model.SalesInvoiceId.HasValue)
+{
+  <span class="badge bg-label-primary @extraClass">Faturalandırıldı</span>
+}
+else if (Model.Status == OrderStatus.Approved || Model.Status == OrderStatus.Pending)
+{
+  <span class="badge bg-label-warning @extraClass">Beklemede</span>
+}
+else
+{
+  <span class="badge bg-label-secondary @extraClass">@Model.Status</span>
+}
