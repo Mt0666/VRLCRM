@@ -1,159 +1,564 @@
 @using VRLCRM.Domain.Enums
 @model VRLCRM.Models.Dashboards.DashboardViewModel
 @{
-  ViewData["Title"] = "Dashboard - VRLCRM";
+  ViewData["Title"] = "Dashboard";
+  var now = DateTime.Now;
+  var monthLabel = now.ToString("MMMM yyyy", new System.Globalization.CultureInfo("tr-TR"));
 }
 
-<div class="row gy-6">
+<div class="row g-4">
 
-  <!-- İstatistik Kartları -->
-  <div class="col-lg-12">
-    <div class="card h-100">
-      <div class="card-header">
-        <div class="d-flex align-items-center justify-content-between">
-          <h5 class="card-title m-0 me-2">Genel Durum</h5>
+  @* ══════════════════════════════════════════════════════════════
+     SATIR 1 — 6 KPI kartı
+  ══════════════════════════════════════════════════════════════ *@
+
+  <div class="col-12" id="kpi-row">
+    <div class="row g-4">
+
+      @* Bu Ay Satış *@
+      <div class="col-xl-2 col-md-4 col-6" id="kpi-sales">
+        <div class="card h-100">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <div class="avatar avatar-sm">
+                <div class="avatar-initial bg-label-primary rounded">
+                  <i class="ri-line-chart-line"></i>
+                </div>
+              </div>
+              <small class="text-body-secondary">@monthLabel</small>
+            </div>
+            <div class="mb-1 fw-semibold text-body-secondary" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.05em;">Bu Ay Satış</div>
+            <h5 class="mb-0 fw-bold">@Model.ThisMonthSales.ToString("N0") ₺</h5>
+          </div>
         </div>
-        <p class="small mb-0">Sistemdeki genel özet veriler</p>
       </div>
-      <div class="card-body pt-lg-10">
-        <div class="row g-6">
-          <div class="col-md-3 col-6">
-            <div class="d-flex align-items-center">
-              <div class="avatar">
-                <div class="avatar-initial bg-primary rounded shadow-xs">
-                  <i class="icon-base ri ri-money-dollar-circle-line icon-24px"></i>
+
+      @* Bu Ay Alış *@
+      <div class="col-xl-2 col-md-4 col-6">
+        <div class="card h-100">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <div class="avatar avatar-sm">
+                <div class="avatar-initial bg-label-info rounded">
+                  <i class="ri-download-line"></i>
                 </div>
               </div>
-              <div class="ms-3">
-                <p class="mb-0">Toplam Satış (Fatura)</p>
-                <h5 class="mb-0">@Model.TotalSalesAmount.ToString("C2")</h5>
-              </div>
+              <small class="text-body-secondary">@monthLabel</small>
             </div>
-          </div>
-          <div class="col-md-3 col-6">
-            <div class="d-flex align-items-center">
-              <div class="avatar">
-                <div class="avatar-initial bg-success rounded shadow-xs">
-                  <i class="icon-base ri ri-group-line icon-24px"></i>
-                </div>
-              </div>
-              <div class="ms-3">
-                <p class="mb-0">Müşteriler</p>
-                <h5 class="mb-0">@Model.TotalCustomers</h5>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-3 col-6">
-            <div class="d-flex align-items-center">
-              <div class="avatar">
-                <div class="avatar-initial bg-warning rounded shadow-xs">
-                  <i class="icon-base ri ri-macbook-line icon-24px"></i>
-                </div>
-              </div>
-              <div class="ms-3">
-                <p class="mb-0">Stok Kalemleri</p>
-                <h5 class="mb-0">@Model.TotalStockItems</h5>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-3 col-6">
-            <div class="d-flex align-items-center">
-              <div class="avatar">
-                <div class="avatar-initial bg-info rounded shadow-xs">
-                  <i class="icon-base ri ri-shopping-cart-line icon-24px"></i>
-                </div>
-              </div>
-              <div class="ms-3">
-                <p class="mb-0">Toplam Sipariş Tutarı</p>
-                <h5 class="mb-0">@Model.TotalOrdersAmount.ToString("C2")</h5>
-              </div>
-            </div>
+            <div class="mb-1 fw-semibold text-body-secondary" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.05em;">Bu Ay Alış</div>
+            <h5 class="mb-0 fw-bold">@Model.ThisMonthPurchases.ToString("N0") ₺</h5>
           </div>
         </div>
+      </div>
+
+      @* Açık Alacak *@
+      <div class="col-xl-2 col-md-4 col-6">
+        <div class="card h-100">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <div class="avatar avatar-sm">
+                <div class="avatar-initial bg-label-success rounded">
+                  <i class="ri-arrow-down-circle-line"></i>
+                </div>
+              </div>
+              <small class="text-body-secondary">@Model.TotalCustomers müşteri</small>
+            </div>
+            <div class="mb-1 fw-semibold text-body-secondary" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.05em;">Açık Alacak</div>
+            <h5 class="mb-0 fw-bold @(Model.TotalReceivables > 0 ? "text-success" : "")">@Model.TotalReceivables.ToString("N0") ₺</h5>
+          </div>
+        </div>
+      </div>
+
+      @* Açık Borç *@
+      <div class="col-xl-2 col-md-4 col-6">
+        <div class="card h-100">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <div class="avatar avatar-sm">
+                <div class="avatar-initial bg-label-warning rounded">
+                  <i class="ri-arrow-up-circle-line"></i>
+                </div>
+              </div>
+              <small class="text-body-secondary">tedarikçi</small>
+            </div>
+            <div class="mb-1 fw-semibold text-body-secondary" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.05em;">Açık Borç</div>
+            <h5 class="mb-0 fw-bold @(Model.TotalPayables > 0 ? "text-warning" : "")">@Model.TotalPayables.ToString("N0") ₺</h5>
+          </div>
+        </div>
+      </div>
+
+      @* Bekleyen Siparişler *@
+      <div class="col-xl-2 col-md-4 col-6">
+        <div class="card h-100">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <div class="avatar avatar-sm">
+                <div class="avatar-initial bg-label-secondary rounded">
+                  <i class="ri-time-line"></i>
+                </div>
+              </div>
+              <a asp-controller="Orders" asp-action="Index" class="small text-body-secondary">Gör</a>
+            </div>
+            <div class="mb-1 fw-semibold text-body-secondary" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.05em;">Bekleyen Sipariş</div>
+            <h5 class="mb-0 fw-bold">@Model.PendingOrdersCount <small class="fs-6 text-body-secondary fw-normal">adet</small></h5>
+          </div>
+        </div>
+      </div>
+
+      @* Faturasız Onaylı Sipariş *@
+      <div class="col-xl-2 col-md-4 col-6" id="kpi-unbilled">
+        <div class="card h-100 @(Model.UnbilledApprovedOrdersCount > 0 ? "border-danger border-2" : "")">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <div class="avatar avatar-sm">
+                <div class="avatar-initial @(Model.UnbilledApprovedOrdersCount > 0 ? "bg-label-danger" : "bg-label-secondary") rounded">
+                  <i class="ri-file-warning-line"></i>
+                </div>
+              </div>
+              <a asp-controller="Orders" asp-action="Index" class="small text-body-secondary">Gör</a>
+            </div>
+            <div class="mb-1 fw-semibold text-body-secondary" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.05em;">Faturasız Onaylı</div>
+            <h5 class="mb-0 fw-bold @(Model.UnbilledApprovedOrdersCount > 0 ? "text-danger" : "")">
+              @Model.UnbilledApprovedOrdersCount <small class="fs-6 text-body-secondary fw-normal">sipariş</small>
+            </h5>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  @* ══════════════════════════════════════════════════════════════
+     SATIR 2 — Grafikler
+  ══════════════════════════════════════════════════════════════ *@
+
+  @* Son 6 Ay Trend *@
+  <div class="col-xl-8" id="trend-col">
+    <div class="card h-100" id="trend-card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="mb-0">Satış & Alış Trendi</h5>
+          <small class="text-body-secondary">Son 6 aylık karşılaştırma</small>
+        </div>
+        <div class="d-flex gap-3 align-items-center">
+          <span class="d-flex align-items-center gap-1 small"><span style="width:10px;height:10px;border-radius:2px;background:#696cff;display:inline-block;"></span>Satış</span>
+          <span class="d-flex align-items-center gap-1 small"><span style="width:10px;height:10px;border-radius:2px;background:#03c3ec;display:inline-block;"></span>Alış</span>
+        </div>
+      </div>
+      <div class="card-body p-3" style="min-height:280px;">
+        <canvas id="trendChart"></canvas>
       </div>
     </div>
   </div>
-  <!--/ İstatistik Kartları -->
 
-  <!-- Kritik Stoklar -->
-  <div class="col-xl-6">
+  @* Bu Ay Tahsilat Yöntemi *@
+  <div class="col-xl-4" id="payment-col">
     <div class="card h-100">
-      <div class="card-header d-flex align-items-center justify-content-between">
-        <h5 class="card-title m-0 me-2 text-danger">Kritik Stok Uyarısı (Son 8)</h5>
-        <a asp-controller="Stocks" asp-action="Index" class="fw-medium">Tümünü Gör</a>
+      <div class="card-header">
+        <h5 class="mb-0">Bu Ay Tahsilat</h5>
+        <small class="text-body-secondary">Ödeme yöntemi dağılımı</small>
       </div>
-      <div class="card-body">
-        @if (!Model.CriticalStocks.Any())
+      <div class="card-body p-3">
+        @if (!Model.ThisMonthPaymentMethods.Any())
         {
-            <div class="alert alert-success">Kritik seviyede stok bulunmuyor.</div>
+          <div class="d-flex align-items-center justify-content-center h-100 text-body-secondary" style="min-height:200px;">
+            <div class="text-center">
+              <i class="ri-inbox-line" style="font-size:2rem;"></i>
+              <p class="mt-2 mb-0 small">Bu ay tahsilat bulunmuyor</p>
+            </div>
+          </div>
         }
         else
         {
-            <ul class="p-0 m-0">
-              @foreach(var item in Model.CriticalStocks)
-              {
-                  <li class="d-flex mb-4 align-items-center pb-2">
-                    <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
-                      <div class="me-2">
-                        <h6 class="mb-0">@item.Name</h6>
-                        <p class="mb-0 small text-muted">@item.StockCode</p>
-                      </div>
-                      <h6 class="text-danger mb-0">@item.StockQuantity Adet Kaldı</h6>
-                    </div>
-                  </li>
-              }
-            </ul>
+          <canvas id="paymentMethodChart" style="max-height:200px;"></canvas>
+          <ul class="list-unstyled mt-3 mb-0">
+            @foreach (var item in Model.ThisMonthPaymentMethods)
+            {
+              <li class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                <span class="small text-body-secondary">@item.Method</span>
+                <span class="small fw-semibold">@item.Amount.ToString("N0") ₺</span>
+              </li>
+            }
+          </ul>
         }
       </div>
     </div>
   </div>
-  <!--/ Kritik Stoklar -->
 
-  <!-- Son Siparişler -->
-  <div class="col-xl-6">
-    <div class="card overflow-hidden h-100">
-      <div class="card-header d-flex align-items-center justify-content-between">
-        <h5 class="card-title m-0 me-2">Son Siparişler</h5>
-        <a asp-controller="Orders" asp-action="Index" class="fw-medium">Tümünü Gör</a>
+  @* ══════════════════════════════════════════════════════════════
+     SATIR 3 — Listeler
+  ══════════════════════════════════════════════════════════════ *@
+
+  @* En Yüksek Bakiyeli Müşteriler *@
+  <div class="col-xl-4" id="debtors-col">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="mb-0">Açık Alacaklar</h5>
+          <small class="text-body-secondary">En yüksek bakiyeli 5 müşteri</small>
+        </div>
+        <a asp-controller="Customers" asp-action="Index" class="small fw-medium">Tümü</a>
       </div>
-      <div class="table-responsive">
-        <table class="table table-sm">
-          <thead>
-            <tr>
-              <th class="text-truncate">Sipariş No</th>
-              <th class="text-truncate">Müşteri</th>
-              <th class="text-truncate">Tutar</th>
-              <th class="text-truncate">Durum</th>
-            </tr>
-          </thead>
-          <tbody>
-            @foreach(var order in Model.RecentOrders)
+      <div class="card-body p-0">
+        @if (!Model.TopDebtorCustomers.Any())
+        {
+          <div class="p-4 text-center text-body-secondary">
+            <i class="ri-checkbox-circle-line text-success" style="font-size:1.75rem;"></i>
+            <p class="mt-2 mb-0 small">Açık alacak bulunmuyor</p>
+          </div>
+        }
+        else
+        {
+          <ul class="list-unstyled mb-0">
+            @foreach (var customer in Model.TopDebtorCustomers)
             {
-                <tr>
-                  <td class="text-truncate"><a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">@order.OrderNumber</a></td>
-                  <td class="text-truncate">@order.Customer.FullName</td>
-                  <td class="text-truncate">@order.TotalAmount.ToString("C2")</td>
-                  <td>
-                    @if (order.Status == OrderStatus.Approved)
-                    {
-                        <span class="badge bg-label-success rounded-pill">Onaylandı</span>
-                    }
-                    else if (order.Status == OrderStatus.Cancelled)
-                    {
-                        <span class="badge bg-label-danger rounded-pill">İptal</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-label-warning rounded-pill">Bekliyor</span>
-                    }
-                  </td>
-                </tr>
+              var pct = Model.TotalReceivables > 0 ? (int)Math.Round(customer.Balance / Model.TotalReceivables * 100) : 0;
+              <li class="px-4 py-3 border-bottom">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <a asp-controller="Customers" asp-action="Details" asp-route-id="@customer.Id" class="fw-semibold text-body text-decoration-none">
+                    @customer.FullName
+                  </a>
+                  <span class="fw-bold text-danger small">@customer.Balance.ToString("N0") ₺</span>
+                </div>
+                @if (!string.IsNullOrEmpty(customer.CompanyName))
+                {
+                  <small class="text-body-secondary">@customer.CompanyName</small>
+                }
+                <div class="progress mt-2" style="height:4px;">
+                  <div class="progress-bar bg-danger" style="width:@pct%"></div>
+                </div>
+              </li>
             }
-          </tbody>
-        </table>
+          </ul>
+        }
       </div>
     </div>
   </div>
-  <!--/ Son Siparişler -->
+
+  @* Kritik Stok Uyarısı *@
+  <div class="col-xl-4" id="stock-col">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="mb-0 @(Model.CriticalStocks.Any() ? "text-danger" : "")">
+            @if (Model.CriticalStocks.Any())
+            {
+              <i class="ri-error-warning-line me-1"></i>
+            }
+            Kritik Stok
+          </h5>
+          <small class="text-body-secondary">10 adetten az kalan ürünler</small>
+        </div>
+        <a asp-controller="Stocks" asp-action="Index" class="small fw-medium">Tümü</a>
+      </div>
+      <div class="card-body p-0">
+        @if (!Model.CriticalStocks.Any())
+        {
+          <div class="p-4 text-center text-body-secondary">
+            <i class="ri-checkbox-circle-line text-success" style="font-size:1.75rem;"></i>
+            <p class="mt-2 mb-0 small">Kritik stok yok</p>
+          </div>
+        }
+        else
+        {
+          <ul class="list-unstyled mb-0">
+            @foreach (var item in Model.CriticalStocks)
+            {
+              var badgeClass = item.StockQuantity <= 3 ? "bg-danger" : "bg-warning text-dark";
+              <li class="d-flex justify-content-between align-items-center px-4 py-3 border-bottom">
+                <div>
+                  <a asp-controller="Stocks" asp-action="Details" asp-route-id="@item.Id" class="fw-semibold text-body text-decoration-none d-block">
+                    @item.Name
+                  </a>
+                  <small class="text-body-secondary">@item.StockCode</small>
+                </div>
+                <span class="badge @badgeClass">@item.StockQuantity adet</span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  </div>
+
+  @* Son Siparişler *@
+  <div class="col-xl-4" id="orders-col">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="mb-0">Son Siparişler</h5>
+          <small class="text-body-secondary">En son 6 sipariş</small>
+        </div>
+        <a asp-controller="Orders" asp-action="Index" class="small fw-medium">Tümü</a>
+      </div>
+      <div class="card-body p-0">
+        @if (!Model.RecentOrders.Any())
+        {
+          <div class="p-4 text-center text-body-secondary">
+            <i class="ri-shopping-cart-line" style="font-size:1.75rem;"></i>
+            <p class="mt-2 mb-0 small">Henüz sipariş yok</p>
+          </div>
+        }
+        else
+        {
+          <ul class="list-unstyled mb-0">
+            @foreach (var order in Model.RecentOrders)
+            {
+              var (badgeClass, statusLabel) = order.Status switch
+              {
+                OrderStatus.Approved  => ("bg-label-success", "Onaylı"),
+                OrderStatus.Cancelled => ("bg-label-danger",  "İptal"),
+                _                     => ("bg-label-warning", "Bekliyor")
+              };
+              <li class="d-flex justify-content-between align-items-center px-4 py-3 border-bottom">
+                <div>
+                  <a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id" class="fw-semibold text-body text-decoration-none d-block">
+                    @order.OrderNumber
+                  </a>
+                  <small class="text-body-secondary">@order.Customer.FullName</small>
+                </div>
+                <div class="text-end">
+                  <div class="fw-semibold small">@order.TotalAmount.ToString("N0") ₺</div>
+                  <span class="badge @badgeClass">@statusLabel</span>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  </div>
 
 </div>
+
+@* Floating tour button *@
+<button id="dashboard-tour-btn"
+        title="Rehberi Başlat"
+        style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:1040;width:44px;height:44px;border-radius:50%;border:none;background:#696cff;color:#fff;font-size:1.1rem;box-shadow:0 4px 14px rgba(105,108,255,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+  <i class="ri-question-line"></i>
+</button>
+
+@section PageScripts {
+  <script src="/vendor/libs/chart.js/chart.umd.min.js"></script>
+  <script>
+    const PALETTE = ['#696cff','#03c3ec','#71dd37','#ffab00','#ff3e1d','#8592a3','#26c6da','#a389d4'];
+
+    // ── Son 6 Ay Satış & Alış Trendi (Grouped Bar) ──────────────
+    const trendLabels    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Last6MonthsTrend.Select(t => t.Month)));
+    const trendSales     = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Last6MonthsTrend.Select(t => t.Sales)));
+    const trendPurchases = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Last6MonthsTrend.Select(t => t.Purchases)));
+
+    new Chart(document.getElementById('trendChart'), {
+      type: 'bar',
+      data: {
+        labels: trendLabels,
+        datasets: [
+          {
+            label: 'Satış',
+            data: trendSales,
+            backgroundColor: 'rgba(105,108,255,0.85)',
+            borderRadius: 5,
+            borderSkipped: false
+          },
+          {
+            label: 'Alış',
+            data: trendPurchases,
+            backgroundColor: 'rgba(3,195,236,0.75)',
+            borderRadius: 5,
+            borderSkipped: false
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ' ' + ctx.dataset.label + ': ' + Number(ctx.raw).toLocaleString('tr-TR', { minimumFractionDigits: 0 }) + ' ₺'
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 12 } } },
+          y: {
+            grid: { color: 'rgba(0,0,0,0.05)' },
+            ticks: {
+              font: { size: 11 },
+              callback: v => v >= 1000 ? (v / 1000).toLocaleString('tr-TR') + 'K ₺' : v + ' ₺'
+            }
+          }
+        }
+      }
+    });
+
+    @if (Model.ThisMonthPaymentMethods.Any())
+    {
+      <text>
+    // ── Tahsilat Yöntemi Dağılımı (Doughnut) ─────────────────
+    const methodLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ThisMonthPaymentMethods.Select(m => m.Method)));
+    const methodData   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ThisMonthPaymentMethods.Select(m => m.Amount)));
+
+    new Chart(document.getElementById('paymentMethodChart'), {
+      type: 'doughnut',
+      data: {
+        labels: methodLabels,
+        datasets: [{
+          data: methodData,
+          backgroundColor: PALETTE,
+          borderWidth: 2,
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ' ' + Number(ctx.raw).toLocaleString('tr-TR', { minimumFractionDigits: 0 }) + ' ₺'
+            }
+          }
+        },
+        cutout: '62%'
+      }
+    });
+      </text>
+    }
+  </script>
+
+  <script>
+  (function () {
+    const TOUR_KEY = 'mvcrm_tour_done';
+    const driverFn = window.driver && window.driver.js && window.driver.js.driver;
+    if (!driverFn) return;
+
+    const steps = [
+      {
+        element: '#kpi-row',
+        popover: {
+          title: 'Özet Göstergeler',
+          description: 'Bu 6 kart, işletmenin anlık durumunu özetler: cari aya ait satış ve alış toplamları, müşteri alacakları, tedarikçi borçları ve sipariş durumları tek bakışta buradan izlenir.',
+          side: 'bottom', align: 'start'
+        }
+      },
+      {
+        element: '#kpi-sales',
+        popover: {
+          title: 'Bu Ay Satış',
+          description: 'Cari aya ait onaylanmış satış fatura toplamını gösterir. Geçmiş aylara kıymak için alttaki trend grafiğini kullanabilirsiniz.',
+          side: 'bottom'
+        }
+      },
+      {
+        element: '#kpi-unbilled',
+        popover: {
+          title: 'Faturasız Onaylı Sipariş',
+          description: 'Onaylanmış ancak henüz faturalanmamış siparişleri gösterir. <strong>Kırmızı çerçeve</strong> görünüyorsa bu siparişleri faturalamanız gerekiyor.',
+          side: 'bottom'
+        }
+      },
+      {
+        element: '#trend-card',
+        popover: {
+          title: 'Satış & Alış Trendi',
+          description: 'Son 6 ayın satış (mor) ve alış (mavi) karşılaştırması. Bir ayın üzerine geldiğinizde tam tutarı tooltip olarak görebilirsiniz.',
+          side: 'top'
+        }
+      },
+      {
+        element: '#payment-col',
+        popover: {
+          title: 'Bu Ay Tahsilat',
+          description: 'Bu ay yapılan tahsilatların nakit, havale/EFT, çek gibi yöntemlere göre dağılımını gösterir.',
+          side: 'left'
+        }
+      },
+      {
+        element: '#debtors-col',
+        popover: {
+          title: 'Açık Alacaklar',
+          description: 'Bakiyesi en yüksek 5 müşteri listelenir. Çubuğun uzunluğu, o müşterinin toplam alacak içindeki payını gösterir. İsme tıklayarak müşteri detayına gidebilirsiniz.',
+          side: 'top'
+        }
+      },
+      {
+        element: '#stock-col',
+        popover: {
+          title: 'Kritik Stok',
+          description: '10 adetten az kalan ürünler burada listelenir. Kırmızı etiket 3 adetten az demektir; bunları acil temin etmeniz gerekiyor.',
+          side: 'top'
+        }
+      },
+      {
+        element: '#orders-col',
+        popover: {
+          title: 'Son Siparişler',
+          description: 'En son 6 siparişin durumu (Bekliyor / Onaylı / İptal) ve tutarı görünür. Sipariş numarasına tıklayarak detaya gidebilirsiniz.',
+          side: 'top'
+        }
+      },
+      {
+        element: '#layout-menu',
+        popover: {
+          title: 'Sol Menü',
+          description: 'Tüm modüllere sol menüden ulaşırsınız. Menü, iş akışınıza göre gruplandırılmıştır.',
+          side: 'right', align: 'start'
+        }
+      },
+      {
+        element: '#menu-section-crm',
+        popover: {
+          title: 'CRM Modülü',
+          description: '<b>Müşteriler</b> ve <b>Tedarikçiler</b> için cari hesap takibi; <b>Siparişler</b> için sipariş yönetimi; <b>Satış & Alış Faturaları</b> ile stok hareketini tetikleyen faturalama; <b>Kasa & Banka</b> ile tahsilat/ödeme kaydı.',
+          side: 'right'
+        }
+      },
+      {
+        element: '#menu-section-stok',
+        popover: {
+          title: 'Stok Modülü',
+          description: '<b>Ürünler</b>: stok kartları ve anlık miktar/fiyat bilgisi. <b>Kategoriler</b>: ürün grupları. <b>Stok Hareketleri</b>: fatura ve sipariş kaynaklı tüm giriş/çıkışların geçmişi.',
+          side: 'right'
+        }
+      },
+      {
+        element: '#menu-section-raporlar',
+        popover: {
+          title: 'Raporlar & Yönetim',
+          description: '<b>Satış Raporu</b>: tarih aralığına göre filtrelenebilir fatura özeti ve grafikler. <b>Stok Durum Raporu</b>: anlık stok değeri ve kritik ürün analizi.',
+          side: 'right'
+        }
+      }
+    ];
+
+    function startTour() {
+      const d = driverFn({
+        animate: true,
+        smoothScroll: true,
+        allowClose: true,
+        overlayOpacity: 0.4,
+        stagePadding: 6,
+        stageRadius: 8,
+        nextBtnText: 'İleri →',
+        prevBtnText: '← Geri',
+        doneBtnText: 'Tamam',
+        showProgress: true,
+        progressText: '{{current}} / {{total}}',
+        onDestroyed: () => localStorage.setItem(TOUR_KEY, '1'),
+        steps
+      });
+      d.drive();
+    }
+
+    document.getElementById('dashboard-tour-btn').addEventListener('click', startTour);
+
+    if (!localStorage.getItem(TOUR_KEY)) {
+      setTimeout(startTour, 900);
+    }
+  })();
+  </script>
+}

@@ -1,0 +1,69 @@
+@model IReadOnlyList<VRLCRM.Domain.Entities.Order>
+@using VRLCRM.Domain.Enums
+
+<div class="card-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3 px-4 pt-4 pb-2">
+  <div class="d-flex align-items-center gap-2">
+    <input type="text" class="form-control form-control-sm js-table-search" placeholder="Ara..." style="width:200px" />
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <label class="text-body-secondary small mb-0">Göster:</label>
+    <select class="form-select form-select-sm js-table-page-size" style="width:75px">
+      <option value="10">10</option>
+      <option value="25" selected>25</option>
+      <option value="50">50</option>
+    </select>
+  </div>
+</div>
+
+<div class="table-responsive text-nowrap">
+  <table class="table table-hover js-data-table mb-0">
+    <thead>
+      <tr>
+        <th>Sipariş No</th>
+        <th>Tarih</th>
+        <th>Durum</th>
+        <th>Tutar</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody class="table-border-bottom-0">
+      @if (!Model.Any())
+      {
+        <tr>
+          <td colspan="4" class="text-center py-5 text-body-secondary">Sipariş kaydı bulunamadı.</td>
+        </tr>
+      }
+      else
+      {
+        @foreach (var order in Model)
+        {
+          <tr>
+            <td>@order.OrderNumber</td>
+            <td>@order.OrderDate.ToLocalTime().ToString("dd.MM.yyyy")</td>
+            <td>
+              @switch (order.Status)
+              {
+                case OrderStatus.Approved:
+                  <span class="badge bg-label-success">Onaylandı</span>
+                  break;
+                case OrderStatus.Cancelled:
+                  <span class="badge bg-label-danger">İptal</span>
+                  break;
+                default:
+                  <span class="badge bg-label-warning">Bekliyor</span>
+                  break;
+              }
+            </td>
+            <td class="fw-semibold">@order.TotalAmount.ToString("N2") ₺</td>
+            <td>
+              <a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id"
+                 class="btn btn-sm btn-outline-primary">
+                <i class="ri-eye-line me-1"></i>Detay
+              </a>
+            </td>
+          </tr>
+        }
+      }
+    </tbody>
+  </table>
+</div>

@@ -94,6 +94,28 @@ public class InvoicesController : Controller
         return View(model);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> SearchProduct(string term, CancellationToken cancellationToken)
+    {
+        var stocks = await _stockService.GetAllAsync(cancellationToken);
+        var results = stocks
+            .Where(s => s.IsActive && (
+                s.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                s.StockCode.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                (s.Barcode != null && s.Barcode.Contains(term, StringComparison.OrdinalIgnoreCase))))
+            .Take(20)
+            .Select(s => new
+            {
+                id = s.Id,
+                name = s.Name,
+                stockCode = s.StockCode,
+                price = s.Price,
+                vatRate = s.VatRate,
+                stockQuantity = s.StockQuantity
+            });
+        return Json(results);
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateSales(InvoiceFormViewModel model, CancellationToken cancellationToken)

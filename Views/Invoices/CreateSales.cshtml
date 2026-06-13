@@ -4,104 +4,135 @@
 }
 
 <div class="row">
-  <div class="col-xl-10">
+  <div class="col-12">
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Yeni Satış Faturası</h5>
-        <a asp-action="Sales" class="btn btn-sm btn-outline-secondary">Listeye Dön</a>
+        <div class="d-flex gap-2 align-items-center">
+          <button type="button" id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
+            <i class="ri-question-line"></i>
+          </button>
+          <a asp-action="Sales" class="btn btn-sm btn-outline-secondary">Listeye Dön</a>
+        </div>
       </div>
       <div class="card-body">
         <form asp-action="CreateSales" method="post" id="invoiceForm">
           <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-          <div class="row g-4 mb-4">
+          @* Müşteri + Tarih *@
+          <div class="row g-3 mb-3">
             <div class="col-md-6">
-              <div class="form-floating form-floating-outline">
-                <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select">
-                  <option value="">Müşteri seçin</option>
-                </select>
-                <label asp-for="CustomerId"></label>
-                <span asp-validation-for="CustomerId" class="text-danger"></span>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="form-floating form-floating-outline">
-                <input asp-for="InvoiceDate" class="form-control" type="date" />
-                <label asp-for="InvoiceDate"></label>
-                <span asp-validation-for="InvoiceDate" class="text-danger"></span>
-              </div>
-            </div>
-          </div>
-
-          <div class="form-floating form-floating-outline mb-6">
-            <textarea asp-for="Notes" class="form-control h-px-100"></textarea>
-            <label asp-for="Notes"></label>
-          </div>
-
-          <h6 class="mb-3">Fatura Kalemleri</h6>
-          <div class="row g-3 align-items-end mb-4">
-            <div class="col-md-5">
-              <label class="form-label">Ürün</label>
-              <select id="stockSelect" class="form-select select2">
-                <option value="">Ürün seçin</option>
-                @foreach (var stock in Model.Stocks)
-                {
-                  <option value="@stock.Value">@stock.Text</option>
-                }
+              <label asp-for="CustomerId" class="form-label"></label>
+              <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select select2">
+                <option value="">Müşteri seçin</option>
               </select>
+              <span asp-validation-for="CustomerId" class="text-danger small"></span>
             </div>
-            <div class="col-md-2">
-              <label class="form-label">Adet</label>
-              <input type="number" id="lineQty" class="form-control" value="1" min="1" />
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Birim Fiyat</label>
-              <input type="number" id="linePrice" class="form-control" step="0.01" min="0" />
-            </div>
-            <div class="col-md-2">
-              <button type="button" id="addLineBtn" class="btn btn-outline-primary w-100">Ekle</button>
+            <div class="col-md-6">
+              <label asp-for="InvoiceDate" class="form-label"></label>
+              <input asp-for="InvoiceDate" class="form-control" type="date" />
+              <span asp-validation-for="InvoiceDate" class="text-danger small"></span>
             </div>
           </div>
 
-          <div class="table-responsive mb-4">
-            <table class="table" id="linesTable">
-              <thead>
+          @* Notlar *@
+          <div class="mb-4">
+            <label asp-for="Notes" class="form-label"></label>
+            <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+          </div>
+
+          @* Ürün Ekleme Paneli *@
+          <div class="card border mb-4">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+              <span class="fw-semibold small text-body"><i class="ri-add-circle-line me-1"></i>Ürün Ekle</span>
+              <button type="button" id="scannerBtn" class="btn btn-sm btn-outline-info">
+                <i class="ri-camera-line me-1"></i>Barkod Tara
+              </button>
+            </div>
+            <div class="card-body">
+              @* Kamera okuyucu alanı *@
+              <div id="scannerWrapper" class="mb-3" style="display:none;">
+                <div id="qr-reader" style="width:100%; max-width:500px; margin:0 auto; border-radius:0.375rem; overflow:hidden;"></div>
+                <div class="d-flex justify-content-center mt-2">
+                  <button type="button" id="stopScannerBtn" class="btn btn-sm btn-outline-secondary">
+                    <i class="ri-camera-off-line me-1"></i>Kamerayı Kapat
+                  </button>
+                </div>
+              </div>
+              @* Ekleme satırı *@
+              <div class="row g-3 align-items-center">
+                <div class="col-md-5">
+                  <select id="stockSelect" style="width:100%">
+                    <option value=""></option>
+                  </select>
+                  <div id="productMessage" class="form-text text-danger mt-1"></div>
+                </div>
+                <div class="col-md-2">
+                  <input type="number" id="lineQty" class="form-control" value="1" min="1" placeholder="Adet" />
+                </div>
+                <div class="col-md-3">
+                  <input type="number" id="linePrice" class="form-control" step="0.01" min="0" placeholder="Birim Fiyat" />
+                </div>
+                <div class="col-md-2">
+                  <button type="button" id="addLineBtn" class="btn btn-primary w-100">
+                    <i class="ri-add-line me-1"></i>Ekle
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          @* Satır Tablosu *@
+          <div class="table-responsive mb-0">
+            <table class="table table-bordered table-sm align-middle js-lines-table" id="linesTable">
+              <thead class="table-light">
                 <tr>
                   <th>Ürün</th>
-                  <th>Adet</th>
-                  <th>Birim Fiyat</th>
-                  <th>KDV (%)</th>
-                  <th>Ara Toplam</th>
-                  <th>KDV Tutarı</th>
-                  <th>Toplam</th>
-                  <th></th>
+                  <th class="text-center" style="width:80px">Adet</th>
+                  <th class="text-end" style="width:130px">Birim Fiyat</th>
+                  <th class="text-center" style="width:80px">KDV %</th>
+                  <th class="text-end" style="width:130px">Ara Toplam</th>
+                  <th class="text-end" style="width:120px">KDV</th>
+                  <th class="text-end" style="width:130px">Toplam</th>
+                  <th style="width:50px"></th>
                 </tr>
               </thead>
-              <tbody></tbody>
-              <tfoot>
-                <tr>
-                  <th colspan="4" class="text-end">Ara Toplam:</th>
-                  <th id="subTotal">0,00 ₺</th>
-                  <th colspan="3"></th>
+              <tbody id="linesBody">
+                <tr id="emptyRow">
+                  <td colspan="8" class="text-center text-body-secondary py-4">
+                    <i class="ri-inbox-line me-1"></i>Henüz ürün eklenmedi.
+                  </td>
                 </tr>
-                <tr>
-                  <th colspan="5" class="text-end">Toplam KDV:</th>
-                  <th id="vatTotal">0,00 ₺</th>
-                  <th colspan="2"></th>
-                </tr>
-                <tr>
-                  <th colspan="6" class="text-end">Genel Toplam:</th>
-                  <th id="grandTotal">0,00 ₺</th>
-                  <th></th>
-                </tr>
-              </tfoot>
+              </tbody>
             </table>
+          </div>
+
+          @* Tutar Özeti *@
+          <div class="d-flex justify-content-end mt-2 mb-4">
+            <div class="order-totals-card">
+              <div class="order-totals-row">
+                <span>Ara Toplam</span>
+                <span id="subTotal">0,00 ₺</span>
+              </div>
+              <div class="order-totals-row">
+                <span>Toplam KDV</span>
+                <span id="vatTotal">0,00 ₺</span>
+              </div>
+              <div class="order-totals-grand">
+                <span>Genel Toplam</span>
+                <span id="grandTotal">0,00 ₺</span>
+              </div>
+            </div>
           </div>
 
           <div id="lineInputs"></div>
 
-          <button type="submit" class="btn btn-primary me-2">Kaydet</button>
-          <a asp-action="Sales" class="btn btn-outline-secondary">İptal</a>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="ri-save-line me-1"></i>Kaydet
+            </button>
+            <a asp-action="Sales" class="btn btn-outline-secondary">İptal</a>
+          </div>
         </form>
       </div>
     </div>
@@ -110,57 +141,69 @@
 
 @section PageScripts {
   <partial name="_ValidationScriptsPartial" />
+  <script src="/vendor/libs/html5-qrcode/html5-qrcode.min.js"></script>
   <script>
     const stockOptions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StockOptions));
-    const stockPrices = Object.fromEntries(stockOptions.map(s => [String(s.id), s.price]));
-    const stockNames = Object.fromEntries(stockOptions.map(s => [String(s.id), s.name]));
-    const stockVatRates = Object.fromEntries(stockOptions.map(s => [String(s.id), s.vatRate]));
+    const stockPrices  = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.price]; }));
+    const stockNames   = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.name]; }));
+    const stockVatRates = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.vatRate]; }));
+    const productCache = new Map();
+    stockOptions.forEach(function(s) { productCache.set(String(s.id), s); });
+
     let lineIndex = 0;
     const lines = new Map();
+    let html5QrCode = null;
+    let scannerRunning = false;
+    let scannedProduct = false;
 
+    // ── Toplamlar ───────────────────────────────────────────────────────
     function updateTotals() {
-      let sub = 0;
-      let vat = 0;
-      
-      lines.forEach(item => {
+      let sub = 0, vat = 0;
+      lines.forEach(function(item) {
         const lineSub = item.qty * item.price;
-        const lineVat = lineSub * (item.vatRate / 100);
+        vat += lineSub * (item.vatRate / 100);
         sub += lineSub;
-        vat += lineVat;
       });
-      
       const grand = sub + vat;
-      
-      document.getElementById('subTotal').textContent = sub.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
-      document.getElementById('vatTotal').textContent = vat.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
-      document.getElementById('grandTotal').textContent = grand.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+      const fmt = function(v) { return v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'; };
+      document.getElementById('subTotal').textContent = fmt(sub);
+      document.getElementById('vatTotal').textContent = fmt(vat);
+      document.getElementById('grandTotal').textContent = fmt(grand);
     }
 
+    // ── Satır render ────────────────────────────────────────────────────
     function renderLines() {
-      const tbody = document.querySelector('#linesTable tbody');
-      tbody.innerHTML = '';
-      
-      lines.forEach((item, stockId) => {
+      const tbody = document.getElementById('linesBody');
+      const emptyRow = document.getElementById('emptyRow');
+      Array.from(tbody.querySelectorAll('tr:not(#emptyRow)')).forEach(function(r) { r.remove(); });
+
+      if (lines.size === 0) {
+        emptyRow.style.display = '';
+        return;
+      }
+      emptyRow.style.display = 'none';
+
+      const fmt = function(v) { return v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'; };
+
+      lines.forEach(function(item, stockId) {
         const lineSub = item.qty * item.price;
         const lineVat = lineSub * (item.vatRate / 100);
         const lineTotal = lineSub + lineVat;
-        
         const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${item.name}</td>
-          <td>${item.qty}</td>
-          <td>${item.price.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-          <td>%${item.vatRate}</td>
-          <td>${lineSub.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-          <td>${lineVat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-          <td>${lineTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-          <td><button type="button" class="btn btn-sm btn-outline-danger remove-line" data-id="${stockId}">Sil</button></td>`;
+        row.dataset.stockId = stockId;
+        row.innerHTML =
+          '<td data-label="Ürün">' + item.name + '</td>' +
+          '<td data-label="Adet" class="text-center">' + item.qty + '</td>' +
+          '<td data-label="Birim Fiyat" class="text-end">' + fmt(item.price) + '</td>' +
+          '<td data-label="KDV %" class="text-center">%' + item.vatRate + '</td>' +
+          '<td data-label="Ara Toplam" class="text-end">' + fmt(lineSub) + '</td>' +
+          '<td data-label="KDV" class="text-end">' + fmt(lineVat) + '</td>' +
+          '<td data-label="Toplam" class="text-end fw-semibold">' + fmt(lineTotal) + '</td>' +
+          '<td data-label="" class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-line py-0 px-1"><i class="ri-delete-bin-6-line"></i></button></td>';
         tbody.appendChild(row);
-      });
 
-      document.querySelectorAll('.remove-line').forEach(btn => {
-        btn.addEventListener('click', function() {
-          lines.delete(this.dataset.id);
+        row.querySelector('.remove-line').addEventListener('click', function() {
+          lines.delete(stockId);
           renderLines();
           rebuildHiddenInputs();
           updateTotals();
@@ -168,43 +211,176 @@
       });
     }
 
+    // ── Gizli inputlar ──────────────────────────────────────────────────
     function rebuildHiddenInputs() {
       const container = document.getElementById('lineInputs');
       container.innerHTML = '';
       lineIndex = 0;
-      lines.forEach((item, stockId) => {
-        container.insertAdjacentHTML('beforeend', `
-          <input type="hidden" name="Lines[${lineIndex}].IsNewProduct" value="false" />
-          <input type="hidden" name="Lines[${lineIndex}].StockItemId" value="${stockId}" />
-          <input type="hidden" name="Lines[${lineIndex}].StockName" value="${item.name}" />
-          <input type="hidden" name="Lines[${lineIndex}].Quantity" value="${item.qty}" />
-          <input type="hidden" name="Lines[${lineIndex}].UnitPrice" value="${item.price}" />
-          <input type="hidden" name="Lines[${lineIndex}].VatRate" value="${item.vatRate}" />`);
+      lines.forEach(function(item, stockId) {
+        container.insertAdjacentHTML('beforeend',
+          '<input type="hidden" name="Lines[' + lineIndex + '].IsNewProduct" value="false" />' +
+          '<input type="hidden" name="Lines[' + lineIndex + '].StockItemId" value="' + stockId + '" />' +
+          '<input type="hidden" name="Lines[' + lineIndex + '].StockName" value="' + item.name + '" />' +
+          '<input type="hidden" name="Lines[' + lineIndex + '].Quantity" value="' + item.qty + '" />' +
+          '<input type="hidden" name="Lines[' + lineIndex + '].UnitPrice" value="' + item.price + '" />' +
+          '<input type="hidden" name="Lines[' + lineIndex + '].VatRate" value="' + item.vatRate + '" />');
         lineIndex++;
       });
     }
 
-    document.getElementById('stockSelect').addEventListener('change', function () {
-      const price = stockPrices[this.value];
-      if (price !== undefined) document.getElementById('linePrice').value = price;
-    });
+    // ── Ürün ekle ───────────────────────────────────────────────────────
+    function addLine() {
+      var stockId = tsStock.getValue();
+      var qty = parseInt(document.getElementById('lineQty').value, 10);
+      var price = parseFloat(document.getElementById('linePrice').value);
+      var msg = document.getElementById('productMessage');
+      msg.textContent = '';
 
-    document.getElementById('addLineBtn').addEventListener('click', function () {
-      const stockId = document.getElementById('stockSelect').value;
-      const qty = parseInt(document.getElementById('lineQty').value, 10);
-      const price = parseFloat(document.getElementById('linePrice').value);
-      if (!stockId || !qty || qty <= 0 || isNaN(price)) return;
+      if (!stockId || !qty || qty <= 0 || isNaN(price)) {
+        msg.textContent = 'Ürün seçin ve geçerli adet/fiyat girin.';
+        return;
+      }
 
-      const name = stockNames[stockId] || stockId;
-      const vatRate = stockVatRates[stockId] || 0;
-      
-      const existing = lines.get(stockId);
-      const newQty = (existing?.qty || 0) + qty;
-      lines.set(stockId, { name: name, qty: newQty, price: price, vatRate: vatRate });
+      var product = productCache.get(stockId);
+      var name = product ? product.name : (stockNames[stockId] || stockId);
+      var vatRate = product ? product.vatRate : (stockVatRates[stockId] || 0);
+
+      var existing = lines.get(stockId);
+      lines.set(stockId, { name: name, qty: (existing ? existing.qty : 0) + qty, price: price, vatRate: vatRate });
 
       renderLines();
       rebuildHiddenInputs();
       updateTotals();
+
+      tsStock.clear();
+      document.getElementById('lineQty').value = 1;
+      document.getElementById('linePrice').value = '';
+
+      if (scannedProduct) {
+        scannedProduct = false;
+        setTimeout(startScanner, 400);
+      }
+    }
+
+    document.getElementById('addLineBtn').addEventListener('click', addLine);
+    document.getElementById('lineQty').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); addLine(); }
     });
+
+    // ── TomSelect ürün seçimi ───────────────────────────────────────────
+    var tsStock = new TomSelect('#stockSelect', {
+      valueField: 'id',
+      labelField: 'text',
+      searchField: 'text',
+      create: false,
+      placeholder: 'Ürün adı veya kodu ile arayın…',
+      options: stockOptions.map(function(s) {
+        return { id: String(s.id), text: s.name + (s.stockCode ? ' (' + s.stockCode + ')' : '') };
+      }),
+      render: {
+        no_results: function() { return '<div class="no-results">Ürün bulunamadı.</div>'; }
+      },
+      onChange: function(value) {
+        if (value && stockPrices[value] !== undefined) {
+          document.getElementById('linePrice').value = stockPrices[value];
+        }
+      }
+    });
+
+    // ── Barkod tarayıcı ─────────────────────────────────────────────────
+    function startScanner() {
+      document.getElementById('scannerWrapper').style.display = 'block';
+      scannerRunning = true;
+      document.getElementById('scannerBtn').innerHTML = '<i class="ri-camera-off-line me-1"></i>Kamerayı Kapat';
+
+      if (!html5QrCode) html5QrCode = new Html5Qrcode('qr-reader');
+
+      html5QrCode.start(
+        { facingMode: 'environment' },
+        {
+          fps: 10,
+          qrbox: function(w, h) {
+            const side = Math.round(Math.min(w, h) * 0.72);
+            return { width: side, height: Math.round(side * 0.48) };
+          }
+        },
+        async function(decodedText) {
+          await stopScanner();
+          const msg = document.getElementById('productMessage');
+          msg.textContent = '';
+
+          const r = await fetch('@Url.Action("SearchProduct", "Invoices")' + '?term=' + encodeURIComponent(decodedText));
+          if (!r.ok) {
+            msg.textContent = 'Barkod bulunamadı: ' + decodedText;
+            setTimeout(startScanner, 2500);
+            return;
+          }
+          const results = await r.json();
+          if (!results || results.length === 0) {
+            msg.textContent = 'Barkod bulunamadı: ' + decodedText;
+            setTimeout(startScanner, 2500);
+            return;
+          }
+
+          var product = results[0];
+          var key = String(product.id);
+          productCache.set(key, product);
+
+          tsStock.setValue(key, true);
+          document.getElementById('linePrice').value = product.price;
+
+          scannedProduct = true;
+
+          var qtyInput = document.getElementById('lineQty');
+          qtyInput.value = 1;
+          qtyInput.select();
+          qtyInput.focus();
+        },
+        function() {}
+      ).catch(function() {
+        document.getElementById('productMessage').textContent = 'Kamera başlatılamadı.';
+        document.getElementById('scannerWrapper').style.display = 'none';
+        scannerRunning = false;
+        document.getElementById('scannerBtn').innerHTML = '<i class="ri-camera-line me-1"></i>Barkod Tara';
+      });
+    }
+
+    async function stopScanner() {
+      if (html5QrCode && scannerRunning) {
+        try { await html5QrCode.stop(); } catch(e) {}
+        scannerRunning = false;
+      }
+      document.getElementById('scannerWrapper').style.display = 'none';
+      document.getElementById('scannerBtn').innerHTML = '<i class="ri-camera-line me-1"></i>Barkod Tara';
+    }
+
+    document.getElementById('scannerBtn').addEventListener('click', function() {
+      if (scannerRunning) { stopScanner(); } else { startScanner(); }
+    });
+    document.getElementById('stopScannerBtn').addEventListener('click', stopScanner);
+  </script>
+  <script>
+  (function () {
+    const d = window.driver && window.driver.js && window.driver.js.driver;
+    if (!d) return;
+    const tour = d({
+      animate: true, smoothScroll: true, allowClose: true,
+      overlayOpacity: 0.4, stagePadding: 6, stageRadius: 8,
+      nextBtnText: 'İleri →', prevBtnText: '← Geri', doneBtnText: 'Tamam',
+      showProgress: true, progressText: '{{current}} / {{total}}',
+      steps: [
+        { element: '#invoiceForm select[name="CustomerId"]', popover: { title: 'Müşteri Seçimi', description: 'Faturanın hangi müşteriye kesileceğini seçin. Fatura kaydedilince müşterinin cari borcu bu tutar kadar artar.', side: 'bottom' } },
+        { element: '#invoiceForm select[name="PaymentMethod"]', popover: { title: 'Ödeme Yöntemi', description: 'Nakit, havale/EFT, kredi kartı veya çek seçebilirsiniz. Bu seçim ödeme raporlarında ve dashboard\'da görünür.', side: 'bottom' } },
+        { element: '#scannerBtn', popover: { title: 'Barkod Tara', description: 'Bu butona basınca kamera açılır. Ürünün barkodunu gösterin — ürün otomatik seçilir ve stok fiyatı otomatik dolar.', side: 'bottom' } },
+        { element: '#stockSelect', popover: { title: 'Manuel Ürün Seçimi', description: 'Barkod yerine ürün adıyla da arama yapabilirsiniz. Seçince birim fiyat otomatik gelir, isterseniz değiştirebilirsiniz.', side: 'bottom' } },
+        { element: '#lineQty', popover: { title: 'Miktar', description: 'Kaç adet satacağınızı girin.', side: 'bottom' } },
+        { element: '#linePrice', popover: { title: 'Birim Fiyat', description: 'Ürünün satış fiyatı otomatik gelir. Farklı fiyatla satmak istiyorsanız burayı değiştirin.', side: 'bottom' } },
+        { element: '#addLineBtn', popover: { title: 'Kaleme Ekle', description: 'Ürünü faturaya ekler. Stok yeterli yoksa uyarı alırsınız.', side: 'bottom' } },
+        { element: '#linesTable', popover: { title: 'Fatura Kalemleri', description: 'Eklenen ürünler listelenir. Çöp kutusuyla satır silinir. KDV dahil genel toplam otomatik hesaplanır.', side: 'top' } },
+        { element: 'button[type="submit"]', popover: { title: 'Faturayı Kaydet', description: 'Kaydedince stok düşer, müşteri cari hesabı artar. Bu işlem geri alınabilir — fatura detayından "Pasife Al" kullanın.', side: 'top' } }
+      ]
+    });
+    document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());
+  })();
   </script>
 }

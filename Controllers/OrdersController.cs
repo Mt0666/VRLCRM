@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using VRLCRM.Application.Customers;
 using VRLCRM.Application.Invoices;
 using VRLCRM.Application.Orders;
+using VRLCRM.Application.Stocks;
 using VRLCRM.Models.Orders;
 using VRLCRM.Services;
 
@@ -15,17 +16,20 @@ public class OrdersController : Controller
     private readonly IOrderService _orderService;
     private readonly ICustomerService _customerService;
     private readonly IInvoiceService _invoiceService;
+    private readonly IStockService _stockService;
     private readonly OrderDocumentService _documentService;
 
     public OrdersController(
         IOrderService orderService,
         ICustomerService customerService,
         IInvoiceService invoiceService,
+        IStockService stockService,
         OrderDocumentService documentService)
     {
         _orderService = orderService;
         _customerService = customerService;
         _invoiceService = invoiceService;
+        _stockService = stockService;
         _documentService = documentService;
     }
 
@@ -95,6 +99,28 @@ public class OrdersController : Controller
     }
 
     [HttpGet]
+    public async Task<IActionResult> SearchProduct(string term, CancellationToken cancellationToken)
+    {
+        var stocks = await _stockService.GetAllAsync(cancellationToken);
+        var results = stocks
+            .Where(s => s.IsActive && (
+                s.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                s.StockCode.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                (s.Barcode != null && s.Barcode.Contains(term, StringComparison.OrdinalIgnoreCase))))
+            .Take(20)
+            .Select(s => new
+            {
+                id = s.Id,
+                name = s.Name,
+                stockCode = s.StockCode,
+                price = s.Price,
+                vatRate = s.VatRate,
+                stockQuantity = s.StockQuantity
+            });
+        return Json(results);
+    }
+
+    [HttpGet]
     public async Task<IActionResult> LookupBarcode(string barcode, CancellationToken cancellationToken)
     {
         var item = await _orderService.FindByBarcodeAsync(barcode, cancellationToken);
@@ -150,7 +176,7 @@ public class OrdersController : Controller
                 return NotFound();
             }
 
-            TempData["SuccessMessage"] = "Sipariş iptal edildi. Stok ve cari hesap güncellendi.";
+            TempData["SuccessMessage"] = "Sipariş başarıyla iptal edildi.";
             return RedirectToAction(nameof(Index));
         }
         catch (InvalidOperationException ex)

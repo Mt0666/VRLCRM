@@ -6,7 +6,12 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Personel Listesi</h5>
-        <a asp-action="Create" class="btn btn-primary">Yeni Personel Ekle</a>
+        <div class="d-flex gap-2 align-items-center">
+          <button id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
+            <i class="ri-question-line"></i>
+          </button>
+          <a asp-action="Create" class="btn btn-primary">Yeni Personel Ekle</a>
+        </div>
     </div>
     <div class="card-body pb-0">
         <partial name="_TableToolbar" />
@@ -38,18 +43,12 @@
                             }
                         </td>
                         <td>
-                            <div class="dropdown">
-                                <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
-                                    <i class="icon-base ri ri-more-2-line"></i>
+                            <form asp-action="Delete" asp-route-id="@user.Id" method="post"
+                                  onsubmit="return confirm('Bu personeli silmek istediğinize emin misiniz?');">
+                                <button type="submit" class="btn btn-sm btn-icon btn-outline-danger" title="Sil">
+                                    <i class="ri ri-delete-bin-6-line"></i>
                                 </button>
-                                <div class="dropdown-menu">
-                                    <form asp-action="Delete" asp-route-id="@user.Id" method="post" onsubmit="return confirm('Bu personeli silmek istediğinize emin misiniz?');">
-                                        <button type="submit" class="dropdown-item text-danger">
-                                            <i class="icon-base ri ri-delete-bin-6-line me-1"></i> Sil
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
+                            </form>
                         </td>
                     </tr>
                 }
@@ -57,3 +56,24 @@
         </table>
     </div>
 </div>
+
+@section PageScripts {
+<script>
+(function () {
+  const d = window.driver && window.driver.js && window.driver.js.driver;
+  if (!d) return;
+  const tour = d({
+    animate: true, smoothScroll: true, allowClose: true,
+    overlayOpacity: 0.4, stagePadding: 6, stageRadius: 8,
+    nextBtnText: 'İleri →', prevBtnText: '← Geri', doneBtnText: 'Tamam',
+    showProgress: true, progressText: '{{current}} / {{total}}',
+    steps: [
+      { element: '.js-data-table', popover: { title: 'Personel Listesi', description: 'Sisteme giriş yapabilecek kullanıcılar burada yönetilir. Admin rolü tüm modüllere, User rolü sadece operasyonel sayfaLara erişebilir.', side: 'top' } },
+      { element: 'a[href*="Create"]', popover: { title: 'Yeni Personel Ekle', description: 'Yeni kullanıcı oluşturun. E-posta, şifre ve rol (Admin/User) belirleyin.', side: 'left' } },
+      { element: '.btn-outline-danger', popover: { title: 'Kullanıcı Sil', description: 'Çalışan ayrıldığında hesabı silebilirsiniz. Bu işlem geri alınamaz.', side: 'left' } }
+    ]
+  });
+  document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());
+})();
+</script>
+}

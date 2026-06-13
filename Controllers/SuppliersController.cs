@@ -32,6 +32,12 @@ public class SuppliersController : Controller
         return View(supplier);
     }
 
+    public async Task<IActionResult> InvoicesPartial(int id, CancellationToken cancellationToken)
+    {
+        var invoices = await _supplierService.GetPurchaseInvoicesAsync(id, cancellationToken);
+        return PartialView("_SupplierInvoicesPartial", invoices);
+    }
+
     public IActionResult Create()
     {
         return View(new SupplierFormViewModel());
@@ -108,6 +114,18 @@ public class SuppliersController : Controller
         }
 
         TempData["SuccessMessage"] = "Tedarikçi pasif duruma alındı.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Restore(int id, CancellationToken cancellationToken)
+    {
+        var restored = await _supplierService.RestoreAsync(id, cancellationToken);
+        if (!restored)
+            return NotFound();
+
+        TempData["SuccessMessage"] = "Tedarikçi tekrar aktif edildi.";
+        return RedirectToAction(nameof(Details), new { id });
     }
 }

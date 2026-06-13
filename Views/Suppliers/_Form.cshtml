@@ -1,63 +1,58 @@
 @model SupplierFormViewModel
 
-<div class="form-floating form-floating-outline mb-6">
+<div class="mb-4">
+  <label asp-for="CompanyName" class="form-label"></label>
   <input asp-for="CompanyName" class="form-control" placeholder="Firma adı" />
-  <label asp-for="CompanyName"></label>
-  <span asp-validation-for="CompanyName" class="text-danger"></span>
+  <span asp-validation-for="CompanyName" class="text-danger small"></span>
 </div>
 
-<div class="row g-6">
+<div class="row g-4 mb-4">
   <div class="col-md-6">
-    <div class="form-floating form-floating-outline mb-6">
-      <input asp-for="ContactName" class="form-control" placeholder="Yetkili kişi" />
-      <label asp-for="ContactName"></label>
-    </div>
+    <label asp-for="ContactName" class="form-label"></label>
+    <input asp-for="ContactName" class="form-control" placeholder="Yetkili kişi" />
   </div>
   <div class="col-md-6">
-    <div class="form-floating form-floating-outline mb-6">
-      <input asp-for="TaxNumber" class="form-control" placeholder="Vergi no" />
-      <label asp-for="TaxNumber"></label>
-    </div>
+    <label asp-for="TaxNumber" class="form-label"></label>
+    <input asp-for="TaxNumber" class="form-control" placeholder="Vergi no" />
   </div>
 </div>
 
-<div class="input-group input-group-merge mb-6">
-  <span class="input-group-text"><i class="icon-base ri ri-phone-fill"></i></span>
-  <div class="form-floating form-floating-outline">
+<div class="mb-4">
+  <label asp-for="PhoneNumber" class="form-label"></label>
+  <div class="input-group">
+    <span class="input-group-text"><i class="ri-phone-line"></i></span>
     <input asp-for="PhoneNumber" class="form-control" placeholder="555 123 4567" />
-    <label asp-for="PhoneNumber"></label>
   </div>
-</div>
-<span asp-validation-for="PhoneNumber" class="text-danger d-block mb-4"></span>
-
-<div class="form-floating form-floating-outline mb-6">
-  <textarea asp-for="Notes" class="form-control h-px-100"></textarea>
-  <label asp-for="Notes"></label>
+  <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
 </div>
 
-<h6 class="mb-4">Cari Hesap</h6>
-<div class="form-floating form-floating-outline mb-6">
+<div class="mb-4">
+  <label asp-for="Notes" class="form-label"></label>
+  <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
+</div>
+
+<h6 class="mb-3 mt-2">Cari Hesap</h6>
+
+<div class="mb-4">
+  <label asp-for="CreditLimit" class="form-label"></label>
   <input asp-for="CreditLimit" class="form-control" step="0.01" />
-  <label asp-for="CreditLimit"></label>
   <div class="form-text">Boş bırakılırsa tedarikçi için cari limit uygulanmaz.</div>
 </div>
 
-<h6 class="mb-4">Adres</h6>
-<div class="row g-6">
+<h6 class="mb-3 mt-2">Adres</h6>
+
+<div class="row g-4 mb-4">
   <div class="col-md-6">
-    <div class="form-floating form-floating-outline mb-6">
-      <input asp-for="City" class="form-control" />
-      <label asp-for="City"></label>
-    </div>
+    <label asp-for="City" class="form-label"></label>
+    <input asp-for="City" class="form-control" />
   </div>
   <div class="col-md-6">
-    <div class="form-floating form-floating-outline mb-6">
-      <input asp-for="District" class="form-control" />
-      <label asp-for="District"></label>
-    </div>
+    <label asp-for="District" class="form-label"></label>
+    <input asp-for="District" class="form-control" />
   </div>
 </div>
-<div class="form-floating form-floating-outline mb-6">
-  <textarea asp-for="AddressLine" class="form-control h-px-100"></textarea>
-  <label asp-for="AddressLine"></label>
+
+<div class="mb-4">
+  <label asp-for="AddressLine" class="form-label"></label>
+  <textarea asp-for="AddressLine" class="form-control" rows="3"></textarea>
 </div>

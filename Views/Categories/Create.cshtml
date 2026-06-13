@@ -4,18 +4,27 @@
 }
 
 <div class="row">
-  <div class="col-xl-6 col-lg-8">
-    <div class="card mb-6">
+  <div class="col-12">
+    <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Yeni Kategori</h5>
-        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Listeye Dön</a>
+        <div>
+          <h5 class="mb-0">Yeni Kategori Ekle</h5>
+          <small class="text-body-secondary">Ürünlerinizi gruplamak için kategori oluşturun</small>
+        </div>
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+          <i class="ri-arrow-left-line me-1"></i>Listeye Dön
+        </a>
       </div>
       <div class="card-body">
         <form asp-action="Create" method="post">
           <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
           <partial name="_Form" model="Model" />
-          <button type="submit" class="btn btn-primary me-3">Kaydet</button>
-          <a asp-action="Index" class="btn btn-outline-secondary">İptal</a>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="ri-save-line me-1"></i>Kaydet
+            </button>
+            <a asp-action="Index" class="btn btn-outline-secondary">İptal</a>
+          </div>
         </form>
       </div>
     </div>

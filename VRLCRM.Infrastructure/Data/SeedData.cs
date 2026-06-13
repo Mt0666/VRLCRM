@@ -19,6 +19,7 @@ public static class SeedData
         var seedOptions = serviceProvider.GetRequiredService<IOptions<SeedDataOptions>>().Value;
 
         await context.Database.MigrateAsync();
+        await MockDataSeeder.SeedAsync(context);
 
         foreach (var roleName in seedOptions.DefaultRoles)
         {

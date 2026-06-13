@@ -6,10 +6,14 @@
 <div class="card">
   <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
     <h5 class="mb-0">Kategori Listesi</h5>
-    <a asp-action="Create" class="btn btn-primary">
-      <i class="icon-base ri ri-add-line icon-16px me-1"></i>
-      Yeni Kategori
-    </a>
+    <div class="d-flex gap-2 align-items-center">
+      <button id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
+        <i class="ri-question-line"></i>
+      </button>
+      <a asp-action="Create" class="btn btn-primary btn-sm">
+        <i class="ri-add-line me-1"></i>Yeni Kategori
+      </a>
+    </div>
   </div>
   <div class="card-body pb-0">
     <partial name="_TableToolbar" />
@@ -47,29 +51,12 @@
                 </div>
               </td>
               <td>@category.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+              <td><partial name="_StatusBadge" model="category.IsActive" /></td>
               <td>
-                <partial name="_StatusBadge" model="category.IsActive" />
-              </td>
-              <td>
-                <div class="dropdown">
-                  <button type="button" class="btn p-0 dropdown-toggle hide-arrow shadow-none" data-bs-toggle="dropdown">
-                    <i class="icon-base ri ri-more-2-line icon-18px"></i>
-                  </button>
-                  <div class="dropdown-menu">
-                    <a class="dropdown-item" asp-action="Details" asp-route-id="@category.Id">
-                      <i class="icon-base ri ri-eye-line icon-18px me-1"></i> Detay
-                    </a>
-                    @if (category.IsActive)
-                    {
-                      <a class="dropdown-item" asp-action="Edit" asp-route-id="@category.Id">
-                        <i class="icon-base ri ri-pencil-line icon-18px me-1"></i> Düzenle
-                      </a>
-                      <a class="dropdown-item text-danger" asp-action="Delete" asp-route-id="@category.Id">
-                        <i class="icon-base ri ri-delete-bin-6-line icon-18px me-1"></i> Pasife Al
-                      </a>
-                    }
-                  </div>
-                </div>
+                <a asp-action="Details" asp-route-id="@category.Id"
+                   class="btn btn-sm btn-icon btn-outline-secondary" title="Detay">
+                  <i class="ri ri-eye-line"></i>
+                </a>
               </td>
             </tr>
           }
@@ -78,3 +65,24 @@
     </table>
   </div>
 </div>
+
+@section PageScripts {
+<script>
+(function () {
+  const d = window.driver && window.driver.js && window.driver.js.driver;
+  if (!d) return;
+  const tour = d({
+    animate: true, smoothScroll: true, allowClose: true,
+    overlayOpacity: 0.4, stagePadding: 6, stageRadius: 8,
+    nextBtnText: 'İleri →', prevBtnText: '← Geri', doneBtnText: 'Tamam',
+    showProgress: true, progressText: '{{current}} / {{total}}',
+    steps: [
+      { element: '.js-data-table', popover: { title: 'Kategori Listesi', description: 'Ürünleri gruplamanızı sağlayan kategoriler burada yönetilir. Her ürünün bir kategorisi olabilir; raporlarda kategori bazlı analizler yapılabilir.', side: 'top' } },
+      { element: '.js-search-input', popover: { title: 'Hızlı Arama', description: 'Kategori adıyla anında filtrele.', side: 'bottom' } },
+      { element: 'a[href*="Create"]', popover: { title: 'Yeni Kategori', description: 'Yeni ürün grubu tanımlamak için tıklayın.', side: 'left' } }
+    ]
+  });
+  document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());
+})();
+</script>
+}

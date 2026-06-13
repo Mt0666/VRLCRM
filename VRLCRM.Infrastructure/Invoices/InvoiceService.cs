@@ -289,14 +289,69 @@ public class InvoiceService : IInvoiceService
 
     public async Task<bool> DeactivateAsync(int id, CancellationToken cancellationToken = default)
     {
-        var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.Id == id && i.IsActive, cancellationToken);
+        var invoice = await _context.Invoices
+            .Include(i => i.Lines)
+            .ThenInclude(l => l.StockItem)
+            .FirstOrDefaultAsync(i => i.Id == id && i.IsActive, cancellationToken);
+
         if (invoice is null)
-        {
             return false;
-        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
         invoice.IsActive = false;
+
+        // Stok hareketlerini tersine çevir
+        foreach (var line in invoice.Lines)
+        {
+            if (invoice.InvoiceType == InvoiceType.Sales)
+            {
+                line.StockItem.StockQuantity += line.Quantity;
+                _context.StockMovements.Add(new StockMovement
+                {
+                    StockItemId = line.StockItemId,
+                    MovementType = StockMovementType.In,
+                    Quantity = line.Quantity,
+                    ReferenceType = StockMovementReferenceType.Invoice,
+                    ReferenceId = invoice.Id,
+                    MovementDate = DateTime.UtcNow,
+                    Notes = $"İptal: {invoice.InvoiceNumber}"
+                });
+            }
+            else
+            {
+                line.StockItem.StockQuantity -= line.Quantity;
+                _context.StockMovements.Add(new StockMovement
+                {
+                    StockItemId = line.StockItemId,
+                    MovementType = StockMovementType.Out,
+                    Quantity = line.Quantity,
+                    ReferenceType = StockMovementReferenceType.Invoice,
+                    ReferenceId = invoice.Id,
+                    MovementDate = DateTime.UtcNow,
+                    Notes = $"İptal: {invoice.InvoiceNumber}"
+                });
+            }
+        }
+
+        // Bakiyeleri geri al
+        if (invoice.InvoiceType == InvoiceType.Sales && invoice.CustomerId.HasValue)
+        {
+            var customer = await _context.Customers
+                .FirstOrDefaultAsync(c => c.Id == invoice.CustomerId, cancellationToken);
+            if (customer is not null)
+                customer.Balance -= invoice.TotalAmount;
+        }
+        else if (invoice.InvoiceType == InvoiceType.Purchase && invoice.SupplierId.HasValue)
+        {
+            var supplier = await _context.Suppliers
+                .FirstOrDefaultAsync(s => s.Id == invoice.SupplierId, cancellationToken);
+            if (supplier is not null)
+                supplier.Balance -= invoice.TotalAmount;
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return true;
     }
 

@@ -1,70 +1,141 @@
 @model StockItem
 @{
-  ViewData["Title"] = "Stok Detayı";
+  ViewData["Title"] = "Ürün Detayı";
 }
 
 <div class="row g-6">
-  <div class="col-xl-8 col-lg-10">
-    <div class="card mb-6">
-      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
-        <div>
-          <h5 class="mb-1">@Model.Name</h5>
-          <small class="text-body-secondary">@Model.StockCode</small>
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+          <div>
+            <h5 class="mb-1">@Model.Name</h5>
+            <small class="text-body-secondary">
+              <span class="badge bg-label-secondary">@Model.StockCode</span>
+            </small>
+          </div>
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary btn-sm">
+              <i class="ri-pencil-line me-1"></i>Düzenle
+            </a>
+            <button id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
+              <i class="ri-question-line"></i>
+            </button>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+              <i class="ri-arrow-left-line me-1"></i>Listeye Dön
+            </a>
+          </div>
         </div>
-        <div class="d-flex gap-2">
-          <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary btn-sm">
-            <i class="icon-base ri ri-pencil-line icon-16px me-1"></i> Düzenle
-          </a>
-          <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger btn-sm">
-            <i class="icon-base ri ri-delete-bin-6-line icon-16px me-1"></i> Sil
-          </a>
-          <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Listeye Dön</a>
-        </div>
+        @if (Model.IsActive)
+        {
+          <div class="d-flex gap-2 mt-3 pt-3 border-top">
+            <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger btn-sm">
+              <i class="ri-close-circle-line me-1"></i>Pasife Al
+            </a>
+          </div>
+        }
       </div>
+
       <div class="card-body">
-        <div class="row g-6">
-          <div class="col-md-4">
+        <div class="row g-4 align-items-start mb-4">
+          <div class="col-auto">
             @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
             {
-              <img src="@Model.ImageUrl" alt="@Model.Name" class="img-fluid rounded border w-100" style="max-height: 240px; object-fit: cover;" />
+              <img src="@Model.ImageUrl" alt="@Model.Name"
+                   class="rounded border"
+                   style="width:160px; height:160px; object-fit:cover;" />
             }
             else
             {
-              <div class="d-flex align-items-center justify-content-center rounded border bg-label-secondary" style="height: 240px;">
-                <i class="icon-base ri ri-image-line icon-48px text-body-secondary"></i>
+              <div class="d-flex align-items-center justify-content-center rounded border bg-label-secondary"
+                   style="width:160px; height:160px;">
+                <i class="ri-image-line text-body-secondary" style="font-size:3rem;"></i>
               </div>
             }
           </div>
-          <div class="col-md-8">
-            <div class="row g-4 mb-4">
-              <div class="col-sm-4">
-                <h6 class="text-body-secondary mb-1">Kategori</h6>
-                <p class="mb-0">@Model.Category.Name</p>
+          <div class="col">
+            <div class="detail-info-strip">
+              <div class="detail-info-item">
+                <div class="detail-info-label">Stok Kodu</div>
+                <div class="detail-info-value">@Model.StockCode</div>
               </div>
-              <div class="col-sm-4">
-                <h6 class="text-body-secondary mb-1">Fiyat</h6>
-                <p class="mb-0 fw-medium">@Model.Price.ToString("N2") ₺</p>
+              @if (!string.IsNullOrWhiteSpace(Model.Barcode))
+              {
+                <div class="detail-info-item">
+                  <div class="detail-info-label">Barkod</div>
+                  <div class="detail-info-value">@Model.Barcode</div>
+                </div>
+              }
+              <div class="detail-info-item">
+                <div class="detail-info-label">Kategori</div>
+                <div class="detail-info-value">@Model.Category.Name</div>
               </div>
-              <div class="col-sm-4">
-                <h6 class="text-body-secondary mb-1">KDV Oranı</h6>
-                <p class="mb-0">%@Model.VatRate.ToString("N0")</p>
+              <div class="detail-info-item">
+                <div class="detail-info-label">Satış Fiyatı</div>
+                <div class="detail-info-value">@Model.Price.ToString("N2") ₺</div>
               </div>
-              <div class="col-sm-6 mt-4">
-                <h6 class="text-body-secondary mb-1">Stok Adedi</h6>
-                <p class="mb-0">@Model.StockQuantity</p>
+              <div class="detail-info-item">
+                <div class="detail-info-label">KDV Oranı</div>
+                <div class="detail-info-value">%@Model.VatRate.ToString("N0")</div>
               </div>
-              <div class="col-sm-6 mt-4">
-                <h6 class="text-body-secondary mb-1">Kayıt Tarihi</h6>
-                <p class="mb-0">@Model.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p>
+              <div class="detail-info-item">
+                <div class="detail-info-label">Stok Adedi</div>
+                <div class="detail-info-value">
+                  @if (Model.StockQuantity <= 5)
+                  {
+                    <span class="badge bg-label-danger">@Model.StockQuantity</span>
+                  }
+                  else if (Model.StockQuantity <= 20)
+                  {
+                    <span class="badge bg-label-warning">@Model.StockQuantity</span>
+                  }
+                  else
+                  {
+                    <span class="badge bg-label-success">@Model.StockQuantity</span>
+                  }
+                </div>
               </div>
-            </div>
-            <h6 class="mb-2">Açıklama</h6>
-            <div class="border rounded p-4 bg-label-secondary">
-              @(string.IsNullOrWhiteSpace(Model.Description) ? "Açıklama girilmemiş." : Model.Description)
+              <div class="detail-info-item">
+                <div class="detail-info-label">Kayıt Tarihi</div>
+                <div class="detail-info-value">@Model.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")</div>
+              </div>
+              <div class="detail-info-item">
+                <div class="detail-info-label">Durum</div>
+                <div class="detail-info-value"><partial name="_StatusBadge" model="Model.IsActive" /></div>
+              </div>
             </div>
           </div>
         </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Description))
+        {
+          <div class="mt-2">
+            <div class="detail-info-label mb-2">Açıklama</div>
+            <p class="text-body-secondary mb-0">@Model.Description</p>
+          </div>
+        }
       </div>
     </div>
   </div>
 </div>
+
+@section PageScripts {
+<script>
+(function () {
+  const d = window.driver && window.driver.js && window.driver.js.driver;
+  if (!d) return;
+  const tour = d({
+    animate: true, smoothScroll: true, allowClose: true,
+    overlayOpacity: 0.4, stagePadding: 6, stageRadius: 8,
+    nextBtnText: 'İleri →', prevBtnText: '← Geri', doneBtnText: 'Tamam',
+    showProgress: true, progressText: '{{current}} / {{total}}',
+    steps: [
+      { element: '.detail-info-strip', popover: { title: 'Ürün Bilgileri', description: 'Stok kodu, kategori, birim fiyat ve mevcut stok miktarı. Miktar, her fatura işleminde otomatik güncellenir.', side: 'bottom' } },
+      { element: 'a[href*="Edit"]', popover: { title: 'Düzenle', description: 'Ürün adı, fiyat, barkod ve kategori bilgilerini güncelleyin.', side: 'right' } },
+      { element: 'a[href*="Delete"]', popover: { title: 'Pasife Al', description: 'Ürünü pasife alırsanız yeni fatura ve sipariş oluştururken seçilemez, ancak eski kayıtlar korunur.', side: 'right' } }
+    ]
+  });
+  document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());
+})();
+</script>
+}

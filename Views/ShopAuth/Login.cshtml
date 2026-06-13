@@ -1,0 +1,103 @@
+@model VRLCRM.Models.Auth.LoginViewModel
+@{
+  Layout = null;
+  ViewData["Title"] = "Mete Varol B2B";
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mete Varol B2B — Giriş</title>
+  <link rel="icon" type="image/x-icon" href="~/img/favicon/favicon.ico" />
+  <link rel="stylesheet" href="~/vendor/fonts/inter/inter.css" />
+  <link rel="stylesheet" href="~/vendor/fonts/remixicon/remixicon.css" />
+  <link rel="stylesheet" href="~/vendor/css/core.css" />
+  <link rel="stylesheet" href="~/css/demo.css" />
+  <link rel="stylesheet" href="~/vendor/css/pages/page-auth.css" />
+  <style>
+    body { background: #f4f5fb; font-family: 'Inter', sans-serif; }
+    .mv-login-card { max-width: 420px; width: 100%; }
+    .mv-login-logo { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; box-shadow: 0 4px 18px rgba(105,108,255,.28); }
+    .mv-login-brand { font-size: 1.15rem; font-weight: 700; color: #2c2d3f; }
+    .mv-login-tag { font-size: .65rem; font-weight: 600; color: #696cff; text-transform: uppercase; letter-spacing: .07em; }
+  </style>
+</head>
+<body class="d-flex align-items-center justify-content-center min-vh-100">
+
+  <div class="mv-login-card mx-auto px-3">
+    <div class="card p-4 p-sm-5 shadow-sm" style="border-radius:16px; border:0; box-shadow:0 8px 40px rgba(105,108,255,.1) !important;">
+
+      <div class="text-center mb-4">
+        <img src="~/img/mete_varol.png" alt="Mete Varol" class="mv-login-logo mb-3" />
+        <div class="mv-login-brand">Mete Varol</div>
+        <div class="mv-login-tag">B2B Sipariş Portalı</div>
+        <p class="text-body-secondary small mt-2 mb-0">Devam etmek için hesabınıza giriş yapın</p>
+      </div>
+
+      <form asp-controller="ShopAuth" asp-action="Login" method="post">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small mb-3"
+             style="display:@(ViewContext.ModelState.IsValid ? "none" : "block")"></div>
+        <input type="hidden" asp-for="ReturnUrl" />
+
+        <div class="form-floating form-floating-outline mb-4">
+          <input asp-for="Email" class="form-control" placeholder="ornek@firma.com"
+                 autofocus autocomplete="section-b2b username" />
+          <label asp-for="Email">E-posta</label>
+          <span asp-validation-for="Email" class="text-danger small"></span>
+        </div>
+
+        <div class="mb-4">
+          <div class="form-password-toggle">
+            <div class="input-group input-group-merge">
+              <div class="form-floating form-floating-outline flex-grow-1">
+                <input asp-for="Password" class="form-control" placeholder="••••••••"
+                       autocomplete="section-b2b current-password" />
+                <label asp-for="Password">Şifre</label>
+              </div>
+              <span class="input-group-text cursor-pointer">
+                <i class="icon-base ri ri-eye-off-line icon-20px"></i>
+              </span>
+            </div>
+            <span asp-validation-for="Password" class="text-danger small"></span>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div class="form-check">
+            <input asp-for="RememberMe" class="form-check-input" />
+            <label asp-for="RememberMe" class="form-check-label small">Beni hatırla</label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 py-2" style="border-radius:10px; font-weight:600;">
+          <i class="ri-login-box-line me-2"></i>Giriş Yap
+        </button>
+      </form>
+    </div>
+
+    <p class="text-center text-body-secondary small mt-3 mb-0">
+      Hesabınız yoksa yetkili satış temsilcinizle iletişime geçin.
+    </p>
+  </div>
+
+  <script src="~/vendor/libs/jquery/jquery.js"></script>
+  <script src="~/vendor/libs/popper/popper.js"></script>
+  <script src="~/vendor/js/bootstrap.js"></script>
+  <script>
+    document.querySelectorAll('.form-password-toggle .input-group-text').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var input = this.closest('.input-group').querySelector('input');
+        var icon = this.querySelector('i');
+        if (input.type === 'password') {
+          input.type = 'text';
+          icon.classList.replace('ri-eye-off-line', 'ri-eye-line');
+        } else {
+          input.type = 'password';
+          icon.classList.replace('ri-eye-line', 'ri-eye-off-line');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

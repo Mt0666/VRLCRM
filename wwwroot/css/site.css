@@ -1,1 +1,329 @@
 /* Custom styles goes here */
+
+/* Square pagination buttons */
+.pagination .page-link {
+  border-radius: 0 !important;
+}
+.pagination .page-item:first-child .page-link,
+.pagination .page-item:last-child .page-link {
+  border-radius: 0 !important;
+}
+
+/* ── Responsive stacked table (mobile) ─────────────────────────────── */
+@media (max-width: 767.98px) {
+  .table-responsive table.js-data-table,
+  .table-responsive table.js-data-table thead,
+  .table-responsive table.js-data-table tbody,
+  .table-responsive table.js-data-table th,
+  .table-responsive table.js-data-table td,
+  .table-responsive table.js-data-table tr {
+    display: block;
+  }
+
+  .table-responsive table.js-data-table thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  .table-responsive table.js-data-table tbody tr {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    margin-bottom: 0.75rem;
+    padding: 0.25rem 0;
+    background: var(--bs-body-bg);
+  }
+
+  .table-responsive table.js-data-table tbody tr.table-secondary {
+    background: var(--bs-secondary-bg);
+  }
+
+  .table-responsive table.js-data-table tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.45rem 1rem;
+    border: none;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+    white-space: normal;
+    text-align: right;
+  }
+
+  .table-responsive table.js-data-table tbody td:last-child {
+    border-bottom: none;
+  }
+
+  .table-responsive table.js-data-table tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    text-align: left;
+    flex-shrink: 0;
+    margin-right: 0.75rem;
+  }
+
+  .table-responsive table.js-data-table tbody td:empty {
+    display: none;
+  }
+
+  /* Boş label (actions kolonu) sadece içeriği göster */
+  .table-responsive table.js-data-table tbody td[data-label=""]::before {
+    display: none;
+  }
+  .table-responsive table.js-data-table tbody td[data-label=""] {
+    justify-content: flex-end;
+    padding-top: 0.5rem;
+  }
+}
+
+/* Search input full-width on mobile */
+@media (max-width: 767.98px) {
+  .js-table-search {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .table-toolbar,
+  .card-toolbar {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+  .table-toolbar > div,
+  .card-toolbar > div {
+    width: 100%;
+  }
+}
+
+/* Pagination container mobile fix */
+@media (max-width: 767.98px) {
+  .table-pagination-container {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+  .table-pagination-container nav {
+    width: 100%;
+  }
+}
+
+/* ── Detay sayfası bilgi şeridi ─────────────────────────────────── */
+.detail-info-strip {
+  display: flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+.detail-info-item {
+  flex: 1;
+  min-width: 150px;
+  padding: 0.875rem 1.25rem;
+  border-right: 1px solid var(--bs-border-color);
+}
+.detail-info-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--bs-secondary-color);
+  margin-bottom: 0.3rem;
+}
+.detail-info-value {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--bs-heading-color);
+  line-height: 1.4;
+}
+@media (max-width: 575.98px) {
+  .detail-info-item { flex: 0 0 50%; }
+}
+
+/* ── Sipariş / Fatura tutar özeti kartı ─────────────────────────── */
+.order-totals-card {
+  min-width: 300px;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.order-totals-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.55rem 1.25rem;
+  font-size: 0.875rem;
+  color: var(--bs-body-color);
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+.order-totals-row span:first-child {
+  color: var(--bs-secondary-color);
+}
+.order-totals-row span:last-child {
+  font-weight: 600;
+}
+.order-totals-grand {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  background: var(--bs-primary);
+  color: #fff;
+}
+.order-totals-grand span:first-child {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.order-totals-grand span:last-child {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* ── TomSelect: Materio form-control ile tam uyum ────────────────── */
+.ts-wrapper {
+  width: 100% !important;
+}
+.ts-wrapper .ts-control {
+  padding: 0.8555rem 2.5rem 0.8555rem 1rem !important;
+  font-size: 0.9375rem !important;
+  line-height: 1.375 !important;
+  color: var(--bs-heading-color) !important;
+  background-color: transparent !important;
+  border-color: var(--bs-border-color) !important;
+  border-radius: var(--bs-border-radius) !important;
+  min-height: unset !important;
+}
+.ts-wrapper .ts-control input {
+  font-size: 0.9375rem !important;
+  line-height: 1.375 !important;
+  background: transparent !important;
+  color: var(--bs-heading-color) !important;
+}
+.ts-wrapper .ts-control input::placeholder {
+  color: var(--bs-secondary-color) !important;
+  opacity: 1;
+}
+/* Açılır ok: theme'in background-image SVG'si kullanılır, ::after kaldırıldı.
+   Sadece background-position'ı büyük padding'e göre hizala */
+.ts-wrapper.single .ts-control {
+  background-position: right 1rem center !important;
+  padding-right: 2.5rem !important;
+}
+/* Dropdown panel */
+.ts-dropdown {
+  font-size: 0.9375rem !important;
+  border-color: var(--bs-border-color) !important;
+  border-radius: 0 0 var(--bs-border-radius) var(--bs-border-radius) !important;
+}
+.ts-dropdown .option {
+  padding: 0.5rem 1rem !important;
+}
+.ts-dropdown .no-results {
+  font-size: 0.9375rem !important;
+  padding: 0.5rem 1rem !important;
+  color: var(--bs-secondary-color);
+}
+/* Focus ring */
+.ts-wrapper.focus .ts-control {
+  border-color: var(--bs-primary) !important;
+  box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.15) !important;
+}
+
+/* ── Sipariş/fatura satır tablosu mobil responsive ───────────────── */
+@media (max-width: 767.98px) {
+  .table-responsive table.js-lines-table,
+  .table-responsive table.js-lines-table thead,
+  .table-responsive table.js-lines-table tbody,
+  .table-responsive table.js-lines-table th,
+  .table-responsive table.js-lines-table td,
+  .table-responsive table.js-lines-table tr {
+    display: block;
+  }
+  .table-responsive table.js-lines-table thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+  .table-responsive table.js-lines-table tbody tr {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    margin-bottom: 0.75rem;
+    padding: 0.25rem 0;
+    background: var(--bs-body-bg);
+  }
+  .table-responsive table.js-lines-table tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.45rem 1rem;
+    border: none;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+    white-space: normal;
+    text-align: right;
+  }
+  .table-responsive table.js-lines-table tbody td:last-child {
+    border-bottom: none;
+  }
+  .table-responsive table.js-lines-table tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    text-align: left;
+    flex-shrink: 0;
+    margin-right: 0.75rem;
+  }
+  .table-responsive table.js-lines-table tbody td[data-label=""]::before {
+    display: none;
+  }
+  .table-responsive table.js-lines-table tbody td[data-label=""] {
+    justify-content: flex-end;
+  }
+  /* Boş durum satırı stacked layout'a girmesin */
+  .table-responsive table.js-lines-table tbody tr#emptyRow {
+    border: none;
+    padding: 0;
+    background: transparent;
+  }
+  .table-responsive table.js-lines-table tbody tr#emptyRow td {
+    display: block !important;
+    text-align: center !important;
+    justify-content: center;
+    border: none;
+  }
+  .table-responsive table.js-lines-table tbody tr#emptyRow td::before {
+    display: none;
+  }
+  /* Totals kartı mobilde tam genişlik */
+  .order-totals-card {
+    min-width: unset;
+    width: 100%;
+  }
+}
+
+/* Go to page input */
+.pagination-goto {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+}
+.pagination-goto input[type="number"] {
+  width: 3.5rem;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.8125rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  text-align: center;
+}
+.pagination-goto input[type="number"]::-webkit-inner-spin-button,
+.pagination-goto input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+.pagination-goto input[type="number"] { -moz-appearance: textfield; }
+

@@ -1,15 +1,31 @@
 @model IEnumerable<VRLCRM.Domain.Entities.Payment>
-using VRLCRM.Domain.Enums
+@using VRLCRM.Domain.Enums
 @{
     ViewData["Title"] = "Kasa & Banka Hareketleri";
+
+    string MethodLabel(PaymentMethod m) => m switch
+    {
+        PaymentMethod.Cash        => "Nakit",
+        PaymentMethod.BankTransfer => "Havale / EFT",
+        PaymentMethod.CreditCard  => "Kredi Kartı",
+        PaymentMethod.Check       => "Çek",
+        _                         => m.ToString()
+    };
 }
 
 <div class="card">
-    <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
         <h5 class="mb-0">Tahsilat ve Ödemeler</h5>
-        <div class="d-flex gap-2">
-            <a asp-action="CreateIncoming" class="btn btn-success"><i class="ri-arrow-down-circle-line me-1"></i> Yeni Tahsilat Al</a>
-            <a asp-action="CreateOutgoing" class="btn btn-danger"><i class="ri-arrow-up-circle-line me-1"></i> Yeni Ödeme Yap</a>
+        <div class="d-flex gap-2 align-items-center">
+            <button id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
+              <i class="ri-question-line"></i>
+            </button>
+            <a asp-action="CreateIncoming" class="btn btn-success btn-sm">
+                <i class="ri-arrow-down-circle-line me-1"></i>Yeni Tahsilat Al
+            </a>
+            <a asp-action="CreateOutgoing" class="btn btn-danger btn-sm">
+                <i class="ri-arrow-up-circle-line me-1"></i>Yeni Ödeme Yap
+            </a>
         </div>
     </div>
     <div class="card-body pb-0">
@@ -33,32 +49,39 @@ using VRLCRM.Domain.Enums
                 @foreach (var item in Model)
                 {
                     <tr>
-                        <td><strong>@item.PaymentNumber</strong></td>
+                        <td>
+                            <a asp-action="Details" asp-route-id="@item.Id" class="fw-semibold text-body">
+                                @item.PaymentNumber
+                            </a>
+                        </td>
                         <td>@item.PaymentDate.ToString("dd.MM.yyyy")</td>
                         <td>
                             @if (item.Type == PaymentType.Incoming)
                             {
-                                <span class="badge bg-label-success"><i class="ri-arrow-down-line me-1"></i> Tahsilat</span>
+                                <span class="badge bg-label-success"><i class="ri-arrow-down-line me-1"></i>Tahsilat</span>
                             }
                             else
                             {
-                                <span class="badge bg-label-danger"><i class="ri-arrow-up-line me-1"></i> Ödeme</span>
+                                <span class="badge bg-label-danger"><i class="ri-arrow-up-line me-1"></i>Ödeme</span>
                             }
                         </td>
-                        <td>
-                            @(item.Type == PaymentType.Incoming ? item.Customer?.FullName : item.Supplier?.CompanyName)
-                        </td>
-                        <td>@item.Method.ToString()</td>
+                        <td>@(item.Type == PaymentType.Incoming ? item.Customer?.FullName : item.Supplier?.CompanyName)</td>
+                        <td>@MethodLabel(item.Method)</td>
                         <td><strong>@item.Amount.ToString("N2") ₺</strong></td>
                         <td><partial name="_StatusBadge" model="item.IsActive" /></td>
                         <td>
-                            @if (item.IsActive)
-                            {
-                                <form asp-action="Cancel" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Bu işlemi iptal etmek istediğinize emin misiniz? Bakiye geri alınacaktır.');">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">İptal Et</button>
-                                </form>
-                            }
+                            <div class="d-flex gap-1">
+                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
+                                    <i class="ri-eye-line"></i>
+                                </a>
+                                @if (item.IsActive)
+                                {
+                                    <form asp-action="Cancel" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Bu işlemi iptal etmek istediğinize emin misiniz? Bakiye geri alınacaktır.');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">İptal Et</button>
+                                    </form>
+                                }
+                            </div>
                         </td>
                     </tr>
                 }
@@ -66,3 +89,45 @@ using VRLCRM.Domain.Enums
         </table>
     </div>
 </div>
+
+@section PageScripts {
+<script>
+(function () {
+  const d = window.driver && window.driver.js && window.driver.js.driver;
+  if (!d) return;
+  const tour = d({
+    animate: true, smoothScroll: true, allowClose: true,
+    overlayOpacity: 0.4, stagePadding: 6, stageRadius: 8,
+    nextBtnText: 'İleri →', prevBtnText: '← Geri', doneBtnText: 'Tamam',
+    showProgress: true, progressText: '{{current}} / {{total}}',
+    steps: [
+      {
+        element: '.js-data-table',
+        popover: {
+          title: 'Kasa & Banka Hareketleri',
+          description: 'Nakit, havale, çek ve kredi kartı tahsilatları ile ödemeler burada görünür. Her hareket müşteri veya tedarikçi bakiyesini etkiler.',
+          side: 'top'
+        }
+      },
+      {
+        element: 'a[href*="CreateIncoming"]',
+        popover: {
+          title: 'Tahsilat Al',
+          description: 'Müşteriden para aldığınızda buradan kayıt giriniz. Müşteri bakiyesi otomatik düşer.',
+          side: 'bottom'
+        }
+      },
+      {
+        element: 'a[href*="CreateOutgoing"]',
+        popover: {
+          title: 'Ödeme Yap',
+          description: 'Tedarikçiye ödeme yaptığınızda buradan kayıt giriniz. Tedarikçi bakiyesi otomatik düşer.',
+          side: 'bottom'
+        }
+      }
+    ]
+  });
+  document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());
+})();
+</script>
+}

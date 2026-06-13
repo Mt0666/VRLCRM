@@ -1,94 +1,82 @@
 @model CustomerFormViewModel
 
-<div class="row g-6">
+<div class="row g-4 mb-4">
   <div class="col-md-6">
-    <div class="form-floating form-floating-outline mb-6">
-      <input asp-for="FirstName" class="form-control" placeholder="Ad" />
-      <label asp-for="FirstName"></label>
-      <span asp-validation-for="FirstName" class="text-danger"></span>
-    </div>
+    <label asp-for="FirstName" class="form-label"></label>
+    <input asp-for="FirstName" class="form-control" placeholder="Ad" />
+    <span asp-validation-for="FirstName" class="text-danger small"></span>
   </div>
   <div class="col-md-6">
-    <div class="form-floating form-floating-outline mb-6">
-      <input asp-for="LastName" class="form-control" placeholder="Soyad" />
-      <label asp-for="LastName"></label>
-      <span asp-validation-for="LastName" class="text-danger"></span>
-    </div>
+    <label asp-for="LastName" class="form-label"></label>
+    <input asp-for="LastName" class="form-control" placeholder="Soyad" />
+    <span asp-validation-for="LastName" class="text-danger small"></span>
   </div>
 </div>
 
-<div class="form-floating form-floating-outline mb-6">
+<div class="mb-4">
+  <label asp-for="CompanyName" class="form-label"></label>
   <input asp-for="CompanyName" class="form-control" placeholder="Firma adı" />
-  <label asp-for="CompanyName"></label>
-  <span asp-validation-for="CompanyName" class="text-danger"></span>
+  <span asp-validation-for="CompanyName" class="text-danger small"></span>
 </div>
 
-<div class="input-group input-group-merge mb-6">
-  <span class="input-group-text"><i class="icon-base ri ri-phone-fill"></i></span>
-  <div class="form-floating form-floating-outline">
+<div class="mb-4">
+  <label asp-for="PhoneNumber" class="form-label"></label>
+  <div class="input-group">
+    <span class="input-group-text"><i class="ri-phone-line"></i></span>
     <input asp-for="PhoneNumber" class="form-control phone-mask" placeholder="555 123 4567" />
-    <label asp-for="PhoneNumber"></label>
   </div>
-</div>
-<span asp-validation-for="PhoneNumber" class="text-danger d-block mb-4"></span>
-
-<div class="form-floating form-floating-outline mb-6">
-  <textarea asp-for="Notes" class="form-control h-px-100" placeholder="Notlar"></textarea>
-  <label asp-for="Notes"></label>
-  <span asp-validation-for="Notes" class="text-danger"></span>
+  <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
 </div>
 
-<h6 class="mb-4">Cari Hesap</h6>
+<div class="mb-4">
+  <label asp-for="Notes" class="form-label"></label>
+  <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Notlar"></textarea>
+  <span asp-validation-for="Notes" class="text-danger small"></span>
+</div>
 
-<div class="form-floating form-floating-outline mb-6">
+<h6 class="mb-3 mt-2">Cari Hesap</h6>
+
+<div class="mb-4">
+  <label asp-for="CreditLimit" class="form-label"></label>
   <input asp-for="CreditLimit" class="form-control" placeholder="Limitsiz için boş bırakın" step="0.01" />
-  <label asp-for="CreditLimit"></label>
   <div class="form-text">Boş bırakılırsa müşteri için cari limit uygulanmaz.</div>
-  <span asp-validation-for="CreditLimit" class="text-danger"></span>
+  <span asp-validation-for="CreditLimit" class="text-danger small"></span>
 </div>
 
-<h6 class="mb-4">B2B Giriş (E-Ticaret)</h6>
+<h6 class="mb-3 mt-2">B2B Giriş (E-Ticaret)</h6>
 
-<div class="row g-6">
+<div class="row g-4 mb-4">
   <div class="col-md-6">
-    <div class="form-floating form-floating-outline mb-6">
-      <input asp-for="Email" class="form-control" placeholder="E-Posta" />
-      <label asp-for="Email"></label>
-      <div class="form-text">Müşteri B2B ekranına bu mail ile giriş yapar.</div>
-      <span asp-validation-for="Email" class="text-danger"></span>
-    </div>
+    <label asp-for="Email" class="form-label"></label>
+    <input asp-for="Email" class="form-control" placeholder="E-Posta" autocomplete="off" />
+    <div class="form-text">Müşteri B2B ekranına bu mail ile giriş yapar.</div>
+    <span asp-validation-for="Email" class="text-danger small"></span>
   </div>
   <div class="col-md-6">
-    <div class="form-floating form-floating-outline mb-6">
-      <input asp-for="Password" class="form-control" placeholder="Şifre" />
-      <label asp-for="Password"></label>
-      <div class="form-text">Mevcut şifreyi değiştirmek istemiyorsanız boş bırakın.</div>
-      <span asp-validation-for="Password" class="text-danger"></span>
-    </div>
+    <label asp-for="Password" class="form-label"></label>
+    <input asp-for="Password" class="form-control" placeholder="Şifre" autocomplete="new-password" />
+    <div class="form-text">Mevcut şifreyi değiştirmek istemiyorsanız boş bırakın.</div>
+    <span asp-validation-for="Password" class="text-danger small"></span>
   </div>
 </div>
 
-<h6 class="mb-4">Adres Bilgileri</h6>
+<h6 class="mb-3 mt-2">Adres Bilgileri</h6>
 
-<div class="row g-6">
+<div class="row g-4 mb-4">
   <div class="col-md-6">
-    <div class="form-floating form-floating-outline mb-6">
-      <input asp-for="City" class="form-control" placeholder="İl" />
-      <label asp-for="City"></label>
-      <span asp-validation-for="City" class="text-danger"></span>
-    </div>
+    <label asp-for="City" class="form-label"></label>
+    <input asp-for="City" class="form-control" placeholder="İl" />
+    <span asp-validation-for="City" class="text-danger small"></span>
   </div>
   <div class="col-md-6">
-    <div class="form-floating form-floating-outline mb-6">
-      <input asp-for="District" class="form-control" placeholder="İlçe" />
-      <label asp-for="District"></label>
-      <span asp-validation-for="District" class="text-danger"></span>
-    </div>
+    <label asp-for="District" class="form-label"></label>
+    <input asp-for="District" class="form-control" placeholder="İlçe" />
+    <span asp-validation-for="District" class="text-danger small"></span>
   </div>
 </div>
 
-<div class="form-floating form-floating-outline mb-6">
-  <textarea asp-for="AddressLine" class="form-control h-px-100" placeholder="Açık adres"></textarea>
-  <label asp-for="AddressLine"></label>
-  <span asp-validation-for="AddressLine" class="text-danger"></span>
+<div class="mb-4">
+  <label asp-for="AddressLine" class="form-label"></label>
+  <textarea asp-for="AddressLine" class="form-control" rows="3" placeholder="Açık adres"></textarea>
+  <span asp-validation-for="AddressLine" class="text-danger small"></span>
 </div>

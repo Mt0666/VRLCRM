@@ -34,6 +34,15 @@ public class CustomerService : ICustomerService
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
     }
 
+    public async Task<Customer?> GetByIdWithHistoryAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _context.Customers
+            .Include(c => c.Address)
+            .Include(c => c.Orders.OrderByDescending(o => o.OrderDate))
+            .Include(c => c.Invoices.Where(i => i.InvoiceType == Domain.Enums.InvoiceType.Sales).OrderByDescending(i => i.InvoiceDate))
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+    }
+
     public async Task<Customer> CreateAsync(
         Customer customer,
         Address address,
@@ -73,6 +82,24 @@ public class CustomerService : ICustomerService
 
         await transaction.CommitAsync(cancellationToken);
         return customer;
+    }
+
+    public async Task<IReadOnlyList<Order>> GetOrdersAsync(int customerId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Orders
+            .AsNoTracking()
+            .Where(o => o.CustomerId == customerId)
+            .OrderByDescending(o => o.OrderDate)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Invoice>> GetSalesInvoicesAsync(int customerId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Invoices
+            .AsNoTracking()
+            .Where(i => i.CustomerId == customerId && i.InvoiceType == Domain.Enums.InvoiceType.Sales)
+            .OrderByDescending(i => i.InvoiceDate)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<bool> UpdateAsync(
@@ -153,17 +180,23 @@ public class CustomerService : ICustomerService
         var customer = await _context.Customers
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
-        if (customer is null)
-        {
+        if (customer is null || !customer.IsActive)
             return false;
-        }
-
-        if (!customer.IsActive)
-        {
-            return false;
-        }
 
         customer.IsActive = false;
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> RestoreAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var customer = await _context.Customers
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+        if (customer is null || customer.IsActive)
+            return false;
+
+        customer.IsActive = true;
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }

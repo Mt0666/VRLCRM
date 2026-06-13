@@ -1,0 +1,49 @@
+@{
+  Layout = "_ShopLayout";
+  ViewData["Title"] = "Sipariş Onaylandı";
+  var orderNumber = ViewBag.OrderNumber as string;
+  var total = ViewBag.Total as decimal? ?? 0m;
+}
+
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-5">
+    <div class="card text-center py-5 px-4" style="border-radius:16px; border:0; box-shadow:0 8px 40px rgba(105,108,255,.12);">
+
+      @* Success icon *@
+      <div class="mb-4">
+        <div class="d-inline-flex align-items-center justify-content-center rounded-circle"
+             style="width:84px; height:84px; background:linear-gradient(135deg,#71dd37 0%,#28c76f 100%);">
+          <i class="ri-checkbox-circle-line text-white" style="font-size:2.8rem;"></i>
+        </div>
+      </div>
+
+      <h4 class="fw-bold mb-2">Siparişiniz Alındı!</h4>
+      <p class="text-body-secondary mb-4" style="font-size:.9rem;">
+        Siparişiniz sistemimize başarıyla iletildi.<br />En kısa sürede işleme alınacaktır.
+      </p>
+
+      @* Order number *@
+      <div class="mv-credit-widget mb-4 mx-auto" style="max-width:260px;">
+        <div style="font-size:.68rem; opacity:.8; text-transform:uppercase; letter-spacing:.06em; margin-bottom:.35rem;">
+          Sipariş Numarası
+        </div>
+        <div class="fw-bold" style="font-size:1.4rem; letter-spacing:.04em;">@orderNumber</div>
+      </div>
+
+      @if (total > 0)
+      {
+        <div class="d-flex justify-content-between align-items-center px-3 py-2 mb-4 rounded-3"
+             style="background:#f4f5fb; font-size:.88rem;">
+          <span class="text-body-secondary">Sipariş Tutarı</span>
+          <strong class="text-primary" style="font-size:1rem;">@total.ToString("N2") ₺</strong>
+        </div>
+      }
+
+      <div class="d-flex gap-2 justify-content-center flex-wrap">
+        <a asp-action="Index" class="btn btn-primary px-4" style="border-radius:10px;">
+          <i class="ri-store-2-line me-2"></i>Alışverişe Devam Et
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

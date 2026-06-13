@@ -4,92 +4,125 @@
 }
 
 <div class="row">
-  <div class="col-xl-10">
+  <div class="col-12">
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Barkod ile Sipariş Girişi</h5>
-        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Listeye Dön</a>
+        <h5 class="mb-0">Yeni Sipariş</h5>
+        <div class="d-flex gap-2 align-items-center">
+          <button type="button" id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
+            <i class="ri-question-line"></i>
+          </button>
+          <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Listeye Dön</a>
+        </div>
       </div>
       <div class="card-body">
         <form asp-action="Create" method="post" id="orderForm">
           <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-          <div class="row g-4 mb-4">
+          @* Müşteri + Notlar *@
+          <div class="row g-3 mb-4">
             <div class="col-md-6">
-              <div class="form-floating form-floating-outline">
-                <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select select2">
-                  <option value="">Müşteri seçin</option>
-                </select>
-                <label asp-for="CustomerId"></label>
-                <span asp-validation-for="CustomerId" class="text-danger"></span>
-              </div>
+              <label asp-for="CustomerId" class="form-label"></label>
+              <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select select2">
+                <option value="">Müşteri seçin</option>
+              </select>
+              <span asp-validation-for="CustomerId" class="text-danger small"></span>
             </div>
             <div class="col-md-6">
-              <div class="form-floating form-floating-outline">
-                <input asp-for="Notes" class="form-control" />
-                <label asp-for="Notes"></label>
-              </div>
+              <label asp-for="Notes" class="form-label"></label>
+              <input asp-for="Notes" class="form-control" />
             </div>
           </div>
 
-          <div class="card bg-label-secondary mb-4">
+          @* Ürün Ekleme Paneli *@
+          <div class="card border mb-4">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+              <span class="fw-semibold small text-body"><i class="ri-add-circle-line me-1"></i>Ürün Ekle</span>
+              <button type="button" id="scannerBtn" class="btn btn-sm btn-outline-info">
+                <i class="ri-camera-line me-1"></i>Barkod Tara
+              </button>
+            </div>
             <div class="card-body">
-              <div class="row g-3 align-items-end">
+              @* Kamera okuyucu alanı (varsayılan gizli) *@
+              <div id="scannerWrapper" class="mb-3" style="display:none;">
+                <div id="qr-reader" style="width:100%; max-width:500px; margin:0 auto; border-radius:0.375rem; overflow:hidden;"></div>
+                <div class="d-flex justify-content-center mt-2">
+                  <button type="button" id="stopScannerBtn" class="btn btn-sm btn-outline-secondary">
+                    <i class="ri-camera-off-line me-1"></i>Kamerayı Kapat
+                  </button>
+                </div>
+              </div>
+              @* Ekleme satırı *@
+              <div class="row g-3 align-items-center">
                 <div class="col-md-6">
-                  <label class="form-label">Barkod / Stok Kodu</label>
-                  <input type="text" id="barcodeInput" class="form-control form-control-lg" placeholder="Barkodu okutun veya yazın" autofocus />
-                  <div id="barcodeMessage" class="form-text text-danger"></div>
+                  <select id="productSelect" style="width:100%">
+                    <option value=""></option>
+                  </select>
+                  <div id="productMessage" class="form-text text-danger mt-1"></div>
                 </div>
                 <div class="col-md-2">
-                  <label class="form-label">Adet</label>
-                  <input type="number" id="scanQty" class="form-control" value="1" min="1" />
+                  <input type="number" id="scanQty" class="form-control" value="1" min="1" placeholder="Adet" />
                 </div>
-                <div class="col-md-2">
-                  <button type="button" id="scanAddBtn" class="btn btn-primary w-100">Ekle</button>
+                <div class="col-md-4">
+                  <button type="button" id="addProductBtn" class="btn btn-primary w-100">
+                    <i class="ri-add-line me-1"></i>Ekle
+                  </button>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="table-responsive mb-4">
-            <table class="table" id="linesTable">
-              <thead>
+          @* Satır Tablosu *@
+          <div class="table-responsive mb-0">
+            <table class="table table-bordered table-sm align-middle js-lines-table" id="linesTable">
+              <thead class="table-light">
                 <tr>
                   <th>Ürün</th>
-                  <th>Adet</th>
-                  <th>Birim Fiyat</th>
-                  <th>KDV (%)</th>
-                  <th>Ara Toplam</th>
-                  <th>KDV Tutarı</th>
-                  <th>Toplam</th>
-                  <th></th>
+                  <th class="text-center" style="width:80px">Adet</th>
+                  <th class="text-end" style="width:130px">Birim Fiyat</th>
+                  <th class="text-center" style="width:80px">KDV %</th>
+                  <th class="text-end" style="width:130px">Ara Toplam</th>
+                  <th class="text-end" style="width:120px">KDV</th>
+                  <th class="text-end" style="width:130px">Toplam</th>
+                  <th style="width:50px"></th>
                 </tr>
               </thead>
-              <tbody></tbody>
-              <tfoot>
-                <tr>
-                  <th colspan="4" class="text-end">Ara Toplam:</th>
-                  <th id="subTotal">0,00 ₺</th>
-                  <th colspan="3"></th>
+              <tbody id="linesBody">
+                <tr id="emptyRow">
+                  <td colspan="8" class="text-center text-body-secondary py-4">
+                    <i class="ri-inbox-line me-1"></i>Henüz ürün eklenmedi.
+                  </td>
                 </tr>
-                <tr>
-                  <th colspan="5" class="text-end">Toplam KDV:</th>
-                  <th id="vatTotal">0,00 ₺</th>
-                  <th colspan="2"></th>
-                </tr>
-                <tr>
-                  <th colspan="6" class="text-end">Genel Toplam:</th>
-                  <th id="grandTotal">0,00 ₺</th>
-                  <th></th>
-                </tr>
-              </tfoot>
+              </tbody>
             </table>
+          </div>
+
+          @* Tutar Özeti *@
+          <div class="d-flex justify-content-end mt-2 mb-4">
+            <div class="order-totals-card">
+              <div class="order-totals-row">
+                <span>Ara Toplam</span>
+                <span id="subTotal">0,00 ₺</span>
+              </div>
+              <div class="order-totals-row">
+                <span>Toplam KDV</span>
+                <span id="vatTotal">0,00 ₺</span>
+              </div>
+              <div class="order-totals-grand">
+                <span>Genel Toplam</span>
+                <span id="grandTotal">0,00 ₺</span>
+              </div>
+            </div>
           </div>
 
           <div id="lineInputs"></div>
 
-          <button type="submit" class="btn btn-success me-2">Siparişi Onayla</button>
-          <a asp-action="Index" class="btn btn-outline-secondary">İptal</a>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success">
+              <i class="ri-check-line me-1"></i>Siparişi Onayla
+            </button>
+            <a asp-action="Index" class="btn btn-outline-secondary">İptal</a>
+          </div>
         </form>
       </div>
     </div>
@@ -98,106 +131,237 @@
 
 @section PageScripts {
   <partial name="_ValidationScriptsPartial" />
+  <script src="/vendor/libs/html5-qrcode/html5-qrcode.min.js"></script>
   <script>
     let lineIndex = 0;
     const lines = new Map();
+    const productCache = new Map();
+    let html5QrCode = null;
+    let scannerRunning = false;
+    let scannedProduct = false; // true after a successful scan, reset after Ekle
 
+    // ── Toplamlar ───────────────────────────────────────────────────────
     function updateTotals() {
-      let sub = 0;
-      let vat = 0;
-      
-      lines.forEach(item => {
+      let sub = 0, vat = 0;
+      lines.forEach(function(item) {
+        const lineSub = item.qty * item.price;
+        vat += lineSub * (item.vatRate / 100);
+        sub += lineSub;
+      });
+      const grand = sub + vat;
+      const fmt = function(v) { return v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'; };
+      document.getElementById('subTotal').textContent = fmt(sub);
+      document.getElementById('vatTotal').textContent = fmt(vat);
+      document.getElementById('grandTotal').textContent = fmt(grand);
+    }
+
+    // ── Satır render ────────────────────────────────────────────────────
+    function renderLines() {
+      const tbody = document.getElementById('linesBody');
+      const emptyRow = document.getElementById('emptyRow');
+      Array.from(tbody.querySelectorAll('tr:not(#emptyRow)')).forEach(function(r) { r.remove(); });
+
+      if (lines.size === 0) {
+        emptyRow.style.display = '';
+        return;
+      }
+      emptyRow.style.display = 'none';
+
+      const fmt = function(v) { return v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'; };
+
+      lines.forEach(function(item, stockId) {
         const lineSub = item.qty * item.price;
         const lineVat = lineSub * (item.vatRate / 100);
-        sub += lineSub;
-        vat += lineVat;
-      });
-      
-      const grand = sub + vat;
-      
-      document.getElementById('subTotal').textContent = sub.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
-      document.getElementById('vatTotal').textContent = vat.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
-      document.getElementById('grandTotal').textContent = grand.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
-    }
+        const lineTotal = lineSub + lineVat;
+        const row = document.createElement('tr');
+        row.dataset.stockId = stockId;
+        row.innerHTML =
+          '<td data-label="Ürün">' + item.name + '</td>' +
+          '<td data-label="Adet" class="text-center">' + item.qty + '</td>' +
+          '<td data-label="Birim Fiyat" class="text-end">' + fmt(item.price) + '</td>' +
+          '<td data-label="KDV %" class="text-center">%' + item.vatRate + '</td>' +
+          '<td data-label="Ara Toplam" class="text-end">' + fmt(lineSub) + '</td>' +
+          '<td data-label="KDV" class="text-end">' + fmt(lineVat) + '</td>' +
+          '<td data-label="Toplam" class="text-end fw-semibold">' + fmt(lineTotal) + '</td>' +
+          '<td data-label="" class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-line py-0 px-1"><i class="ri-delete-bin-6-line"></i></button></td>';
+        tbody.appendChild(row);
 
-    function renderLine(stockId, name, qty, price, vatRate) {
-      const lineSub = qty * price;
-      const lineVat = lineSub * (vatRate / 100);
-      const lineTotal = lineSub + lineVat;
-      
-      const tbody = document.querySelector('#linesTable tbody');
-      const row = document.createElement('tr');
-      row.dataset.stockId = stockId;
-      row.innerHTML = `
-        <td>${name}</td>
-        <td>${qty}</td>
-        <td>${price.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-        <td>%${vatRate}</td>
-        <td>${lineSub.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-        <td>${lineVat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-        <td>${lineTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-        <td><button type="button" class="btn btn-sm btn-outline-danger remove-line">Sil</button></td>`;
-      tbody.appendChild(row);
-
-      row.querySelector('.remove-line').addEventListener('click', () => {
-        lines.delete(stockId);
-        row.remove();
-        rebuildHiddenInputs();
-        updateTotals();
+        row.querySelector('.remove-line').addEventListener('click', function() {
+          lines.delete(stockId);
+          renderLines();
+          rebuildHiddenInputs();
+          updateTotals();
+        });
       });
     }
 
+    // ── Gizli inputlar ──────────────────────────────────────────────────
     function rebuildHiddenInputs() {
       const container = document.getElementById('lineInputs');
       container.innerHTML = '';
       lineIndex = 0;
-      lines.forEach((item, stockId) => {
-        container.insertAdjacentHTML('beforeend', `
-          <input type="hidden" name="Lines[${lineIndex}].StockItemId" value="${stockId}" />
-          <input type="hidden" name="Lines[${lineIndex}].StockName" value="${item.name}" />
-          <input type="hidden" name="Lines[${lineIndex}].Quantity" value="${item.qty}" />
-          <input type="hidden" name="Lines[${lineIndex}].UnitPrice" value="${item.price}" />
-          <input type="hidden" name="Lines[${lineIndex}].VatRate" value="${item.vatRate}" />`);
+      lines.forEach(function(item, stockId) {
+        container.insertAdjacentHTML('beforeend',
+          '<input type="hidden" name="Lines[' + lineIndex + '].StockItemId" value="' + stockId + '" />' +
+          '<input type="hidden" name="Lines[' + lineIndex + '].StockName" value="' + item.name + '" />' +
+          '<input type="hidden" name="Lines[' + lineIndex + '].Quantity" value="' + item.qty + '" />' +
+          '<input type="hidden" name="Lines[' + lineIndex + '].UnitPrice" value="' + item.price + '" />' +
+          '<input type="hidden" name="Lines[' + lineIndex + '].VatRate" value="' + item.vatRate + '" />');
         lineIndex++;
       });
     }
 
-    async function addByBarcode() {
-      const barcode = document.getElementById('barcodeInput').value.trim();
-      const qty = parseInt(document.getElementById('scanQty').value, 10) || 1;
-      const message = document.getElementById('barcodeMessage');
-      message.textContent = '';
+    // ── Ürün ekle ───────────────────────────────────────────────────────
+    function addSelectedProduct() {
+      var stockId = tsProduct.getValue();
+      var qty = parseInt(document.getElementById('scanQty').value, 10) || 1;
+      var msg = document.getElementById('productMessage');
+      msg.textContent = '';
 
-      if (!barcode) return;
+      if (!stockId) { msg.textContent = 'Lütfen ürün seçin.'; return; }
 
-      const response = await fetch(`@Url.Action("LookupBarcode")?barcode=${encodeURIComponent(barcode)}`);
-      if (!response.ok) {
-        message.textContent = 'Ürün bulunamadı.';
-        return;
-      }
+      var product = productCache.get(stockId);
+      if (!product) { msg.textContent = 'Ürün bilgisi bulunamadı.'; return; }
 
-      const product = await response.json();
-      const existing = lines.get(String(product.id));
-      const newQty = (existing?.qty || 0) + qty;
-      lines.set(String(product.id), { name: product.name, qty: newQty, price: product.price, vatRate: product.vatRate });
-
-      document.querySelectorAll('#linesTable tbody tr').forEach(r => {
-        if (r.dataset.stockId === String(product.id)) r.remove();
+      var existing = lines.get(stockId);
+      lines.set(stockId, {
+        name: product.name,
+        qty: (existing ? existing.qty : 0) + qty,
+        price: product.price,
+        vatRate: product.vatRate
       });
-      renderLine(String(product.id), product.name, newQty, product.price, product.vatRate);
+
+      renderLines();
       rebuildHiddenInputs();
       updateTotals();
 
-      document.getElementById('barcodeInput').value = '';
-      document.getElementById('barcodeInput').focus();
+      tsProduct.clear();
+      tsProduct.clearOptions();
+      document.getElementById('scanQty').value = 1;
+
+      if (scannedProduct) {
+        scannedProduct = false;
+        setTimeout(startScanner, 400);
+      }
     }
 
-    document.getElementById('scanAddBtn').addEventListener('click', addByBarcode);
-    document.getElementById('barcodeInput').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        addByBarcode();
+    document.getElementById('addProductBtn').addEventListener('click', addSelectedProduct);
+    document.getElementById('scanQty').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); addSelectedProduct(); }
+    });
+
+    // ── TomSelect AJAX ürün arama ───────────────────────────────────────
+    var tsProduct = new TomSelect('#productSelect', {
+      valueField: 'id',
+      labelField: 'text',
+      searchField: 'text',
+      create: false,
+      placeholder: 'Ürün adı veya kodu ile arayın…',
+      load: function(query, callback) {
+        if (!query.length) return callback();
+        fetch('@Url.Action("SearchProduct")' + '?term=' + encodeURIComponent(query))
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            var results = data.map(function(item) {
+              productCache.set(String(item.id), item);
+              return { id: String(item.id), text: item.name + (item.stockCode ? ' (' + item.stockCode + ')' : '') };
+            });
+            callback(results);
+          })
+          .catch(function() { callback(); });
+      },
+      render: {
+        no_results: function() { return '<div class="no-results">Ürün bulunamadı.</div>'; }
       }
     });
+
+    // ── Barkod tarayıcı ─────────────────────────────────────────────────
+    function startScanner() {
+      document.getElementById('scannerWrapper').style.display = 'block';
+      scannerRunning = true;
+      document.getElementById('scannerBtn').innerHTML = '<i class="ri-camera-off-line me-1"></i>Kamerayı Kapat';
+
+      if (!html5QrCode) html5QrCode = new Html5Qrcode('qr-reader');
+
+      html5QrCode.start(
+        { facingMode: 'environment' },
+        {
+          fps: 10,
+          qrbox: function(w, h) {
+            const side = Math.round(Math.min(w, h) * 0.72);
+            return { width: side, height: Math.round(side * 0.48) };
+          }
+        },
+        async function(decodedText) {
+          await stopScanner();
+          const msg = document.getElementById('productMessage');
+          msg.textContent = '';
+
+          const r = await fetch('@Url.Action("LookupBarcode")' + '?barcode=' + encodeURIComponent(decodedText));
+          if (!r.ok) {
+            msg.textContent = 'Barkod bulunamadı: ' + decodedText;
+            setTimeout(startScanner, 2500);
+            return;
+          }
+          var product = await r.json();
+          var key = String(product.id);
+          productCache.set(key, product);
+
+          tsProduct.clearOptions();
+          tsProduct.addOption({ id: key, text: product.name + (product.stockCode ? ' (' + product.stockCode + ')' : '') });
+          tsProduct.setValue(key, true);
+
+          scannedProduct = true; // Ekle'ye basınca kamera yeniden açılacak
+
+          var qtyInput = document.getElementById('scanQty');
+          qtyInput.value = 1;
+          qtyInput.select();
+          qtyInput.focus();
+        },
+        function() {}
+      ).catch(function() {
+        document.getElementById('productMessage').textContent = 'Kamera başlatılamadı.';
+        document.getElementById('scannerWrapper').style.display = 'none';
+        scannerRunning = false;
+        document.getElementById('scannerBtn').innerHTML = '<i class="ri-camera-line me-1"></i>Barkod Tara';
+      });
+    }
+
+    async function stopScanner() {
+      if (html5QrCode && scannerRunning) {
+        try { await html5QrCode.stop(); } catch(e) {}
+        scannerRunning = false;
+      }
+      document.getElementById('scannerWrapper').style.display = 'none';
+      document.getElementById('scannerBtn').innerHTML = '<i class="ri-camera-line me-1"></i>Barkod Tara';
+    }
+
+    document.getElementById('scannerBtn').addEventListener('click', function() {
+      if (scannerRunning) { stopScanner(); } else { startScanner(); }
+    });
+    document.getElementById('stopScannerBtn').addEventListener('click', stopScanner);
+  </script>
+  <script>
+  (function () {
+    const d = window.driver && window.driver.js && window.driver.js.driver;
+    if (!d) return;
+    const tour = d({
+      animate: true, smoothScroll: true, allowClose: true,
+      overlayOpacity: 0.4, stagePadding: 6, stageRadius: 8,
+      nextBtnText: 'İleri →', prevBtnText: '← Geri', doneBtnText: 'Tamam',
+      showProgress: true, progressText: '{{current}} / {{total}}',
+      steps: [
+        { element: '#orderForm select[name="CustomerId"]', popover: { title: 'Müşteri Seçimi', description: 'Siparişin hangi müşteriye ait olduğunu seçin. Listede sadece aktif müşteriler görünür.', side: 'bottom' } },
+        { element: '#scannerBtn', popover: { title: 'Barkod Tara', description: 'Bu butona basınca cihazınızın kamerası açılır. Ürünün barkodunu kameraya gösterin — ürün otomatik olarak arama kutusuna eklenir.', side: 'bottom' } },
+        { element: '#scannerWrapper', popover: { title: 'Kamera Görüntüsü', description: 'Barkodu bu alana getirin. Tarama başarılı olunca kamera kapanır ve ürün otomatik seçilir. "Taramayı Durdur" butonu ile kamerayı manuel kapatabilirsiniz.', side: 'top' } },
+        { element: '#productSelect', popover: { title: 'Manuel Ürün Arama', description: 'Barkod taramak yerine ürün adıyla da arama yapabilirsiniz. Arama kutusuna yazmaya başlayın.', side: 'bottom' } },
+        { element: '#scanQty', popover: { title: 'Miktar', description: 'Kaç adet ekleyeceğinizi girin. Varsayılan 1\'dir.', side: 'bottom' } },
+        { element: '#addProductBtn', popover: { title: 'Kaleme Ekle', description: 'Seçili ürünü ve miktarı sipariş listesine ekler. Aynı ürünü birden fazla kez ekleyebilirsiniz.', side: 'bottom' } },
+        { element: '#linesTable', popover: { title: 'Sipariş Kalemleri', description: 'Eklenen ürünler burada listelenir. Çöp kutusu ikonuna basarak satırı silebilirsiniz. KDV ve genel toplam otomatik hesaplanır.', side: 'top' } },
+        { element: 'button[type="submit"]', popover: { title: 'Siparişi Kaydet', description: 'En az bir kalem ekledikten sonra siparişi kaydedebilirsiniz. Sipariş "Bekliyor" durumunda açılır, onaylandıktan sonra faturaya dönüştürülür.', side: 'top' } }
+      ]
+    });
+    document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());
+  })();
   </script>
 }

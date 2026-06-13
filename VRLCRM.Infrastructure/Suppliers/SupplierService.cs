@@ -25,8 +25,16 @@ public class SupplierService : ISupplierService
     public async Task<Supplier?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         return await _context.Suppliers
-            .Include(s => s.PurchaseInvoices)
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Invoice>> GetPurchaseInvoicesAsync(int supplierId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Invoices
+            .AsNoTracking()
+            .Where(i => i.SupplierId == supplierId && i.InvoiceType == Domain.Enums.InvoiceType.Purchase)
+            .OrderByDescending(i => i.InvoiceDate)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<Supplier> CreateAsync(Supplier supplier, CancellationToken cancellationToken = default)
@@ -72,6 +80,19 @@ public class SupplierService : ISupplierService
         }
 
         supplier.IsActive = false;
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> RestoreAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var supplier = await _context.Suppliers
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+
+        if (supplier is null || supplier.IsActive)
+            return false;
+
+        supplier.IsActive = true;
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }
