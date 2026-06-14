@@ -13,7 +13,7 @@ using VRLCRM.Services;
 
 namespace VRLCRM.Controllers;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Roles = AppRoles.AdminAndPersonel)]
 public class InvoicesController : Controller
 {
     private readonly IInvoiceService _invoiceService;
@@ -47,6 +47,7 @@ public class InvoicesController : Controller
         return View(invoices);
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     public async Task<IActionResult> Purchase(CancellationToken cancellationToken)
     {
         var invoices = await _invoiceService.GetByTypeAsync(InvoiceType.Purchase, cancellationToken);
@@ -61,6 +62,11 @@ public class InvoicesController : Controller
             return NotFound();
         }
 
+        if (!User.IsInRole(AppRoles.Admin) && invoice.InvoiceType != InvoiceType.Sales)
+        {
+            return Forbid();
+        }
+
         return View(invoice);
     }
 
@@ -70,6 +76,11 @@ public class InvoicesController : Controller
         if (invoice is null)
         {
             return NotFound();
+        }
+
+        if (!User.IsInRole(AppRoles.Admin) && invoice.InvoiceType != InvoiceType.Sales)
+        {
+            return Forbid();
         }
 
         var bytes = _documentService.GeneratePdf(invoice);
@@ -82,6 +93,11 @@ public class InvoicesController : Controller
         if (invoice is null)
         {
             return NotFound();
+        }
+
+        if (!User.IsInRole(AppRoles.Admin) && invoice.InvoiceType != InvoiceType.Sales)
+        {
+            return Forbid();
         }
 
         var bytes = _documentService.GenerateExcel(invoice);
@@ -126,6 +142,7 @@ public class InvoicesController : Controller
         return await SaveInvoiceAsync(model, nameof(Sales), cancellationToken);
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     public async Task<IActionResult> CreatePurchase(CancellationToken cancellationToken)
     {
         var model = new InvoiceFormViewModel { InvoiceType = InvoiceType.Purchase };
@@ -135,6 +152,7 @@ public class InvoicesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = AppRoles.Admin)]
     public async Task<IActionResult> CreatePurchase(InvoiceFormViewModel model, CancellationToken cancellationToken)
     {
         model.InvoiceType = InvoiceType.Purchase;
@@ -144,6 +162,7 @@ public class InvoicesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = AppRoles.Admin)]
     public async Task<IActionResult> Deactivate(int id, string? returnAction, CancellationToken cancellationToken)
     {
         var invoice = await _invoiceService.GetByIdAsync(id, cancellationToken);

@@ -13,7 +13,7 @@ using VRLCRM.Models.Dashboards;
 
 namespace VRLCRM.Controllers;
 
-[Authorize(Roles = AppRoles.AdminAndPersonel)]
+[Authorize(Roles = AppRoles.Admin)]
 public class DashboardsController : Controller
 {
     private readonly ICustomerService _customerService;

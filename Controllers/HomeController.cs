@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using VRLCRM.Domain.Constants;
@@ -18,6 +18,16 @@ public class HomeController : Controller
 
     public IActionResult Index()
     {
+        if (User.IsInRole(AppRoles.Personel))
+        {
+            return RedirectToAction("Index", "Orders");
+        }
+
+        if (User.IsInRole(AppRoles.Admin))
+        {
+            return RedirectToAction("Index", "Dashboards");
+        }
+
         return View();
     }
 

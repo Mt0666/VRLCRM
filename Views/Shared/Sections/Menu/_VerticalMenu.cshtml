@@ -2,13 +2,14 @@
 @{
   string? currentPage = ViewContext.HttpContext.Request.Path;
   var isAdmin = User.IsInRole(AppRoles.Admin);
+  var homeController = isAdmin ? "Dashboards" : "Orders";
 }
 
 <!-- Menu -->
 <aside id="layout-menu" class="layout-menu menu-vertical menu">
 
   <div class='app-brand demo @((@ViewData["navbarFull"] != null && Convert.ToBoolean(@ViewData["navbarFull"])) ? "d-xl-none" : "")'>
-    <a asp-controller="Dashboards" asp-action="Index" class="app-brand-link gap-xl-0 gap-2">
+    <a asp-controller="@homeController" asp-action="Index" class="app-brand-link gap-xl-0 gap-2">
       <span class="app-brand-logo demo me-1">
         @await Html.PartialAsync("../_Partials/_Macros")
       </span>
@@ -24,13 +25,16 @@
 
   <ul class="menu-inner py-1">
 
-    <!-- Ana Sayfa -->
-    <li class='menu-item@(currentPage.EndsWith("/") || currentPage.StartsWith("/Dashboards") ? " active" : "")'>
-      <a asp-controller="Dashboards" asp-action="Index" class="menu-link">
-        <i class="menu-icon icon-base ri ri-home-smile-line"></i>
-        <div>Ana Sayfa</div>
-      </a>
-    </li>
+    @if (isAdmin)
+    {
+      <!-- Ana Sayfa -->
+      <li class='menu-item@(currentPage.EndsWith("/") || currentPage.StartsWith("/Dashboards") ? " active" : "")'>
+        <a asp-controller="Dashboards" asp-action="Index" class="menu-link">
+          <i class="menu-icon icon-base ri ri-home-smile-line"></i>
+          <div>Ana Sayfa</div>
+        </a>
+      </li>
+    }
 
     @if (isAdmin)
     {
@@ -66,14 +70,15 @@
       </a>
     </li>
 
+    <li class='menu-item@(currentPage.StartsWith("/Invoices/Sales") || currentPage == "/Invoices/CreateSales" ? " active" : "")'>
+      <a asp-controller="Invoices" asp-action="Sales" class="menu-link">
+        <i class="menu-icon icon-base ri ri-file-list-3-line"></i>
+        <div>Satış Faturaları</div>
+      </a>
+    </li>
+
     @if (isAdmin)
     {
-      <li class='menu-item@(currentPage.StartsWith("/Invoices/Sales") || currentPage == "/Invoices/CreateSales" ? " active" : "")'>
-        <a asp-controller="Invoices" asp-action="Sales" class="menu-link">
-          <i class="menu-icon icon-base ri ri-file-list-3-line"></i>
-          <div>Satış Faturaları</div>
-        </a>
-      </li>
       <li class='menu-item@(currentPage.StartsWith("/Invoices/Purchase") || currentPage == "/Invoices/CreatePurchase" ? " active" : "")'>
         <a asp-controller="Invoices" asp-action="Purchase" class="menu-link">
           <i class="menu-icon icon-base ri ri-file-add-line"></i>

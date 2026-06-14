@@ -1,7 +1,9 @@
 @model Invoice
+@using VRLCRM.Domain.Constants
 @{
   ViewData["Title"] = "Fatura Detayı";
   var typeText = Model.InvoiceType == InvoiceType.Sales ? "Satış Faturası" : "Alış Faturası";
+  var isAdmin = User.IsInRole(AppRoles.Admin);
 }
 
 <div class="row g-6">
@@ -30,7 +32,7 @@
             </a>
           </div>
         </div>
-        @if (Model.IsActive)
+        @if (Model.IsActive && isAdmin)
         {
           <div class="d-flex flex-wrap gap-2 mt-3 pt-3 border-top">
             <form asp-action="Deactivate" asp-route-id="@Model.Id" asp-route-returnAction="@(Model.InvoiceType == InvoiceType.Sales ? "Sales" : "Purchase")" method="post" onsubmit="return confirm('Faturayı pasife almak istediğinize emin misiniz?');">
