@@ -44,18 +44,7 @@
               <td>@order.Customer.FullName</td>
               <td>@order.OrderDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
               <td>
-                @switch (order.Status)
-                {
-                  case OrderStatus.Approved:
-                    <span class="badge bg-label-success">Onaylandı</span>
-                    break;
-                  case OrderStatus.Cancelled:
-                    <span class="badge bg-label-danger">İptal</span>
-                    break;
-                  default:
-                    <span class="badge bg-label-warning">@order.Status</span>
-                    break;
-                }
+                <partial name="_OrderStatusBadge" model="order" />
               </td>
               <td>@order.TotalAmount.ToString("N2") ₺</td>
               <td>
@@ -84,7 +73,7 @@
         element: '.js-data-table',
         popover: {
           title: 'Sipariş Listesi',
-          description: 'Tüm siparişler burada listelenir. Durum renkleri: sarı = bekliyor, yeşil = onaylı, kırmızı = iptal.',
+          description: 'Tüm siparişler burada listelenir. Durum renkleri: sarı = beklemede, mavi = faturalandırıldı, kırmızı = iptal.',
           side: 'top'
         }
       },

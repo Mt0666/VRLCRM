@@ -47,7 +47,8 @@ public class InvoiceService : IInvoiceService
     public async Task<Invoice?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         return await _context.Invoices
-            .Include(i => i.Customer)
+            .Include(i => i.Customer!)
+                .ThenInclude(c => c.Address)
             .Include(i => i.Supplier)
             .Include(i => i.Lines)
             .ThenInclude(l => l.StockItem)
@@ -392,7 +393,7 @@ public class InvoiceService : IInvoiceService
                 Price = line.UnitPrice,
                 VatRate = input.VatRate,
                 StockQuantity = 0,
-                CriticalStockLevel = 5,
+                CriticalStockLevel = input.CriticalStockLevel > 0 ? input.CriticalStockLevel : 5,
                 IsActive = true
             };
 

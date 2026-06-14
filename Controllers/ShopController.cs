@@ -45,6 +45,12 @@ public class ShopController : Controller
         return (customer, null);
     }
 
+    private void SetCartViewBag(int customerId)
+    {
+        ViewBag.CartCount = _cartService.GetItems(customerId).Count;
+        ViewBag.CartTotal = _cartService.GetTotal(customerId);
+    }
+
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
         var (customer, error) = await GetCurrentCustomerAsync(cancellationToken);
@@ -56,8 +62,7 @@ public class ShopController : Controller
             .ToList();
 
         ViewBag.Customer = customer;
-        ViewBag.CartCount = _cartService.GetItems(customer!.Id).Count;
-        ViewBag.CartTotal = _cartService.GetTotal(customer.Id);
+        SetCartViewBag(customer!.Id);
 
         return View(stocks);
     }
@@ -124,9 +129,38 @@ public class ShopController : Controller
         ViewBag.Customer = customer;
         ViewBag.CartItems = _cartService.GetItems(customer!.Id);
         ViewBag.CartTotal = _cartService.GetTotal(customer.Id);
-        ViewBag.CartCount = _cartService.GetItems(customer.Id).Count;
+        SetCartViewBag(customer.Id);
 
         return View();
+    }
+
+    public async Task<IActionResult> Orders(CancellationToken cancellationToken)
+    {
+        var (customer, error) = await GetCurrentCustomerAsync(cancellationToken);
+        if (error is not null) return error;
+
+        var orders = await _customerService.GetOrdersAsync(customer!.Id, cancellationToken);
+        ViewBag.Customer = customer;
+        SetCartViewBag(customer.Id);
+
+        return View(orders);
+    }
+
+    public async Task<IActionResult> OrderDetails(int id, CancellationToken cancellationToken)
+    {
+        var (customer, error) = await GetCurrentCustomerAsync(cancellationToken);
+        if (error is not null) return error;
+
+        var order = await _orderService.GetByIdAsync(id, cancellationToken);
+        if (order is null || order.CustomerId != customer!.Id)
+        {
+            return NotFound();
+        }
+
+        ViewBag.Customer = customer;
+        SetCartViewBag(customer.Id);
+
+        return View(order);
     }
 
     [HttpPost]

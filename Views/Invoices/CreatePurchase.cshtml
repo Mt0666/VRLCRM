@@ -47,11 +47,16 @@
 
           @* Ürün Ekleme Paneli *@
           <div class="card border mb-4">
-            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
               <span class="fw-semibold small text-body"><i class="ri-add-circle-line me-1"></i>Ürün Ekle</span>
-              <button type="button" id="scannerBtn" class="btn btn-sm btn-outline-info">
-                <i class="ri-camera-line me-1"></i>Barkod Tara
-              </button>
+              <div class="d-flex gap-2">
+                <button type="button" id="openNewProductBtn" class="btn btn-sm btn-outline-primary">
+                  <i class="ri-add-box-line me-1"></i>Stokta Tanımsız Ürün
+                </button>
+                <button type="button" id="scannerBtn" class="btn btn-sm btn-outline-info">
+                  <i class="ri-camera-line me-1"></i>Barkod Tara
+                </button>
+              </div>
             </div>
             <div class="card-body">
               @* Kamera okuyucu alanı *@
@@ -143,12 +148,81 @@
   </div>
 </div>
 
+@* Yeni ürün modal *@
+<div class="modal fade" id="newProductModal" tabindex="-1" aria-labelledby="newProductModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="newProductModalLabel">
+          <i class="ri-add-box-line me-1"></i>Stokta Tanımsız Ürün Ekle
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-body-secondary small mb-3">
+          Bu ürün stok kartlarında yoksa buradan tanımlayıp faturaya ekleyebilirsiniz. Ürün kaydı fatura kaydedildiğinde oluşturulur.
+        </p>
+        <div id="newProductMessage" class="alert alert-danger py-2 px-3 small d-none" role="alert"></div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="newStockCode" class="form-label">Stok Kodu <span class="text-danger">*</span></label>
+            <input type="text" id="newStockCode" class="form-control" maxlength="50" />
+          </div>
+          <div class="col-md-6">
+            <label for="newProductName" class="form-label">Ürün Adı <span class="text-danger">*</span></label>
+            <input type="text" id="newProductName" class="form-control" maxlength="200" />
+          </div>
+          <div class="col-md-6">
+            <label for="newCategoryId" class="form-label">Kategori <span class="text-danger">*</span></label>
+            <select id="newCategoryId" class="form-select">
+              <option value="">Kategori seçin</option>
+              @foreach (var category in Model.CategoryOptions)
+              {
+                <option value="@category.Id">@category.Name</option>
+              }
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label for="newBarcode" class="form-label">Barkod</label>
+            <input type="text" id="newBarcode" class="form-control" maxlength="50" />
+          </div>
+          <div class="col-md-4">
+            <label for="newVatRate" class="form-label">KDV %</label>
+            <input type="number" id="newVatRate" class="form-control" value="20" min="0" max="100" step="1" />
+          </div>
+          <div class="col-md-4">
+            <label for="newCriticalStockLevel" class="form-label">Kritik Stok Seviyesi</label>
+            <input type="number" id="newCriticalStockLevel" class="form-control" value="5" min="0" />
+          </div>
+          <div class="col-md-4">
+            <label for="newLineQty" class="form-label">Adet <span class="text-danger">*</span></label>
+            <input type="number" id="newLineQty" class="form-control" value="1" min="1" />
+          </div>
+          <div class="col-md-6">
+            <label for="newLinePrice" class="form-label">Alış Fiyatı <span class="text-danger">*</span></label>
+            <input type="number" id="newLinePrice" class="form-control" step="0.01" min="0" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">İptal</button>
+        <button type="button" id="addNewProductBtn" class="btn btn-primary">
+          <i class="ri-check-line me-1"></i>Faturaya Ekle
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 @section PageScripts {
   <partial name="_ValidationScriptsPartial" />
   <script src="/vendor/libs/html5-qrcode/html5-qrcode.min.js"></script>
   <script>
     const stockOptions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
       Model.StockOptions,
+      new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+    const categoryOptions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+      Model.CategoryOptions,
       new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
     const stockPrices  = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.price]; }));
     const stockNames   = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.name]; }));
@@ -161,6 +235,8 @@
     let html5QrCode = null;
     let scannerRunning = false;
     let scannedProduct = false;
+    const newProductModalEl = document.getElementById('newProductModal');
+    const newProductModal = newProductModalEl ? new bootstrap.Modal(newProductModalEl) : null;
 
     // ── Toplamlar ───────────────────────────────────────────────────────
     function updateTotals() {
@@ -191,14 +267,15 @@
 
       var fmt = function(v) { return v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'; };
 
-      lines.forEach(function(item, stockId) {
+      lines.forEach(function(item, lineKey) {
         var lineSub = item.qty * item.price;
         var lineVat = lineSub * (item.vatRate / 100);
         var lineTotal = lineSub + lineVat;
         var row = document.createElement('tr');
-        row.dataset.stockId = stockId;
+        row.dataset.lineKey = lineKey;
+        var badge = item.isNew ? ' <span class="badge bg-label-info ms-1">Yeni</span>' : '';
         row.innerHTML =
-          '<td data-label="Ürün">' + item.name + '</td>' +
+          '<td data-label="Ürün">' + item.name + badge + (item.code ? '<div class="small text-body-secondary">' + item.code + '</div>' : '') + '</td>' +
           '<td data-label="Adet" class="text-center">' + item.qty + '</td>' +
           '<td data-label="Alış Fiyatı" class="text-end">' + fmt(item.price) + '</td>' +
           '<td data-label="KDV %" class="text-center">%' + item.vatRate + '</td>' +
@@ -209,7 +286,7 @@
         tbody.appendChild(row);
 
         row.querySelector('.remove-line').addEventListener('click', function() {
-          lines.delete(stockId);
+          lines.delete(lineKey);
           renderLines();
           rebuildHiddenInputs();
           updateTotals();
@@ -218,18 +295,36 @@
     }
 
     // ── Gizli inputlar ──────────────────────────────────────────────────
+    function appendHidden(name, value) {
+      return '<input type="hidden" name="' + name + '" value="' + String(value ?? '').replace(/"/g, '&quot;') + '" />';
+    }
+
     function rebuildHiddenInputs() {
       var container = document.getElementById('lineInputs');
       container.innerHTML = '';
       lineIndex = 0;
-      lines.forEach(function(item, stockId) {
-        container.insertAdjacentHTML('beforeend',
-          '<input type="hidden" name="Lines[' + lineIndex + '].IsNewProduct" value="false" />' +
-          '<input type="hidden" name="Lines[' + lineIndex + '].StockItemId" value="' + stockId + '" />' +
-          '<input type="hidden" name="Lines[' + lineIndex + '].StockName" value="' + item.name + '" />' +
-          '<input type="hidden" name="Lines[' + lineIndex + '].Quantity" value="' + item.qty + '" />' +
-          '<input type="hidden" name="Lines[' + lineIndex + '].UnitPrice" value="' + item.price + '" />' +
-          '<input type="hidden" name="Lines[' + lineIndex + '].VatRate" value="' + item.vatRate + '" />');
+      lines.forEach(function(item) {
+        var prefix = 'Lines[' + lineIndex + '].';
+        if (item.isNew) {
+          container.insertAdjacentHTML('beforeend',
+            appendHidden(prefix + 'IsNewProduct', 'true') +
+            appendHidden(prefix + 'NewStockCode', item.code) +
+            appendHidden(prefix + 'NewProductName', item.name) +
+            appendHidden(prefix + 'NewCategoryId', item.categoryId) +
+            appendHidden(prefix + 'NewBarcode', item.barcode || '') +
+            appendHidden(prefix + 'NewCriticalStockLevel', item.criticalStockLevel) +
+            appendHidden(prefix + 'Quantity', item.qty) +
+            appendHidden(prefix + 'UnitPrice', item.price) +
+            appendHidden(prefix + 'VatRate', item.vatRate));
+        } else {
+          container.insertAdjacentHTML('beforeend',
+            appendHidden(prefix + 'IsNewProduct', 'false') +
+            appendHidden(prefix + 'StockItemId', item.stockId) +
+            appendHidden(prefix + 'StockName', item.name) +
+            appendHidden(prefix + 'Quantity', item.qty) +
+            appendHidden(prefix + 'UnitPrice', item.price) +
+            appendHidden(prefix + 'VatRate', item.vatRate));
+        }
         lineIndex++;
       });
     }
@@ -242,7 +337,7 @@
       var msg = document.getElementById('productMessage');
       msg.textContent = '';
 
-      if (!stockId || !qty || qty <= 0 || isNaN(price)) {
+      if (!stockId || !qty || qty <= 0 || price === undefined || price === null || isNaN(price)) {
         msg.textContent = 'Ürün seçin ve geçerli adet/fiyat girin.';
         return;
       }
@@ -250,9 +345,18 @@
       var product = productCache.get(stockId);
       var name = product ? product.name : (stockNames[stockId] || stockId);
       var vatRate = product ? product.vatRate : (stockVatRates[stockId] || 0);
+      var lineKey = 'stock:' + stockId;
 
-      var existing = lines.get(stockId);
-      lines.set(stockId, { name: name, qty: (existing ? existing.qty : 0) + qty, price: price, vatRate: vatRate });
+      var existing = lines.get(lineKey);
+      lines.set(lineKey, {
+        isNew: false,
+        stockId: stockId,
+        name: name,
+        code: product ? product.stockCode : '',
+        qty: (existing ? existing.qty : 0) + qty,
+        price: price,
+        vatRate: vatRate
+      });
 
       renderLines();
       rebuildHiddenInputs();
@@ -273,6 +377,98 @@
       if (e.key === 'Enter') { e.preventDefault(); addLine(); }
     });
 
+    function showNewProductMessage(text) {
+      var box = document.getElementById('newProductMessage');
+      if (!text) {
+        box.classList.add('d-none');
+        box.textContent = '';
+        return;
+      }
+      box.textContent = text;
+      box.classList.remove('d-none');
+    }
+
+    function openNewProductModal(prefillName) {
+      showNewProductMessage('');
+      if (prefillName) {
+        document.getElementById('newProductName').value = prefillName;
+      }
+      if (newProductModal) {
+        newProductModal.show();
+        document.getElementById('newStockCode').focus();
+      }
+    }
+
+    function addNewProductLine() {
+      var stockCode = document.getElementById('newStockCode').value.trim();
+      var name = document.getElementById('newProductName').value.trim();
+      var categoryId = document.getElementById('newCategoryId').value;
+      var barcode = document.getElementById('newBarcode').value.trim();
+      var vatRate = parseFloat(document.getElementById('newVatRate').value);
+      var criticalStockLevel = parseInt(document.getElementById('newCriticalStockLevel').value, 10);
+      var qty = parseInt(document.getElementById('newLineQty').value, 10);
+      var price = parseFloat(document.getElementById('newLinePrice').value);
+
+      if (!stockCode || !name || !categoryId) {
+        showNewProductMessage('Stok kodu, ürün adı ve kategori zorunludur.');
+        return;
+      }
+      if (!qty || qty <= 0) {
+        showNewProductMessage('Geçerli bir adet girin.');
+        return;
+      }
+      if (price === undefined || price === null || isNaN(price) || price < 0) {
+        showNewProductMessage('Geçerli bir alış fiyatı girin.');
+        return;
+      }
+      if (isNaN(vatRate) || vatRate < 0) {
+        vatRate = 0;
+      }
+      if (isNaN(criticalStockLevel) || criticalStockLevel < 0) {
+        criticalStockLevel = 5;
+      }
+
+      var lineKey = 'new:' + stockCode.toLowerCase();
+      var existing = lines.get(lineKey);
+      lines.set(lineKey, {
+        isNew: true,
+        name: name,
+        code: stockCode,
+        categoryId: categoryId,
+        barcode: barcode,
+        criticalStockLevel: criticalStockLevel,
+        qty: (existing ? existing.qty : 0) + qty,
+        price: price,
+        vatRate: vatRate
+      });
+
+      renderLines();
+      rebuildHiddenInputs();
+      updateTotals();
+
+      document.getElementById('newStockCode').value = '';
+      document.getElementById('newProductName').value = '';
+      document.getElementById('newCategoryId').value = '';
+      document.getElementById('newBarcode').value = '';
+      document.getElementById('newVatRate').value = '20';
+      document.getElementById('newCriticalStockLevel').value = '5';
+      document.getElementById('newLineQty').value = '1';
+      document.getElementById('newLinePrice').value = '';
+      showNewProductMessage('');
+      if (newProductModal) {
+        newProductModal.hide();
+      }
+    }
+
+    document.getElementById('openNewProductBtn').addEventListener('click', function() {
+      openNewProductModal('');
+    });
+    document.getElementById('addNewProductBtn').addEventListener('click', addNewProductLine);
+
+    window.openNewProductFromSearch = function(name) {
+      openNewProductModal(name || '');
+    };
+
     // ── TomSelect ürün seçimi ───────────────────────────────────────────
     var tsStock = new TomSelect('#stockSelect', {
       valueField: 'id',
@@ -284,7 +480,13 @@
         return { id: String(s.id), text: s.name + (s.stockCode ? ' (' + s.stockCode + ')' : '') };
       }),
       render: {
-        no_results: function() { return '<div class="no-results">Ürün bulunamadı.</div>'; }
+        no_results: function(data, escape) {
+          var term = escape(data.input);
+          return '<div class="no-results p-2">' +
+            '<div class="mb-2">"' + term + '" için ürün bulunamadı.</div>' +
+            '<button type="button" class="btn btn-sm btn-outline-primary w-100" onclick="openNewProductFromSearch(\'' + term.replace(/'/g, "\\'") + '\')">' +
+            '<i class="ri-add-box-line me-1"></i>Yeni ürün tanımla</button></div>';
+        }
       },
       onChange: function(value) {
         if (value && stockPrices[value] !== undefined) {
@@ -318,13 +520,15 @@
           var r = await fetch('@Url.Action("SearchProduct", "Invoices")' + '?term=' + encodeURIComponent(decodedText));
           if (!r.ok) {
             msg.textContent = 'Barkod bulunamadı: ' + decodedText;
-            setTimeout(startScanner, 2500);
+            openNewProductModal('');
+            document.getElementById('newBarcode').value = decodedText;
             return;
           }
           var results = await r.json();
           if (!results || results.length === 0) {
             msg.textContent = 'Barkod bulunamadı: ' + decodedText;
-            setTimeout(startScanner, 2500);
+            openNewProductModal('');
+            document.getElementById('newBarcode').value = decodedText;
             return;
           }
 
@@ -379,7 +583,8 @@
       steps: [
         { element: '#purchaseForm select[name="SupplierId"]', popover: { title: 'Tedarikçi Seçimi', description: 'Malı aldığınız tedarikçiyi seçin. Fatura kaydedilince tedarikçi cari hesabı (borcunuz) bu tutar kadar artar.', side: 'bottom' } },
         { element: '#scannerBtn', popover: { title: 'Barkod Tara', description: 'Kamerayı açar. Gelen ürünün barkodunu okutun — ürün otomatik seçilir.', side: 'bottom' } },
-        { element: '#stockSelect', popover: { title: 'Manuel Ürün Seçimi', description: 'Ürün adıyla arama yapabilirsiniz. Mevcut stok kartlarından seçim yapılır.', side: 'bottom' } },
+        { element: '#openNewProductBtn', popover: { title: 'Stokta Tanımsız Ürün', description: 'Stok kartında olmayan ürünleri popup ile tanımlayıp faturaya ekleyebilirsiniz. Ürün kaydı fatura kaydedilince oluşur.', side: 'bottom' } },
+        { element: '#stockSelect', popover: { title: 'Manuel Ürün Seçimi', description: 'Mevcut stok kartlarından arama yapın. Bulunamazsa "Yeni ürün tanımla" seçeneği çıkar.', side: 'bottom' } },
         { element: '#lineQty', popover: { title: 'Miktar', description: 'Tedarikçiden kaç adet geldiğini girin.', side: 'bottom' } },
         { element: '#linePrice', popover: { title: 'Alış Fiyatı', description: 'Bu partinin alış fiyatı. Stok değer hesabında kullanılır.', side: 'bottom' } },
         { element: '#addLineBtn', popover: { title: 'Kaleme Ekle', description: 'Ürünü faturaya ekler.', side: 'bottom' } },

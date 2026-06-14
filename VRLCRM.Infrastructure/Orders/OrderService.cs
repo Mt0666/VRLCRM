@@ -30,7 +30,8 @@ public class OrderService : IOrderService
     public async Task<Order?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         return await _context.Orders
-            .Include(o => o.Customer)
+            .Include(o => o.Customer!)
+                .ThenInclude(c => c.Address)
             .Include(o => o.Lines)
             .ThenInclude(l => l.StockItem)
             .Include(o => o.SalesInvoice)

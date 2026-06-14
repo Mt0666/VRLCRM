@@ -29,7 +29,7 @@
       <div class="d-flex gap-4">
         <div>
           <div style="font-size:.7rem; opacity:.8; margin-bottom:.1rem;">Kullanılabilir</div>
-          <div class="fw-bold" style="font-size:1.1rem;">@customer.AvailableCredit?.ToString("N0") ₺</div>
+          <div class="fw-bold" style="font-size:1.1rem;">@customer.AvailableCredit.ToString("N0") ₺</div>
         </div>
         <div style="opacity:.7;">
           <div style="font-size:.7rem; margin-bottom:.1rem;">Toplam Limit</div>
@@ -127,7 +127,7 @@ else
               @if (inStock)
               {
                 <span class="badge bg-label-success" style="font-size:.68rem;">
-                  <i class="ri-check-line"></i> @stock.StockQuantity adet
+                  <i class="ri-check-line"></i> Stokta Var
                 </span>
               }
               else
@@ -153,8 +153,8 @@ else
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="stockItemId" value="@stock.Id" />
                 <input type="number" name="quantity" value="1" min="1" max="@stock.StockQuantity"
-                       class="form-control form-control-sm text-center fw-semibold"
-                       style="width:60px; border-radius:8px; flex-shrink:0;" />
+                       class="form-control form-control-sm text-center fw-semibold mv-qty-input"
+                       style="border-radius:8px; flex-shrink:0;" />
                 <button type="submit" class="btn btn-primary btn-sm flex-grow-1" style="border-radius:8px; font-size:.82rem;">
                   <i class="ri-shopping-cart-add-line me-1"></i>Sepete Ekle
                 </button>

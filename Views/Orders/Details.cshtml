@@ -55,18 +55,11 @@
           </div>
           <div class="detail-info-item">
             <div class="detail-info-label">Sipariş Durumu</div>
-            <div class="detail-info-value">
-              @if (Model.Status == OrderStatus.Approved)
+            <div class="detail-info-value d-flex flex-wrap align-items-center gap-2">
+              <partial name="_OrderStatusBadge" model="Model" />
+              @if (Model.SalesInvoiceId.HasValue && Model.SalesInvoice is not null)
               {
-                <span class="badge bg-label-success">Onaylandı</span>
-              }
-              else if (Model.Status == OrderStatus.Cancelled)
-              {
-                <span class="badge bg-label-danger">İptal</span>
-              }
-              else
-              {
-                <span>@Model.Status.ToString()</span>
+                <a asp-controller="Invoices" asp-action="Details" asp-route-id="@Model.SalesInvoiceId">@Model.SalesInvoice.InvoiceNumber</a>
               }
             </div>
           </div>
@@ -78,19 +71,6 @@
             <div class="detail-info-label">Kayıt Durumu</div>
             <div class="detail-info-value"><partial name="_StatusBadge" model="Model.IsActive" /></div>
           </div>
-          @if (Model.SalesInvoiceId.HasValue)
-          {
-            <div class="detail-info-item">
-              <div class="detail-info-label">Fatura</div>
-              <div class="detail-info-value">
-                <span class="badge bg-label-primary me-1">Faturalandırıldı</span>
-                @if (Model.SalesInvoice is not null)
-                {
-                  <a asp-controller="Invoices" asp-action="Details" asp-route-id="@Model.SalesInvoiceId">@Model.SalesInvoice.InvoiceNumber</a>
-                }
-              </div>
-            </div>
-          }
         </div>
 
         @if (!string.IsNullOrWhiteSpace(Model.Notes))

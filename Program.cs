@@ -2,6 +2,7 @@ using Serilog;
 using VRLCRM.Handlers;
 using VRLCRM.Infrastructure;
 using VRLCRM.Infrastructure.Data;
+using VRLCRM.Models.Settings;
 using VRLCRM.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,6 +23,8 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 builder.Services.AddScoped<CustomerCartService>();
+builder.Services.Configure<CompanyDocumentSettings>(
+    builder.Configuration.GetSection(CompanyDocumentSettings.SectionName));
 builder.Services.AddScoped<OrderDocumentService>();
 builder.Services.AddScoped<InvoiceDocumentService>();
 builder.Services.AddInfrastructure(builder.Configuration);

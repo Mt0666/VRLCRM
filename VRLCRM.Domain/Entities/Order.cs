@@ -28,4 +28,22 @@ public class Order : BaseEntity
     public Invoice? SalesInvoice { get; set; }
 
     public ICollection<OrderLine> Lines { get; set; } = [];
+
+    public string StatusLabel
+    {
+        get
+        {
+            if (Status == OrderStatus.Cancelled || !IsActive)
+            {
+                return "İptal";
+            }
+
+            if (SalesInvoiceId.HasValue)
+            {
+                return "Faturalandırıldı";
+            }
+
+            return "Beklemede";
+        }
+    }
 }

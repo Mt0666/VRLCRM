@@ -14,6 +14,8 @@ public class NewPurchaseProductInput
     public string? Barcode { get; set; }
 
     public decimal VatRate { get; set; } = 20m;
+
+    public int CriticalStockLevel { get; set; } = 5;
 }
 
 public class InvoiceLineInput

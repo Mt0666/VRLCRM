@@ -229,7 +229,9 @@ public class InvoicesController : Controller
                     StockCode = line.NewStockCode?.Trim() ?? string.Empty,
                     Name = line.NewProductName?.Trim() ?? string.Empty,
                     CategoryId = line.NewCategoryId ?? 0,
-                    Barcode = line.NewBarcode?.Trim()
+                    Barcode = line.NewBarcode?.Trim(),
+                    VatRate = line.VatRate,
+                    CriticalStockLevel = line.NewCriticalStockLevel ?? 5
                 }
             };
         }

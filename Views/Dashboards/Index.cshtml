@@ -306,12 +306,6 @@
           <ul class="list-unstyled mb-0">
             @foreach (var order in Model.RecentOrders)
             {
-              var (badgeClass, statusLabel) = order.Status switch
-              {
-                OrderStatus.Approved  => ("bg-label-success", "Onaylı"),
-                OrderStatus.Cancelled => ("bg-label-danger",  "İptal"),
-                _                     => ("bg-label-warning", "Bekliyor")
-              };
               <li class="d-flex justify-content-between align-items-center px-4 py-3 border-bottom">
                 <div>
                   <a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id" class="fw-semibold text-body text-decoration-none d-block">
@@ -321,7 +315,7 @@
                 </div>
                 <div class="text-end">
                   <div class="fw-semibold small">@order.TotalAmount.ToString("N0") ₺</div>
-                  <span class="badge @badgeClass">@statusLabel</span>
+                  <partial name="_OrderStatusBadge" model="order" />
                 </div>
               </li>
             }
@@ -551,7 +545,7 @@
         element: '#orders-col',
         popover: {
           title: 'Son Siparişler',
-          description: 'En son 6 siparişin durumu (Bekliyor / Onaylı / İptal) ve tutarı görünür. Sipariş numarasına tıklayarak detaya gidebilirsiniz.',
+          description: 'En son 6 siparişin durumu (Beklemede / Faturalandırıldı / İptal) ve tutarı görünür. Sipariş numarasına tıklayarak detaya gidebilirsiniz.',
           side: 'top'
         }
       },

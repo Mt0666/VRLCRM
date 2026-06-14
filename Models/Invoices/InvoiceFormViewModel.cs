@@ -20,6 +20,8 @@ public class InvoiceLineFormItem
 
     public string? NewBarcode { get; set; }
 
+    public int? NewCriticalStockLevel { get; set; }
+
     [Range(1, int.MaxValue)]
     public int Quantity { get; set; } = 1;
 
