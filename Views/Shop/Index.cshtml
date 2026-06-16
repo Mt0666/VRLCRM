@@ -37,10 +37,16 @@ else
 
     @* Row 1: search + utility filters *@
     <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-      <div class="mv-search" style="min-width:180px; max-width:280px; flex-grow:1;">
-        <i class="ri-search-line mv-search-icon"></i>
-        <input type="text" id="productSearch" class="form-control form-control-sm"
-               placeholder="Ürün adı veya kodu…" autocomplete="off" />
+      <div class="d-flex gap-2 align-items-center" style="min-width:200px; max-width:360px; flex-grow:1;">
+        <div class="mv-search flex-grow-1">
+          <i class="ri-search-line mv-search-icon"></i>
+          <input type="text" id="productSearch" class="form-control form-control-sm"
+                 placeholder="Ürün adı, kodu veya barkod…" autocomplete="off" />
+        </div>
+        <button type="button" id="scannerBtn" class="btn btn-sm btn-outline-primary flex-shrink-0"
+                style="border-radius:20px; white-space:nowrap;" title="Barkod okutarak ara">
+          <i class="ri-barcode-line"></i><span class="d-none d-sm-inline ms-1">Barkod</span>
+        </button>
       </div>
 
       <span id="chip-instock" class="mv-cat-chip" data-filter="instock" title="Sadece stokta olan ürünleri göster">
@@ -56,6 +62,16 @@ else
         <option value="price-desc">Fiyat ↓</option>
       </select>
     </div>
+
+    <div id="scannerWrapper" class="mb-3" style="display:none;">
+      <div id="qr-reader" style="width:100%; max-width:400px; margin:0 auto; border-radius:12px; overflow:hidden;"></div>
+      <div class="d-flex justify-content-center mt-2">
+        <button type="button" id="stopScannerBtn" class="btn btn-sm btn-outline-secondary">
+          <i class="ri-camera-off-line me-1"></i>Kamerayı Kapat
+        </button>
+      </div>
+    </div>
+    <div id="scanMessage" class="text-danger small mb-2" style="display:none;"></div>
 
     @* Row 2: category chips *@
     @if (categories.Count > 1)
@@ -86,7 +102,9 @@ else
       var inStock = stock.StockQuantity > 0;
       var catName = stock.Category?.Name ?? "Diğer";
       <div class="col-sm-6 col-lg-4 col-xl-3 mv-product-col"
-           data-name="@stock.Name.ToLower() @stock.StockCode.ToLower()"
+           data-name="@stock.Name.ToLower() @stock.StockCode.ToLower() @(stock.Barcode?.ToLower() ?? "")"
+           data-barcode="@(stock.Barcode?.ToLower() ?? "")"
+           data-stockcode="@stock.StockCode.ToLower()"
            data-cat="@catName"
            data-instock="@(inStock ? "1" : "0")"
            data-price="@stock.Price.ToString(System.Globalization.CultureInfo.InvariantCulture)">
@@ -163,6 +181,7 @@ else
 }
 
 @section PageScripts {
+<script src="/vendor/libs/html5-qrcode/html5-qrcode.min.js"></script>
 <script>
 (function () {
   const grid      = document.getElementById('productsGrid');
@@ -173,7 +192,15 @@ else
   const instockChip = document.getElementById('chip-instock');
   const catChips  = document.querySelectorAll('.mv-cat-chip[data-cat]');
   const toastWrap = document.getElementById('mv-toast-wrap');
+  const scanMsg   = document.getElementById('scanMessage');
+  const scannerBtn = document.getElementById('scannerBtn');
+  const scannerWrapper = document.getElementById('scannerWrapper');
+  const stopScannerBtn = document.getElementById('stopScannerBtn');
   if (!grid) return;
+
+  let html5QrCode = null;
+  let scannerRunning = false;
+  let highlightTimer = null;
 
   // ── State (restored from URL) ──────────────────────────────────
   const urlParams = new URLSearchParams(window.location.search);
@@ -247,10 +274,134 @@ else
     });
   }
 
+  function clearScanHighlight() {
+    grid.querySelectorAll('.mv-product-card.mv-scan-highlight').forEach(card => {
+      card.classList.remove('mv-scan-highlight');
+    });
+  }
+
+  function highlightProduct(col) {
+    clearScanHighlight();
+    const card = col.querySelector('.mv-product-card');
+    if (!card) return;
+    card.classList.add('mv-scan-highlight');
+    col.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (highlightTimer) clearTimeout(highlightTimer);
+    highlightTimer = setTimeout(clearScanHighlight, 3500);
+
+    const qtyInput = col.querySelector('.mv-qty-input');
+    if (qtyInput) {
+      qtyInput.focus();
+      qtyInput.select();
+    }
+  }
+
+  function setScanMessage(text) {
+    if (!scanMsg) return;
+    if (!text) {
+      scanMsg.style.display = 'none';
+      scanMsg.textContent = '';
+      return;
+    }
+    scanMsg.style.display = '';
+    scanMsg.textContent = text;
+  }
+
+  function applyBarcodeSearch(code) {
+    const raw = code.trim();
+    const normalized = raw.toLowerCase();
+    if (!normalized) return;
+
+    if (search) search.value = raw;
+    searchVal = normalized;
+    setScanMessage('');
+
+    const cols = Array.from(grid.querySelectorAll('.mv-product-col'));
+    const exact = cols.find(col =>
+      col.dataset.barcode === normalized || col.dataset.stockcode === normalized
+    );
+
+    if (exact) {
+      activeCat = '__all__';
+      catChips.forEach(c => c.classList.toggle('active', c.dataset.cat === '__all__'));
+      saveToUrl();
+      filter();
+      highlightProduct(exact);
+      showToast('Ürün bulundu', 'success');
+      return;
+    }
+
+    filter();
+    const visible = cols.filter(col => col.style.display !== 'none').length;
+    if (visible === 0) {
+      setScanMessage('Barkod bulunamadı: ' + raw);
+      showToast('Barkod bulunamadı', 'danger');
+    } else if (visible === 1) {
+      const match = cols.find(col => col.style.display !== 'none');
+      if (match) highlightProduct(match);
+    }
+  }
+
+  async function stopScanner() {
+    if (html5QrCode && scannerRunning) {
+      try { await html5QrCode.stop(); } catch (e) {}
+      scannerRunning = false;
+    }
+    if (scannerWrapper) scannerWrapper.style.display = 'none';
+    if (scannerBtn) scannerBtn.innerHTML = '<i class="ri-barcode-line"></i><span class="d-none d-sm-inline ms-1">Barkod</span>';
+  }
+
+  function startScanner() {
+    if (!scannerWrapper || !scannerBtn || typeof Html5Qrcode === 'undefined') {
+      setScanMessage('Barkod okuyucu yüklenemedi.');
+      return;
+    }
+
+    scannerWrapper.style.display = 'block';
+    scannerRunning = true;
+    scannerBtn.innerHTML = '<i class="ri-camera-off-line"></i><span class="d-none d-sm-inline ms-1">Kapat</span>';
+    setScanMessage('');
+
+    if (!html5QrCode) html5QrCode = new Html5Qrcode('qr-reader');
+
+    html5QrCode.start(
+      { facingMode: 'environment' },
+      {
+        fps: 10,
+        qrbox: function (w, h) {
+          const side = Math.round(Math.min(w, h) * 0.72);
+          return { width: side, height: Math.round(side * 0.48) };
+        }
+      },
+      async function (decodedText) {
+        await stopScanner();
+        applyBarcodeSearch(decodedText);
+      },
+      function () {}
+    ).catch(function () {
+      setScanMessage('Kamera başlatılamadı. Tarayıcı izinlerini kontrol edin.');
+      scannerWrapper.style.display = 'none';
+      scannerRunning = false;
+      scannerBtn.innerHTML = '<i class="ri-barcode-line"></i><span class="d-none d-sm-inline ms-1">Barkod</span>';
+    });
+  }
+
+  if (scannerBtn) {
+    scannerBtn.addEventListener('click', function () {
+      if (scannerRunning) stopScanner();
+      else startScanner();
+    });
+  }
+  if (stopScannerBtn) {
+    stopScannerBtn.addEventListener('click', stopScanner);
+  }
+
   // ── Search ─────────────────────────────────────────────────────
   if (search) {
     search.addEventListener('input', () => {
       searchVal = search.value.toLowerCase().trim();
+      setScanMessage('');
+      clearScanHighlight();
       filter();
     });
   }
@@ -270,6 +421,8 @@ else
     if (sortSel) sortSel.value = 'default';
     catChips.forEach(c => c.classList.toggle('active', c.dataset.cat === '__all__'));
     if (instockChip) instockChip.classList.remove('active');
+    setScanMessage('');
+    clearScanHighlight();
     saveToUrl();
     filter();
   };
