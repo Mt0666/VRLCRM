@@ -31,7 +31,7 @@ public static class StockViewModelMapper
             CategoryId = model.CategoryId,
             ImageUrl = model.ImageUrl,
             Name = model.Name.Trim(),
-            Price = model.Price,
+            Price = model.Price ?? 0m,
             VatRate = model.VatRate,
             StockQuantity = model.StockQuantity,
             CriticalStockLevel = model.CriticalStockLevel,

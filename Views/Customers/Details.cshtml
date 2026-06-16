@@ -70,17 +70,6 @@
           <div class="detail-info-label">Cari Borç</div>
           <div class="detail-info-value @(Model.Balance > 0 ? "text-danger" : "")">@Model.Balance.ToString("N2") ₺</div>
         </div>
-        <div class="detail-info-item">
-          <div class="detail-info-label">Cari Limit</div>
-          <div class="detail-info-value">@(Model.CreditLimit.HasValue ? $"{Model.CreditLimit:N2} ₺" : "Limitsiz")</div>
-        </div>
-        @if (Model.CreditLimit.HasValue)
-        {
-          <div class="detail-info-item">
-            <div class="detail-info-label">Kalan Limit</div>
-            <div class="detail-info-value @(Model.AvailableCredit < 0 ? "text-danger" : "")">@Model.AvailableCredit.ToString("N2") ₺</div>
-          </div>
-        }
       </div>
     </div>
 
@@ -133,12 +122,12 @@
       </div>
     </div>
 
-    @* Satış Faturaları *@
+    @* Ödemeler *@
     <div class="card">
       <div class="card-header">
-        <h6 class="mb-0"><i class="ri-file-text-line me-2 text-success"></i>Satış Faturaları</h6>
+        <h6 class="mb-0"><i class="ri-money-dollar-circle-line me-2 text-success"></i>Yapılan Ödemeler</h6>
       </div>
-      <div id="invoices-container">
+      <div id="payments-container">
         <div class="d-flex justify-content-center align-items-center py-5">
           <div class="spinner-border spinner-border-sm text-success me-2"></div>
           <span class="text-body-secondary small">Yükleniyor…</span>
@@ -171,7 +160,7 @@
       }
 
       loadPartial('/Customers/OrdersPartial/' + customerId, 'orders-container');
-      loadPartial('/Customers/InvoicesPartial/' + customerId, 'invoices-container');
+      loadPartial('/Customers/PaymentsPartial/' + customerId, 'payments-container');
     })();
   </script>
   <script>
@@ -187,9 +176,9 @@
         { element: '.avatar-initial', popover: { title: 'Müşteri Profili', description: 'Müşteri adı, firma ve durum bilgisi. Aktif müşteriler satış faturasında seçilebilir.', side: 'bottom' } },
         { element: 'a[href*="Edit"]', popover: { title: 'Düzenle', description: 'Müşteri bilgilerini güncellemek için tıklayın.', side: 'right' } },
         { element: '.btn-outline-danger, .btn-success', popover: { title: 'Pasife Al / Aktif Yap', description: '"Pasife Al" müşteriyi devre dışı bırakır — yeni fatura oluşturulamaz ama mevcut kayıtlar korunur. "Aktif Yap" ile geri döndürebilirsiniz.', side: 'right' } },
-        { element: '.detail-info-strip', popover: { title: 'Cari Bilgiler', description: 'Müşterinin mevcut borcu, cari limiti ve kalan kullanılabilir limiti burada görünür. Borç fatura kesince artar, ödeme alınınca düşer.', side: 'right' } },
+        { element: '.detail-info-strip', popover: { title: 'Cari Bilgiler', description: 'Müşterinin mevcut borcu burada görünür. Borç fatura kesince artar, ödeme alınınca düşer.', side: 'right' } },
         { element: '#orders-container', popover: { title: 'Sipariş Geçmişi', description: 'Bu müşteriye ait tüm siparişler. Sipariş numarasına tıklayarak detaya gidebilirsiniz.', side: 'top' } },
-        { element: '#invoices-container', popover: { title: 'Fatura Geçmişi', description: 'Bu müşteriye kesilmiş tüm satış faturaları. Fatura numarasına tıklayarak detaya gidebilirsiniz.', side: 'top' } }
+        { element: '#payments-container', popover: { title: 'Ödeme Geçmişi', description: 'Bu müşteriden alınan tahsilatlar burada listelenir. PDF olarak dışa aktarabilirsiniz.', side: 'top' } }
       ]
     });
     document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());

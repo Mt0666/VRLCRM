@@ -176,6 +176,17 @@ public class ShopController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateCartNotes(int stockItemId, string? notes, CancellationToken cancellationToken)
+    {
+        var (customer, error) = await GetCurrentCustomerAsync(cancellationToken);
+        if (error is not null) return error;
+
+        _cartService.UpdateNotes(customer!.Id, stockItemId, notes);
+        return RedirectToAction(nameof(Cart));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveFromCart(int stockItemId, CancellationToken cancellationToken)
     {
         var (customer, error) = await GetCurrentCustomerAsync(cancellationToken);
@@ -205,10 +216,11 @@ public class ShopController : Controller
             {
                 StockItemId = i.StockItemId,
                 Quantity = i.Quantity,
-                UnitPrice = i.UnitPrice
+                UnitPrice = i.UnitPrice,
+                Notes = i.Notes
             }).ToList();
 
-            var order = await _orderService.CreateAndApproveAsync(customer.Id, notes, lines, cancellationToken);
+            var order = await _orderService.CreateAndApproveAsync(customer.Id, notes, 0, lines, cancellationToken);
             _cartService.Clear(customer.Id);
 
             return RedirectToAction(nameof(OrderConfirmation), new { orderNumber = order.OrderNumber, total = order.SubTotal });

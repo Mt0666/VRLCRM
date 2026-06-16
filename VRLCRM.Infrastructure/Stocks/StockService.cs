@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using VRLCRM.Application.Stocks;
 using VRLCRM.Domain.Entities;
+using VRLCRM.Domain.Enums;
 using VRLCRM.Infrastructure.Data;
 
 namespace VRLCRM.Infrastructure.Stocks;
@@ -59,6 +60,9 @@ public class StockService : IStockService
             return false;
         }
 
+        var oldQuantity = existing.StockQuantity;
+        var newQuantity = stockItem.StockQuantity;
+
         existing.StockCode = stockItem.StockCode;
         existing.Barcode = stockItem.Barcode;
         existing.CategoryId = stockItem.CategoryId;
@@ -66,9 +70,24 @@ public class StockService : IStockService
         existing.Name = stockItem.Name;
         existing.Price = stockItem.Price;
         existing.VatRate = stockItem.VatRate;
-        existing.StockQuantity = stockItem.StockQuantity;
+        existing.StockQuantity = newQuantity;
         existing.CriticalStockLevel = stockItem.CriticalStockLevel;
         existing.Description = stockItem.Description;
+
+        if (oldQuantity != newQuantity)
+        {
+            var diff = newQuantity - oldQuantity;
+            _context.StockMovements.Add(new StockMovement
+            {
+                StockItemId = existing.Id,
+                MovementType = diff > 0 ? StockMovementType.In : StockMovementType.Out,
+                Quantity = Math.Abs(diff),
+                ReferenceType = StockMovementReferenceType.Manual,
+                ReferenceId = existing.Id,
+                MovementDate = DateTime.UtcNow,
+                Notes = "Manuel stok düzeltmesi"
+            });
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
         return true;

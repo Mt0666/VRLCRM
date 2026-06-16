@@ -53,6 +53,15 @@ else
               <div class="text-body-secondary" style="font-size:.77rem;">
                 Birim: <strong>@item.UnitPrice.ToString("N2") ₺</strong>
               </div>
+              <form asp-action="UpdateCartNotes" method="post" class="mt-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="stockItemId" value="@item.StockItemId" />
+                <label class="form-label small text-body-secondary mb-1">Ürün açıklaması</label>
+                <textarea name="notes" class="form-control form-control-sm" rows="2"
+                          placeholder="Bu ürün için not yazın…"
+                          style="border-radius:8px; font-size:.8rem; resize:none;">@item.Notes</textarea>
+                <button type="submit" class="btn btn-sm btn-outline-secondary mt-1">Açıklamayı Kaydet</button>
+              </form>
             </div>
 
             @* Qty form *@
@@ -97,25 +106,6 @@ else
             <div class="mv-total-row">
               <span class="text-truncate pe-2" style="max-width:160px;">@item.Name <span class="text-body-secondary">×@item.Quantity</span></span>
               <span class="flex-shrink-0">@item.LineTotal.ToString("N2") ₺</span>
-            </div>
-          }
-
-          @if (customer.CreditLimit.HasValue)
-          {
-            <hr class="my-2" />
-            <div class="mv-total-row">
-              <span>Mevcut Borç</span>
-              <span>@customer.Balance.ToString("N2") ₺</span>
-            </div>
-            <div class="mv-total-row">
-              <span>Bu Sipariş</span>
-              <span>@cartTotal.ToString("N2") ₺</span>
-            </div>
-            <div class="mv-total-row">
-              <span>Kullanılabilir Limit</span>
-              <span class="@(customer.AvailableCredit < cartTotal ? "text-danger fw-semibold" : "")">
-                @customer.AvailableCredit.ToString("N2") ₺
-              </span>
             </div>
           }
 

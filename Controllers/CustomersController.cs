@@ -6,6 +6,7 @@ using VRLCRM.Application.Customers;
 using VRLCRM.Domain.Constants;
 using VRLCRM.Domain.Entities;
 using VRLCRM.Models.Customers;
+using VRLCRM.Services;
 
 namespace VRLCRM.Controllers;
 
@@ -14,11 +15,16 @@ public class CustomersController : Controller
 {
     private readonly ICustomerService _customerService;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly CustomerPaymentDocumentService _paymentDocumentService;
 
-    public CustomersController(ICustomerService customerService, UserManager<ApplicationUser> userManager)
+    public CustomersController(
+        ICustomerService customerService,
+        UserManager<ApplicationUser> userManager,
+        CustomerPaymentDocumentService paymentDocumentService)
     {
         _customerService = customerService;
         _userManager = userManager;
+        _paymentDocumentService = paymentDocumentService;
     }
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -44,10 +50,24 @@ public class CustomersController : Controller
         return PartialView("_OrdersPartial", orders);
     }
 
-    public async Task<IActionResult> InvoicesPartial(int id, CancellationToken cancellationToken)
+    public async Task<IActionResult> PaymentsPartial(int id, CancellationToken cancellationToken)
     {
-        var invoices = await _customerService.GetSalesInvoicesAsync(id, cancellationToken);
-        return PartialView("_InvoicesPartial", invoices);
+        var payments = await _customerService.GetIncomingPaymentsAsync(id, cancellationToken);
+        ViewData["CustomerId"] = id;
+        return PartialView("_PaymentsPartial", payments);
+    }
+
+    public async Task<IActionResult> ExportPaymentsPdf(int id, CancellationToken cancellationToken)
+    {
+        var customer = await _customerService.GetByIdAsync(id, cancellationToken);
+        if (customer is null)
+        {
+            return NotFound();
+        }
+
+        var payments = await _customerService.GetIncomingPaymentsAsync(id, cancellationToken);
+        var bytes = _paymentDocumentService.GeneratePdf(customer, payments);
+        return File(bytes, "application/pdf", $"{customer.FullName}-odemeler.pdf");
     }
 
     public IActionResult Create()
@@ -69,7 +89,7 @@ public class CustomersController : Controller
             await _customerService.CreateAsync(
                 CustomerViewModelMapper.ToCustomer(model),
                 CustomerViewModelMapper.ToAddress(model),
-                model.Email,
+                model.PhoneNumber,
                 model.Password,
                 cancellationToken);
 
@@ -89,10 +109,7 @@ public class CustomersController : Controller
         if (customer is null)
             return NotFound();
 
-        var linkedUser = await _userManager.Users.FirstOrDefaultAsync(u => u.CustomerId == id, cancellationToken);
-        var vm = CustomerViewModelMapper.ToFormViewModel(customer);
-        vm.Email = linkedUser?.Email;
-        return View(vm);
+        return View(CustomerViewModelMapper.ToFormViewModel(customer));
     }
 
     [HttpPost]
@@ -114,7 +131,7 @@ public class CustomersController : Controller
             var updated = await _customerService.UpdateAsync(
                 CustomerViewModelMapper.ToCustomer(model),
                 CustomerViewModelMapper.ToAddress(model),
-                model.Email,
+                model.PhoneNumber,
                 model.Password,
                 cancellationToken);
 

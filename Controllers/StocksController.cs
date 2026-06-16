@@ -47,6 +47,7 @@ public class StocksController : Controller
     {
         var model = new StockFormViewModel();
         await PopulateCategoriesAsync(model, cancellationToken);
+        ViewBag.EnableBarcodeScanner = true;
         return View(model);
     }
 

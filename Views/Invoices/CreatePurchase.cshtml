@@ -26,6 +26,7 @@
               <select asp-for="SupplierId" asp-items="Model.Suppliers" class="form-select select2">
                 <option value="">Tedarikçi seçin</option>
               </select>
+              <div id="supplierError" class="text-danger small d-none">Bu alan doldurulmalıdır.</div>
               <span asp-validation-for="SupplierId" class="text-danger small"></span>
               @if (!Model.Suppliers.Any())
               {
@@ -184,11 +185,22 @@
           </div>
           <div class="col-md-6">
             <label for="newBarcode" class="form-label">Barkod</label>
-            <input type="text" id="newBarcode" class="form-control" maxlength="50" />
+            <div class="input-group">
+              <input type="text" id="newBarcode" class="form-control" maxlength="50" />
+              <button type="button" id="modalScannerBtn" class="btn btn-outline-info" title="Barkod Tara">
+                <i class="ri-camera-line"></i>
+              </button>
+            </div>
+            <div id="modalScannerWrapper" class="mt-2" style="display:none;">
+              <div id="modal-qr-reader" style="width:100%; max-width:420px; border-radius:0.375rem; overflow:hidden;"></div>
+              <button type="button" id="modalStopScannerBtn" class="btn btn-sm btn-outline-secondary mt-2">
+                <i class="ri-camera-off-line me-1"></i>Kamerayı Kapat
+              </button>
+            </div>
           </div>
           <div class="col-md-4">
             <label for="newVatRate" class="form-label">KDV %</label>
-            <input type="number" id="newVatRate" class="form-control" value="20" min="0" max="100" step="1" />
+            <input type="number" id="newVatRate" class="form-control" value="0" min="0" max="100" step="1" />
           </div>
           <div class="col-md-4">
             <label for="newCriticalStockLevel" class="form-label">Kritik Stok Seviyesi</label>
@@ -217,7 +229,9 @@
 @section PageScripts {
   <partial name="_ValidationScriptsPartial" />
   <script src="/vendor/libs/html5-qrcode/html5-qrcode.min.js"></script>
+  <script src="/js/form-draft-storage.js"></script>
   <script>
+    const DRAFT_KEY = 'vrlcrm_draft_purchase';
     const stockOptions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
       Model.StockOptions,
       new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
@@ -233,10 +247,32 @@
     let lineIndex = 0;
     const lines = new Map();
     let html5QrCode = null;
+    let modalHtml5QrCode = null;
     let scannerRunning = false;
+    let modalScannerRunning = false;
     let scannedProduct = false;
     const newProductModalEl = document.getElementById('newProductModal');
     const newProductModal = newProductModalEl ? new bootstrap.Modal(newProductModalEl) : null;
+
+    function persistDraft() {
+      FormDraftStorage.save(DRAFT_KEY, {
+        lines: Array.from(lines.entries()),
+        lineIndex: lineIndex
+      });
+    }
+
+    function restoreDraft() {
+      const draft = FormDraftStorage.load(DRAFT_KEY);
+      if (!draft || !draft.lines) return;
+      lines.clear();
+      draft.lines.forEach(function(entry) { lines.set(entry[0], entry[1]); });
+      lineIndex = draft.lineIndex || lines.size;
+      renderLines();
+      rebuildHiddenInputs();
+      updateTotals();
+    }
+
+    FormDraftStorage.bindFormFields(DRAFT_KEY, '#purchaseForm', ['SupplierId', 'InvoiceDate', 'Notes']);
 
     // ── Toplamlar ───────────────────────────────────────────────────────
     function updateTotals() {
@@ -251,6 +287,7 @@
       document.getElementById('subTotal').textContent = fmt(sub);
       document.getElementById('vatTotal').textContent = fmt(vat);
       document.getElementById('grandTotal').textContent = fmt(grand);
+      persistDraft();
     }
 
     // ── Satır render ────────────────────────────────────────────────────
@@ -327,6 +364,7 @@
         }
         lineIndex++;
       });
+      persistDraft();
     }
 
     // ── Ürün ekle ───────────────────────────────────────────────────────
@@ -450,7 +488,7 @@
       document.getElementById('newProductName').value = '';
       document.getElementById('newCategoryId').value = '';
       document.getElementById('newBarcode').value = '';
-      document.getElementById('newVatRate').value = '20';
+      document.getElementById('newVatRate').value = '0';
       document.getElementById('newCriticalStockLevel').value = '5';
       document.getElementById('newLineQty').value = '1';
       document.getElementById('newLinePrice').value = '';
@@ -570,6 +608,51 @@
       if (scannerRunning) { stopScanner(); } else { startScanner(); }
     });
     document.getElementById('stopScannerBtn').addEventListener('click', stopScanner);
+
+    function startModalScanner() {
+      document.getElementById('modalScannerWrapper').style.display = 'block';
+      modalScannerRunning = true;
+      document.getElementById('modalScannerBtn').innerHTML = '<i class="ri-camera-off-line"></i>';
+      if (!modalHtml5QrCode) modalHtml5QrCode = new Html5Qrcode('modal-qr-reader');
+      modalHtml5QrCode.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 120 } },
+        function(decodedText) {
+          document.getElementById('newBarcode').value = decodedText;
+          stopModalScanner();
+        },
+        function() {}
+      ).catch(function() { stopModalScanner(); });
+    }
+
+    async function stopModalScanner() {
+      if (modalHtml5QrCode && modalScannerRunning) {
+        try { await modalHtml5QrCode.stop(); } catch (e) {}
+        modalScannerRunning = false;
+      }
+      document.getElementById('modalScannerWrapper').style.display = 'none';
+      document.getElementById('modalScannerBtn').innerHTML = '<i class="ri-camera-line"></i>';
+    }
+
+    document.getElementById('modalScannerBtn').addEventListener('click', function() {
+      if (modalScannerRunning) stopModalScanner(); else startModalScanner();
+    });
+    document.getElementById('modalStopScannerBtn').addEventListener('click', stopModalScanner);
+
+    document.getElementById('purchaseForm').addEventListener('submit', function(e) {
+      var supplierEl = document.querySelector('#purchaseForm [name="SupplierId"]');
+      var supplierError = document.getElementById('supplierError');
+      if (!supplierEl || !supplierEl.value) {
+        e.preventDefault();
+        supplierError.classList.remove('d-none');
+        supplierEl.focus();
+        return false;
+      }
+      supplierError.classList.add('d-none');
+      FormDraftStorage.clear(DRAFT_KEY);
+    });
+
+    restoreDraft();
   </script>
   <script>
   (function () {

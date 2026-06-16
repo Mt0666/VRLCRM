@@ -1,4 +1,4 @@
-@model VRLCRM.Models.Auth.LoginViewModel
+@model VRLCRM.Models.Auth.ShopLoginViewModel
 @{
   Layout = null;
   ViewData["Title"] = "Mete Varol B2B";
@@ -41,10 +41,10 @@
         <input type="hidden" asp-for="ReturnUrl" />
 
         <div class="form-floating form-floating-outline mb-4">
-          <input asp-for="Email" class="form-control" placeholder="ornek@firma.com"
+          <input asp-for="Phone" class="form-control" placeholder="05xx xxx xx xx"
                  autofocus autocomplete="section-b2b username" />
-          <label asp-for="Email">E-posta</label>
-          <span asp-validation-for="Email" class="text-danger small"></span>
+          <label asp-for="Phone">Telefon</label>
+          <span asp-validation-for="Phone" class="text-danger small"></span>
         </div>
 
         <div class="mb-4">

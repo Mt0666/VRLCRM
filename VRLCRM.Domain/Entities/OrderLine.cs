@@ -21,4 +21,6 @@ public class OrderLine : BaseEntity
     public decimal VatAmount { get; set; }
 
     public decimal LineTotal { get; set; }
+
+    public string? Notes { get; set; }
 }

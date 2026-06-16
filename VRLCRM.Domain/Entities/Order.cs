@@ -21,6 +21,12 @@ public class Order : BaseEntity
 
     public decimal TotalAmount { get; set; }
 
+    public decimal DiscountRate { get; set; }
+
+    public decimal GrossTotal => SubTotal + VatTotal;
+
+    public decimal DiscountAmount => GrossTotal * DiscountRate / 100m;
+
     public string? Notes { get; set; }
 
     public int? SalesInvoiceId { get; set; }

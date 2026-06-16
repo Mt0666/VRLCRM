@@ -142,7 +142,9 @@
 @section PageScripts {
   <partial name="_ValidationScriptsPartial" />
   <script src="/vendor/libs/html5-qrcode/html5-qrcode.min.js"></script>
+  <script src="/js/form-draft-storage.js"></script>
   <script>
+    const DRAFT_KEY = 'vrlcrm_draft_sales';
     const stockOptions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
       Model.StockOptions,
       new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
@@ -158,6 +160,23 @@
     let scannerRunning = false;
     let scannedProduct = false;
 
+    function persistDraft() {
+      FormDraftStorage.save(DRAFT_KEY, { lines: Array.from(lines.entries()), lineIndex: lineIndex });
+    }
+
+    function restoreDraft() {
+      const draft = FormDraftStorage.load(DRAFT_KEY);
+      if (!draft || !draft.lines) return;
+      lines.clear();
+      draft.lines.forEach(function(entry) { lines.set(entry[0], entry[1]); });
+      lineIndex = draft.lineIndex || lines.size;
+      renderLines();
+      rebuildHiddenInputs();
+      updateTotals();
+    }
+
+    FormDraftStorage.bindFormFields(DRAFT_KEY, '#invoiceForm', ['CustomerId', 'InvoiceDate', 'Notes']);
+
     // ── Toplamlar ───────────────────────────────────────────────────────
     function updateTotals() {
       let sub = 0, vat = 0;
@@ -171,6 +190,7 @@
       document.getElementById('subTotal').textContent = fmt(sub);
       document.getElementById('vatTotal').textContent = fmt(vat);
       document.getElementById('grandTotal').textContent = fmt(grand);
+      persistDraft();
     }
 
     // ── Satır render ────────────────────────────────────────────────────
@@ -228,6 +248,7 @@
           '<input type="hidden" name="Lines[' + lineIndex + '].VatRate" value="' + item.vatRate + '" />');
         lineIndex++;
       });
+      persistDraft();
     }
 
     // ── Ürün ekle ───────────────────────────────────────────────────────
@@ -360,6 +381,12 @@
       if (scannerRunning) { stopScanner(); } else { startScanner(); }
     });
     document.getElementById('stopScannerBtn').addEventListener('click', stopScanner);
+
+    document.getElementById('invoiceForm').addEventListener('submit', function() {
+      FormDraftStorage.clear(DRAFT_KEY);
+    });
+
+    restoreDraft();
   </script>
   <script>
   (function () {

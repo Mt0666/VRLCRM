@@ -23,11 +23,8 @@
       <thead>
         <tr>
           <th>Ürün</th>
-          <th>Stok Kodu</th>
-          <th>Kategori</th>
           <th>Fiyat</th>
           <th>Stok Adedi</th>
-          <th>Kritik Seviye</th>
           <th>Durum</th>
           <th>İşlemler</th>
         </tr>
@@ -36,7 +33,7 @@
         @if (!Model.Any())
         {
           <tr>
-            <td colspan="8" class="text-center py-5 text-body-secondary">Henüz ürün kaydı yok.</td>
+            <td colspan="5" class="text-center py-5 text-body-secondary">Henüz ürün kaydı yok.</td>
           </tr>
         }
         else
@@ -61,8 +58,6 @@
                   <strong>@stock.Name</strong>
                 </div>
               </td>
-              <td><span class="badge bg-label-secondary">@stock.StockCode</span></td>
-              <td>@(stock.Category?.Name ?? "-")</td>
               <td>@stock.Price.ToString("N2") ₺</td>
               <td>
                 @if (stock.IsCritical)
@@ -78,7 +73,6 @@
                   <span class="badge bg-label-success">@stock.StockQuantity</span>
                 }
               </td>
-              <td>@stock.CriticalStockLevel</td>
               <td><partial name="_StatusBadge" model="stock.IsActive" /></td>
               <td>
                 <a asp-action="Details" asp-route-id="@stock.Id"
@@ -117,15 +111,15 @@
         element: '.js-search-input',
         popover: {
           title: 'Hızlı Arama',
-          description: 'Ürün adı, stok kodu veya kategoriye göre anında filtrele.',
+          description: 'Ürün adına göre anında filtrele.',
           side: 'bottom'
         }
       },
       {
-        element: 'th:nth-child(5)',
+        element: 'th:nth-child(3)',
         popover: {
           title: 'Stok Miktarı',
-          description: 'Anlık stok adedi. Satış faturası kesildiğinde azalır, alış faturasında artar. Tüm hareketleri Stok Hareketleri menüsünden takip edebilirsiniz.',
+          description: 'Anlık stok adedi. Satış faturası kesildiğinde azalır, alış faturasında artar.',
           side: 'bottom'
         }
       },
@@ -133,7 +127,7 @@
         element: 'a[href*="Create"]',
         popover: {
           title: 'Yeni Ürün',
-          description: 'Stok kartı oluşturmak için tıklayın. Birim fiyat, barkod ve kategori bilgilerini burada girebilirsiniz.',
+          description: 'Stok kartı oluşturmak için tıklayın.',
           side: 'left'
         }
       }

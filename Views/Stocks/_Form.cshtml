@@ -2,19 +2,59 @@
 
 <div class="row g-3 mb-3">
   <div class="col-md-6">
-    <label asp-for="StockCode" class="form-label"></label>
-    <input asp-for="StockCode" class="form-control" placeholder="STK-001" />
-    <span asp-validation-for="StockCode" class="text-danger small"></span>
+    <label asp-for="Name" class="form-label"></label>
+    <input asp-for="Name" class="form-control" placeholder="Ürün adı" />
+    <span asp-validation-for="Name" class="text-danger small"></span>
   </div>
   <div class="col-md-6">
     <label asp-for="Barcode" class="form-label"></label>
-    <input asp-for="Barcode" class="form-control" placeholder="Barkod numarası" />
+    <div class="input-group">
+      <input asp-for="Barcode" class="form-control" placeholder="Barkod numarası" id="stockBarcodeInput" />
+      @if (ViewBag.EnableBarcodeScanner == true)
+      {
+        <button type="button" id="stockScannerBtn" class="btn btn-outline-info" title="Barkod Tara">
+          <i class="ri-camera-line"></i>
+        </button>
+      }
+    </div>
+    @if (ViewBag.EnableBarcodeScanner == true)
+    {
+      <div id="stockScannerWrapper" class="mt-2" style="display:none;">
+        <div id="stock-qr-reader" style="width:100%; max-width:420px; border-radius:0.375rem; overflow:hidden;"></div>
+        <button type="button" id="stockStopScannerBtn" class="btn btn-sm btn-outline-secondary mt-2">
+          <i class="ri-camera-off-line me-1"></i>Kamerayı Kapat
+        </button>
+      </div>
+    }
     <span asp-validation-for="Barcode" class="text-danger small"></span>
   </div>
 </div>
 
 <div class="row g-3 mb-3">
-  <div class="col-md-6">
+  <div class="col-md-4">
+    <label asp-for="Price" class="form-label"></label>
+    <input asp-for="Price" class="form-control" placeholder="0,00" step="0.01" />
+    <span asp-validation-for="Price" class="text-danger small"></span>
+  </div>
+  <div class="col-md-4">
+    <label asp-for="VatRate" class="form-label"></label>
+    <input asp-for="VatRate" class="form-control" placeholder="0" step="0.01" />
+    <span asp-validation-for="VatRate" class="text-danger small"></span>
+  </div>
+  <div class="col-md-4">
+    <label asp-for="StockQuantity" class="form-label"></label>
+    <input asp-for="StockQuantity" class="form-control" placeholder="0" />
+    <span asp-validation-for="StockQuantity" class="text-danger small"></span>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <label asp-for="StockCode" class="form-label"></label>
+    <input asp-for="StockCode" class="form-control" placeholder="STK-001" />
+    <span asp-validation-for="StockCode" class="text-danger small"></span>
+  </div>
+  <div class="col-md-4">
     <label asp-for="CategoryId" class="form-label"></label>
     <select asp-for="CategoryId" asp-items="Model.Categories" class="form-select select2">
       <option value="">Kategori seçin</option>
@@ -28,32 +68,6 @@
     }
     <span asp-validation-for="CategoryId" class="text-danger small"></span>
   </div>
-  <div class="col-md-6">
-    <label asp-for="Name" class="form-label"></label>
-    <input asp-for="Name" class="form-control" placeholder="Ürün adı" />
-    <span asp-validation-for="Name" class="text-danger small"></span>
-  </div>
-</div>
-
-<div class="row g-3 mb-3">
-  <div class="col-md-4">
-    <label asp-for="Price" class="form-label"></label>
-    <input asp-for="Price" class="form-control" placeholder="0,00" step="0.01" />
-    <span asp-validation-for="Price" class="text-danger small"></span>
-  </div>
-  <div class="col-md-4">
-    <label asp-for="VatRate" class="form-label"></label>
-    <input asp-for="VatRate" class="form-control" placeholder="20" step="0.01" />
-    <span asp-validation-for="VatRate" class="text-danger small"></span>
-  </div>
-  <div class="col-md-4">
-    <label asp-for="StockQuantity" class="form-label"></label>
-    <input asp-for="StockQuantity" class="form-control" placeholder="0" />
-    <span asp-validation-for="StockQuantity" class="text-danger small"></span>
-  </div>
-</div>
-
-<div class="row g-3 mb-3">
   <div class="col-md-4">
     <label asp-for="CriticalStockLevel" class="form-label"></label>
     <input asp-for="CriticalStockLevel" class="form-control" placeholder="5" min="0" />

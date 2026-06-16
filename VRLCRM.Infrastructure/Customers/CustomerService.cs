@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using VRLCRM.Application.Customers;
 using VRLCRM.Domain.Entities;
+using VRLCRM.Domain.Enums;
 using VRLCRM.Infrastructure.Data;
 
 namespace VRLCRM.Infrastructure.Customers;
@@ -46,7 +47,7 @@ public class CustomerService : ICustomerService
     public async Task<Customer> CreateAsync(
         Customer customer,
         Address address,
-        string? email = null,
+        string? loginPhone = null,
         string? password = null,
         CancellationToken cancellationToken = default)
     {
@@ -57,15 +58,18 @@ public class CustomerService : ICustomerService
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync(cancellationToken);
 
-        if (!string.IsNullOrWhiteSpace(email) && !string.IsNullOrWhiteSpace(password))
+        var phone = !string.IsNullOrWhiteSpace(loginPhone) ? loginPhone : customer.PhoneNumber;
+        if (!string.IsNullOrWhiteSpace(phone) && !string.IsNullOrWhiteSpace(password))
         {
+            var userName = NormalizePhone(phone);
             var user = new ApplicationUser
             {
-                UserName = email,
-                Email = email,
+                UserName = userName,
+                Email = $"{userName}@b2b.local",
                 FullName = customer.FullName,
                 CustomerId = customer.Id,
-                EmailConfirmed = true
+                EmailConfirmed = true,
+                PhoneNumber = customer.PhoneNumber
             };
 
             var result = await _userManager.CreateAsync(user, password);
@@ -102,10 +106,21 @@ public class CustomerService : ICustomerService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Payment>> GetIncomingPaymentsAsync(int customerId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Payments
+            .AsNoTracking()
+            .Where(p => p.CustomerId == customerId &&
+                        p.Type == PaymentType.Incoming &&
+                        p.IsActive)
+            .OrderByDescending(p => p.PaymentDate)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<bool> UpdateAsync(
         Customer customer,
         Address address,
-        string? email = null,
+        string? loginPhone = null,
         string? password = null,
         CancellationToken cancellationToken = default)
     {
@@ -136,18 +151,21 @@ public class CustomerService : ICustomerService
             existing.Address.AddressLine = address.AddressLine;
         }
 
-        if (!string.IsNullOrWhiteSpace(email))
+        if (!string.IsNullOrWhiteSpace(loginPhone) || !string.IsNullOrWhiteSpace(password))
         {
+            var phone = !string.IsNullOrWhiteSpace(loginPhone) ? loginPhone : existing.PhoneNumber;
+            var userName = NormalizePhone(phone);
             var existingUser = await _userManager.Users.FirstOrDefaultAsync(u => u.CustomerId == customer.Id, cancellationToken);
             if (existingUser is null && !string.IsNullOrWhiteSpace(password))
             {
                 var user = new ApplicationUser
                 {
-                    UserName = email,
-                    Email = email,
+                    UserName = userName,
+                    Email = $"{userName}@b2b.local",
                     FullName = existing.FullName,
                     CustomerId = existing.Id,
-                    EmailConfirmed = true
+                    EmailConfirmed = true,
+                    PhoneNumber = existing.PhoneNumber
                 };
 
                 var result = await _userManager.CreateAsync(user, password);
@@ -158,9 +176,10 @@ public class CustomerService : ICustomerService
             }
             else if (existingUser is not null)
             {
-                existingUser.Email = email;
-                existingUser.UserName = email;
+                existingUser.UserName = userName;
+                existingUser.Email = $"{userName}@b2b.local";
                 existingUser.FullName = existing.FullName;
+                existingUser.PhoneNumber = existing.PhoneNumber;
                 await _userManager.UpdateAsync(existingUser);
 
                 if (!string.IsNullOrWhiteSpace(password))
@@ -200,4 +219,7 @@ public class CustomerService : ICustomerService
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    private static string NormalizePhone(string phone) =>
+        new string(phone.Where(char.IsDigit).ToArray());
 }

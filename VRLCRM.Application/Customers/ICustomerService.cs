@@ -13,11 +13,13 @@ public interface ICustomerService
 
     Task<IReadOnlyList<Invoice>> GetSalesInvoicesAsync(int customerId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Payment>> GetIncomingPaymentsAsync(int customerId, CancellationToken cancellationToken = default);
+
     Task<Customer?> GetByIdWithHistoryAsync(int id, CancellationToken cancellationToken = default);
 
-    Task<Customer> CreateAsync(Customer customer, Address address, string? email = null, string? password = null, CancellationToken cancellationToken = default);
+    Task<Customer> CreateAsync(Customer customer, Address address, string? loginPhone = null, string? password = null, CancellationToken cancellationToken = default);
 
-    Task<bool> UpdateAsync(Customer customer, Address address, string? email = null, string? password = null, CancellationToken cancellationToken = default);
+    Task<bool> UpdateAsync(Customer customer, Address address, string? loginPhone = null, string? password = null, CancellationToken cancellationToken = default);
 
     Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
 

@@ -14,10 +14,15 @@ public class OrderLineFormItem
 
     [Range(0, double.MaxValue)]
     public decimal UnitPrice { get; set; }
+
+    [StringLength(500)]
+    public string? Notes { get; set; }
 }
 
 public class OrderFormViewModel
 {
+    public int Id { get; set; }
+
     [Required(ErrorMessage = "Müşteri seçilmelidir.")]
     [Display(Name = "Müşteri")]
     public int CustomerId { get; set; }
@@ -25,6 +30,10 @@ public class OrderFormViewModel
     [Display(Name = "Notlar")]
     [StringLength(2000)]
     public string? Notes { get; set; }
+
+    [Display(Name = "Sipariş İskontosu (%)")]
+    [Range(0, 100, ErrorMessage = "İskonto oranı 0-100 arasında olmalıdır.")]
+    public decimal DiscountRate { get; set; }
 
     public List<OrderLineFormItem> Lines { get; set; } = [];
 

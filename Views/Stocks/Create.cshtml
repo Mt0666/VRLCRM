@@ -16,7 +16,7 @@
         </a>
       </div>
       <div class="card-body">
-        <form asp-action="Create" method="post" enctype="multipart/form-data">
+        <form asp-action="Create" method="post" enctype="multipart/form-data" id="stockCreateForm">
           <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
           <partial name="_Form" model="Model" />
           <div class="d-flex gap-2">
@@ -33,4 +33,57 @@
 
 @section PageScripts {
   <partial name="_ValidationScriptsPartial" />
+  <script src="/vendor/libs/html5-qrcode/html5-qrcode.min.js"></script>
+  <script src="/js/form-draft-storage.js"></script>
+  <script>
+  (function () {
+    const DRAFT_KEY = 'vrlcrm_draft_stock_create';
+    FormDraftStorage.bindFormFields(DRAFT_KEY, '#stockCreateForm', [
+      'Name', 'Barcode', 'Price', 'VatRate', 'StockQuantity',
+      'StockCode', 'CategoryId', 'CriticalStockLevel', 'Description'
+    ]);
+
+    let html5QrCode = null;
+    let scannerRunning = false;
+    const scannerBtn = document.getElementById('stockScannerBtn');
+    if (!scannerBtn) return;
+
+    function startScanner() {
+      document.getElementById('stockScannerWrapper').style.display = 'block';
+      scannerRunning = true;
+      scannerBtn.innerHTML = '<i class="ri-camera-off-line"></i>';
+      if (!html5QrCode) html5QrCode = new Html5Qrcode('stock-qr-reader');
+      html5QrCode.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 120 } },
+        function (decodedText) {
+          document.getElementById('stockBarcodeInput').value = decodedText;
+          document.getElementById('stockBarcodeInput').dispatchEvent(new Event('input'));
+          stopScanner();
+        },
+        function () {}
+      ).catch(function () {
+        stopScanner();
+      });
+    }
+
+    async function stopScanner() {
+      if (html5QrCode && scannerRunning) {
+        try { await html5QrCode.stop(); } catch (e) {}
+        scannerRunning = false;
+      }
+      document.getElementById('stockScannerWrapper').style.display = 'none';
+      scannerBtn.innerHTML = '<i class="ri-camera-line"></i>';
+    }
+
+    scannerBtn.addEventListener('click', function () {
+      if (scannerRunning) stopScanner(); else startScanner();
+    });
+    document.getElementById('stockStopScannerBtn').addEventListener('click', stopScanner);
+
+    document.getElementById('stockCreateForm').addEventListener('submit', function () {
+      FormDraftStorage.clear(DRAFT_KEY);
+    });
+  })();
+  </script>
 }

@@ -9,6 +9,8 @@ public class OrderLineInput
     public int Quantity { get; set; }
 
     public decimal UnitPrice { get; set; }
+
+    public string? Notes { get; set; }
 }
 
 public interface IOrderService
@@ -22,6 +24,13 @@ public interface IOrderService
     Task<Order> CreateAndApproveAsync(
         int customerId,
         string? notes,
+        decimal discountRate,
+        IReadOnlyList<OrderLineInput> lines,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> UpdateAsync(
+        int id,
+        decimal discountRate,
         IReadOnlyList<OrderLineInput> lines,
         CancellationToken cancellationToken = default);
 

@@ -76,16 +76,11 @@ public class OrdersController : Controller
 
         try
         {
-            var lines = model.Lines.Select(l => new OrderLineInput
-            {
-                StockItemId = l.StockItemId,
-                Quantity = l.Quantity,
-                UnitPrice = l.UnitPrice
-            }).ToList();
-
+            var lines = MapLines(model.Lines);
             var order = await _orderService.CreateAndApproveAsync(
                 model.CustomerId,
                 model.Notes,
+                model.DiscountRate,
                 lines,
                 cancellationToken);
 
@@ -96,6 +91,34 @@ public class OrdersController : Controller
         {
             ModelState.AddModelError(string.Empty, ex.Message);
             return View(model);
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Update(int id, OrderFormViewModel model, CancellationToken cancellationToken)
+    {
+        if (model.Lines.Count == 0)
+        {
+            TempData["ErrorMessage"] = "Siparişte en az bir ürün olmalıdır.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        try
+        {
+            var updated = await _orderService.UpdateAsync(id, model.DiscountRate, MapLines(model.Lines), cancellationToken);
+            if (!updated)
+            {
+                return NotFound();
+            }
+
+            TempData["SuccessMessage"] = "Sipariş güncellendi.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+            return RedirectToAction(nameof(Details), new { id });
         }
     }
 
@@ -203,6 +226,15 @@ public class OrdersController : Controller
             return RedirectToAction(nameof(Details), new { id });
         }
     }
+
+    private static List<OrderLineInput> MapLines(IEnumerable<OrderLineFormItem> lines) =>
+        lines.Select(l => new OrderLineInput
+        {
+            StockItemId = l.StockItemId,
+            Quantity = l.Quantity,
+            UnitPrice = l.UnitPrice,
+            Notes = l.Notes
+        }).ToList();
 
     private async Task PopulateCustomersAsync(OrderFormViewModel model, CancellationToken cancellationToken)
     {

@@ -6,8 +6,8 @@
 }
 
 <div class="mb-4">
-  <a asp-action="Orders" class="text-body-secondary text-decoration-none small">
-    <i class="ri-arrow-left-line me-1"></i>Siparişlerime Dön
+  <a asp-action="Index" class="text-body-secondary text-decoration-none small">
+    <i class="ri-arrow-left-line me-1"></i>Ürünlere Dön
   </a>
 </div>
 
@@ -39,6 +39,7 @@
         <thead class="table-light">
           <tr>
             <th>Ürün</th>
+            <th>Açıklama</th>
             <th class="text-center" style="width:90px">Adet</th>
             <th class="text-end" style="width:120px">Birim Fiyat</th>
             <th class="text-end" style="width:120px">Toplam</th>
@@ -48,7 +49,13 @@
           @foreach (var line in Model.Lines)
           {
             <tr>
-              <td>@line.StockItem.Name</td>
+              <td>
+                <div>@line.StockItem.Name</div>
+                @if (!string.IsNullOrWhiteSpace(line.Notes))
+                {
+                  <div class="small text-body-secondary mt-1">@line.Notes</div>
+                }
+              </td>
               <td class="text-center">@line.Quantity</td>
               <td class="text-end">@line.UnitPrice.ToString("N2") ₺</td>
               <td class="text-end fw-semibold">@line.LineTotal.ToString("N2") ₺</td>

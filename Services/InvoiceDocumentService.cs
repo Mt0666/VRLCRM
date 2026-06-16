@@ -42,7 +42,6 @@ public class InvoiceDocumentService
 
         var lines = invoice.Lines
             .Select(line => new DocumentLine(
-                line.StockItem.StockCode,
                 line.StockItem.Name,
                 line.Quantity,
                 line.UnitPrice,

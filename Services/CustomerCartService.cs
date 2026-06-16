@@ -13,6 +13,8 @@ public class CartItem
 
     public int Quantity { get; set; }
 
+    public string? Notes { get; set; }
+
     public decimal LineTotal => UnitPrice * Quantity;
 }
 
@@ -88,6 +90,19 @@ public class CustomerCartService
             existing.Quantity = quantity;
         }
 
+        SaveItems(customerId, items);
+    }
+
+    public void UpdateNotes(int customerId, int stockItemId, string? notes)
+    {
+        var items = GetItems(customerId).ToList();
+        var existing = items.FirstOrDefault(i => i.StockItemId == stockItemId);
+        if (existing is null)
+        {
+            return;
+        }
+
+        existing.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
         SaveItems(customerId, items);
     }
 

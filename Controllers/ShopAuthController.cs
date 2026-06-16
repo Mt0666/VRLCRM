@@ -26,30 +26,30 @@ public class ShopAuthController : Controller
             if (User.IsInRole("Customer"))
                 return RedirectToAction("Index", "Shop");
 
-            // Admin/staff oturumu açık — yönetim paneline yönlendir
             return RedirectToAction("Index", "Dashboards");
         }
 
         ViewData["ReturnUrl"] = returnUrl;
-        return View(new LoginViewModel { ReturnUrl = returnUrl });
+        return View(new ShopLoginViewModel { ReturnUrl = returnUrl });
     }
 
     [HttpPost]
     [AllowAnonymous]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Login(LoginViewModel model)
+    public async Task<IActionResult> Login(ShopLoginViewModel model)
     {
         if (!ModelState.IsValid)
             return View(model);
 
-        var user = await _userManager.FindByEmailAsync(model.Email);
+        var userName = NormalizePhone(model.Phone);
+        var user = await _userManager.FindByNameAsync(userName);
         if (user is null || !await _userManager.IsInRoleAsync(user, "Customer"))
         {
             ModelState.AddModelError(string.Empty, "Bu hesap ile mağazaya giriş yapılamaz.");
             return View(model);
         }
 
-        var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, lockoutOnFailure: false);
+        var result = await _signInManager.PasswordSignInAsync(userName, model.Password, model.RememberMe, lockoutOnFailure: false);
         if (result.Succeeded)
         {
             if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
@@ -58,7 +58,7 @@ public class ShopAuthController : Controller
             return RedirectToAction("Index", "Shop");
         }
 
-        ModelState.AddModelError(string.Empty, "Email veya şifre hatalı.");
+        ModelState.AddModelError(string.Empty, "Telefon veya şifre hatalı.");
         return View(model);
     }
 
@@ -70,4 +70,7 @@ public class ShopAuthController : Controller
         await _signInManager.SignOutAsync();
         return RedirectToAction(nameof(Login));
     }
+
+    private static string NormalizePhone(string phone) =>
+        new string(phone.Where(char.IsDigit).ToArray());
 }

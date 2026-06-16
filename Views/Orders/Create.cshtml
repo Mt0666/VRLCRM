@@ -78,6 +78,7 @@
               <thead class="table-light">
                 <tr>
                   <th>Ürün</th>
+                  <th>Açıklama</th>
                   <th class="text-center" style="width:80px">Adet</th>
                   <th class="text-end" style="width:130px">Birim Fiyat</th>
                   <th class="text-center" style="width:80px">KDV %</th>
@@ -89,7 +90,7 @@
               </thead>
               <tbody id="linesBody">
                 <tr id="emptyRow">
-                  <td colspan="8" class="text-center text-body-secondary py-4">
+                  <td colspan="9" class="text-center text-body-secondary py-4">
                     <i class="ri-inbox-line me-1"></i>Henüz ürün eklenmedi.
                   </td>
                 </tr>
@@ -107,6 +108,14 @@
               <div class="order-totals-row">
                 <span>Toplam KDV</span>
                 <span id="vatTotal">0,00 ₺</span>
+              </div>
+              <div class="order-totals-row align-items-center gap-2">
+                <span>Sipariş İskontosu (%)</span>
+                <input type="number" id="orderDiscountRate" name="DiscountRate" class="form-control form-control-sm text-end" value="0" min="0" max="100" step="0.01" style="width:110px" />
+              </div>
+              <div class="order-totals-row d-none" id="discountAmountRow">
+                <span>İskonto Tutarı</span>
+                <span id="discountAmount">0,00 ₺</span>
               </div>
               <div class="order-totals-grand">
                 <span>Genel Toplam</span>
@@ -132,15 +141,37 @@
 @section PageScripts {
   <partial name="_ValidationScriptsPartial" />
   <script src="/vendor/libs/html5-qrcode/html5-qrcode.min.js"></script>
+  <script src="/js/form-draft-storage.js"></script>
   <script>
+    const DRAFT_KEY = 'vrlcrm_draft_order_create';
     let lineIndex = 0;
     const lines = new Map();
     const productCache = new Map();
     let html5QrCode = null;
     let scannerRunning = false;
-    let scannedProduct = false; // true after a successful scan, reset after Ekle
+    let scannedProduct = false;
 
-    // ── Toplamlar ───────────────────────────────────────────────────────
+    function persistDraft() {
+      FormDraftStorage.save(DRAFT_KEY, {
+        lines: Array.from(lines.entries()),
+        discount: document.getElementById('orderDiscountRate').value
+      });
+    }
+
+    function restoreDraft() {
+      const draft = FormDraftStorage.load(DRAFT_KEY);
+      if (!draft || !draft.lines) return;
+      draft.lines.forEach(function(entry) { lines.set(entry[0], entry[1]); });
+      if (draft.discount !== undefined) {
+        document.getElementById('orderDiscountRate').value = draft.discount;
+      }
+      renderLines();
+      rebuildHiddenInputs();
+      updateTotals();
+    }
+
+    FormDraftStorage.bindFormFields(DRAFT_KEY, '#orderForm', ['CustomerId', 'Notes']);
+
     function updateTotals() {
       let sub = 0, vat = 0;
       lines.forEach(function(item) {
@@ -148,14 +179,24 @@
         vat += lineSub * (item.vatRate / 100);
         sub += lineSub;
       });
-      const grand = sub + vat;
+      const rate = parseFloat(document.getElementById('orderDiscountRate').value) || 0;
+      const gross = sub + vat;
+      const discountAmt = gross * (Math.min(Math.max(rate, 0), 100) / 100);
+      const grand = gross - discountAmt;
       const fmt = function(v) { return v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'; };
       document.getElementById('subTotal').textContent = fmt(sub);
       document.getElementById('vatTotal').textContent = fmt(vat);
       document.getElementById('grandTotal').textContent = fmt(grand);
+      var discountRow = document.getElementById('discountAmountRow');
+      if (rate > 0) {
+        discountRow.classList.remove('d-none');
+        document.getElementById('discountAmount').textContent = fmt(discountAmt);
+      } else {
+        discountRow.classList.add('d-none');
+      }
+      persistDraft();
     }
 
-    // ── Satır render ────────────────────────────────────────────────────
     function renderLines() {
       const tbody = document.getElementById('linesBody');
       const emptyRow = document.getElementById('emptyRow');
@@ -170,22 +211,43 @@
       const fmt = function(v) { return v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'; };
 
       lines.forEach(function(item, stockId) {
-        const lineSub = item.qty * item.price;
-        const lineVat = lineSub * (item.vatRate / 100);
-        const lineTotal = lineSub + lineVat;
         const row = document.createElement('tr');
         row.dataset.stockId = stockId;
+
+        function refreshRowTotals() {
+          const lineSub = item.qty * item.price;
+          const lineVat = lineSub * (item.vatRate / 100);
+          const lineTotal = lineSub + lineVat;
+          row.querySelector('.line-sub').textContent = fmt(lineSub);
+          row.querySelector('.line-vat').textContent = fmt(lineVat);
+          row.querySelector('.line-total').textContent = fmt(lineTotal);
+          rebuildHiddenInputs();
+          updateTotals();
+        }
+
         row.innerHTML =
           '<td data-label="Ürün">' + item.name + '</td>' +
-          '<td data-label="Adet" class="text-center">' + item.qty + '</td>' +
+          '<td data-label="Açıklama"><input type="text" class="form-control form-control-sm line-notes" value="' + (item.notes || '').replace(/"/g, '&quot;') + '" placeholder="Ürün açıklaması" /></td>' +
+          '<td data-label="Adet" class="text-center"><input type="number" class="form-control form-control-sm line-qty text-center" value="' + item.qty + '" min="1" style="width:70px;margin:0 auto;" /></td>' +
           '<td data-label="Birim Fiyat" class="text-end">' + fmt(item.price) + '</td>' +
           '<td data-label="KDV %" class="text-center">%' + item.vatRate + '</td>' +
-          '<td data-label="Ara Toplam" class="text-end">' + fmt(lineSub) + '</td>' +
-          '<td data-label="KDV" class="text-end">' + fmt(lineVat) + '</td>' +
-          '<td data-label="Toplam" class="text-end fw-semibold">' + fmt(lineTotal) + '</td>' +
+          '<td data-label="Ara Toplam" class="text-end line-sub">' + fmt(item.qty * item.price) + '</td>' +
+          '<td data-label="KDV" class="text-end line-vat">' + fmt(item.qty * item.price * (item.vatRate / 100)) + '</td>' +
+          '<td data-label="Toplam" class="text-end fw-semibold line-total">' + fmt(item.qty * item.price * (1 + item.vatRate / 100)) + '</td>' +
           '<td data-label="" class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-line py-0 px-1"><i class="ri-delete-bin-6-line"></i></button></td>';
         tbody.appendChild(row);
 
+        row.querySelector('.line-qty').addEventListener('change', function() {
+          const qty = parseInt(this.value, 10);
+          if (!qty || qty <= 0) { this.value = item.qty; return; }
+          item.qty = qty;
+          refreshRowTotals();
+        });
+        row.querySelector('.line-notes').addEventListener('input', function() {
+          item.notes = this.value;
+          rebuildHiddenInputs();
+          persistDraft();
+        });
         row.querySelector('.remove-line').addEventListener('click', function() {
           lines.delete(stockId);
           renderLines();
@@ -195,7 +257,6 @@
       });
     }
 
-    // ── Gizli inputlar ──────────────────────────────────────────────────
     function rebuildHiddenInputs() {
       const container = document.getElementById('lineInputs');
       container.innerHTML = '';
@@ -203,15 +264,14 @@
       lines.forEach(function(item, stockId) {
         container.insertAdjacentHTML('beforeend',
           '<input type="hidden" name="Lines[' + lineIndex + '].StockItemId" value="' + stockId + '" />' +
-          '<input type="hidden" name="Lines[' + lineIndex + '].StockName" value="' + item.name + '" />' +
+          '<input type="hidden" name="Lines[' + lineIndex + '].StockName" value="' + item.name.replace(/"/g, '&quot;') + '" />' +
           '<input type="hidden" name="Lines[' + lineIndex + '].Quantity" value="' + item.qty + '" />' +
           '<input type="hidden" name="Lines[' + lineIndex + '].UnitPrice" value="' + item.price + '" />' +
-          '<input type="hidden" name="Lines[' + lineIndex + '].VatRate" value="' + item.vatRate + '" />');
+          '<input type="hidden" name="Lines[' + lineIndex + '].Notes" value="' + (item.notes || '').replace(/"/g, '&quot;') + '" />');
         lineIndex++;
       });
     }
 
-    // ── Ürün ekle ───────────────────────────────────────────────────────
     function addSelectedProduct() {
       var stockId = tsProduct.getValue();
       var qty = parseInt(document.getElementById('scanQty').value, 10) || 1;
@@ -228,7 +288,8 @@
         name: product.name,
         qty: (existing ? existing.qty : 0) + qty,
         price: product.price,
-        vatRate: product.vatRate
+        vatRate: product.vatRate,
+        notes: existing ? existing.notes : ''
       });
 
       renderLines();
@@ -249,6 +310,12 @@
     document.getElementById('scanQty').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') { e.preventDefault(); addSelectedProduct(); }
     });
+    document.getElementById('orderDiscountRate').addEventListener('input', updateTotals);
+    document.getElementById('orderForm').addEventListener('submit', function() {
+      FormDraftStorage.clear(DRAFT_KEY);
+    });
+
+    restoreDraft();
 
     // ── TomSelect AJAX ürün arama ───────────────────────────────────────
     var tsProduct = new TomSelect('#productSelect', {

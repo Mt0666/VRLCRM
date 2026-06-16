@@ -105,9 +105,6 @@
         var cartCount = ViewBag.CartCount as int? ?? 0;
         var cartTotal = ViewBag.CartTotal as decimal? ?? 0m;
       }
-      <a asp-controller="Shop" asp-action="Orders" class="btn btn-outline-secondary btn-sm" title="Siparişlerim">
-        <i class="ri-file-list-3-line"></i><span class="d-none d-md-inline ms-1">Siparişlerim</span>
-      </a>
       <a asp-controller="Shop" asp-action="Cart" class="btn btn-outline-primary btn-sm mv-cart-btn" id="nav-cart-link">
         <i class="ri-shopping-cart-line"></i>
         <span id="nav-cart-count" class="mv-cart-count" style="@(cartCount == 0 ? "display:none;" : "")">@(cartCount > 9 ? "9+" : cartCount.ToString())</span>
