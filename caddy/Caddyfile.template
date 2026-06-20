@@ -1,0 +1,6 @@
+{
+	auto_https off
+}
+
+# Bu dosya otomatik uretilir — elle duzenlemeyin.
+# Uretmek icin: scripts\windows\sync-caddy-config.ps1

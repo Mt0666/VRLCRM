@@ -43,13 +43,17 @@ $envContent = Get-Content ".env" -Raw
 $hasTunnelToken = $envContent -match '(?m)^CLOUDFLARE_TUNNEL_TOKEN=\S+'
 $hasApiToken = $envContent -match '(?m)^CLOUDFLARE_API_TOKEN=\S+'
 $hostname = if ($envContent -match '(?m)^CRM_HOSTNAME=(.+)$') { $Matches[1].Trim() } else { "crm.metevarol.com.tr" }
-$certPath = Join-Path $ProjectRoot "certs\live\$hostname\fullchain.pem"
+$certLive = Join-Path $ProjectRoot "certs\live\$hostname\fullchain.pem"
+$certArchive = Join-Path $ProjectRoot "certs\archive\$hostname\fullchain1.pem"
+$hasCert = (Test-Path $certLive) -or (Test-Path $certArchive)
 
 if (-not $hasApiToken) {
     Write-Warning "[VRLCRM] CLOUDFLARE_API_TOKEN yok."
 }
-if (-not (Test-Path $certPath)) {
+if (-not $hasCert) {
     Write-Warning "[VRLCRM] HTTPS sertifikasi yok. Once: scripts\windows\obtain-letsencrypt.ps1"
+} else {
+    & (Join-Path $PSScriptRoot "sync-caddy-config.ps1")
 }
 
 if ($hasTunnelToken) {

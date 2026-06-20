@@ -420,6 +420,7 @@ cloudflared/*.json
 cloudflared/config.yml
 cloudflare/cloudflare.ini
 certs/
+caddy/runtime/
 *.local.json
 appsettings.*.local.json
 secrets.json

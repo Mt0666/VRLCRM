@@ -54,9 +54,12 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $livePath = Join-Path $certsDir "live\$hostname\fullchain.pem"
-if (-not (Test-Path $livePath)) {
-    Write-Error "Sertifika dosyasi olusturulamadi: $livePath"
+$archivePath = Join-Path $certsDir "archive\$hostname\fullchain1.pem"
+if (-not (Test-Path $livePath) -and -not (Test-Path $archivePath)) {
+    Write-Error "Sertifika dosyasi olusturulamadi."
 }
+
+& (Join-Path $PSScriptRoot "sync-caddy-config.ps1")
 
 Write-Host ""
 Write-Host "=== Sertifika hazir ==="

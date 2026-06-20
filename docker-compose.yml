@@ -65,7 +65,7 @@ services:
       - "443:443"
       - "80:80"
     volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/runtime/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./certs:/etc/certs:ro
     depends_on:
       web:
