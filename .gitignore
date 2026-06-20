@@ -418,8 +418,8 @@ ASALocalRun/
 !.env.example
 cloudflared/*.json
 cloudflared/config.yml
-certs/*.pem
-certs/*.key
+cloudflare/cloudflare.ini
+certs/
 *.local.json
 appsettings.*.local.json
 secrets.json

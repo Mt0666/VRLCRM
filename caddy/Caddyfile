@@ -1,6 +1,5 @@
 {
-	email {env.ACME_EMAIL}
-	acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+	auto_https off
 }
 
 (crm_proxy) {
@@ -10,9 +9,9 @@
 	}
 }
 
-# Gercek Let's Encrypt sertifikasi — telefona ozel kurulum gerekmez.
-# Ofis router DNS: CRM_HOSTNAME -> sunucu LAN IP
+# Sertifika: scripts\windows\obtain-letsencrypt.ps1 ile alinir (Certbot + Cloudflare DNS)
 https://{env.CRM_HOSTNAME} {
+	tls /etc/certs/live/{env.CRM_HOSTNAME}/fullchain.pem /etc/certs/live/{env.CRM_HOSTNAME}/privkey.pem
 	import crm_proxy
 }
 

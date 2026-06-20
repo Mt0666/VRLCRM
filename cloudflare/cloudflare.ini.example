@@ -1,0 +1,2 @@
+# Certbot Cloudflare DNS eklentisi icin (obtain-letsencrypt.ps1 otomatik doldurur)
+dns_cloudflare_api_token = TOKEN_BURAYA

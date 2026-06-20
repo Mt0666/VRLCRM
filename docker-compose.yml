@@ -53,26 +53,20 @@ services:
     networks:
       - vrlcrm
 
-  # Yerel HTTPS (Let's Encrypt) — telefona sertifika yukleme gerekmez
-  # Router DNS: CRM_HOSTNAME -> sunucu LAN IP
+  # Yerel HTTPS — once obtain-letsencrypt.ps1 calistir
   caddy:
-    build:
-      context: ./caddy
-      dockerfile: Dockerfile
+    image: caddy:2-alpine
     container_name: vrlcrm-caddy
     env_file:
       - .env
     environment:
       CRM_HOSTNAME: ${CRM_HOSTNAME:-crm.metevarol.com.tr}
-      ACME_EMAIL: ${ACME_EMAIL:-admin@vrlcrm.local}
-      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN}
     ports:
       - "443:443"
       - "80:80"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
+      - ./certs:/etc/certs:ro
     depends_on:
       web:
         condition: service_healthy
@@ -105,5 +99,3 @@ networks:
 volumes:
   sqldata:
   stock-uploads:
-  caddy_data:
-  caddy_config:
