@@ -1,0 +1,21 @@
+{
+	email {env.ACME_EMAIL}
+	acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+}
+
+(crm_proxy) {
+	reverse_proxy web:8080 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+	}
+}
+
+# Gercek Let's Encrypt sertifikasi — telefona ozel kurulum gerekmez.
+# Ofis router DNS: CRM_HOSTNAME -> sunucu LAN IP
+https://{env.CRM_HOSTNAME} {
+	import crm_proxy
+}
+
+http://{env.CRM_HOSTNAME} {
+	redir https://{host}{uri} permanent
+}

@@ -41,14 +41,21 @@ if (-not (Test-Path ".env")) {
 
 $envContent = Get-Content ".env" -Raw
 $hasTunnelToken = $envContent -match '(?m)^CLOUDFLARE_TUNNEL_TOKEN=\S+'
+$hasApiToken = $envContent -match '(?m)^CLOUDFLARE_API_TOKEN=\S+'
+
+if (-not $hasApiToken) {
+    Write-Warning "[VRLCRM] CLOUDFLARE_API_TOKEN yok. Yerel HTTPS icin setup-local-https.ps1 adimlarini tamamlayin."
+}
 
 if ($hasTunnelToken) {
-    Write-Host "[VRLCRM] Stack + Cloudflare Tunnel baslatiliyor..."
-    docker compose --profile tunnel up -d --remove-orphans
+    Write-Host "[VRLCRM] Stack + Caddy HTTPS + Cloudflare Tunnel baslatiliyor..."
+    $composeArgs = @("compose", "--profile", "tunnel", "up", "-d", "--remove-orphans")
 } else {
-    Write-Host "[VRLCRM] CLOUDFLARE_TUNNEL_TOKEN yok; sadece web + db baslatiliyor..."
-    docker compose up -d --remove-orphans
+    Write-Host "[VRLCRM] Stack + Caddy HTTPS baslatiliyor (tunnel token yok)..."
+    $composeArgs = @("compose", "up", "-d", "--remove-orphans")
 }
+
+docker @composeArgs
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "[VRLCRM] docker compose basarisiz oldu."
