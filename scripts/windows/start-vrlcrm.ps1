@@ -41,26 +41,12 @@ if (-not (Test-Path ".env")) {
 
 $envContent = Get-Content ".env" -Raw
 $hasTunnelToken = $envContent -match '(?m)^CLOUDFLARE_TUNNEL_TOKEN=\S+'
-$hasApiToken = $envContent -match '(?m)^CLOUDFLARE_API_TOKEN=\S+'
-$hostname = if ($envContent -match '(?m)^CRM_HOSTNAME=(.+)$') { $Matches[1].Trim() } else { "crm.metevarol.com.tr" }
-$certLive = Join-Path $ProjectRoot "certs\live\$hostname\fullchain.pem"
-$certArchive = Join-Path $ProjectRoot "certs\archive\$hostname\fullchain1.pem"
-$hasCert = (Test-Path $certLive) -or (Test-Path $certArchive)
-
-if (-not $hasApiToken) {
-    Write-Warning "[VRLCRM] CLOUDFLARE_API_TOKEN yok."
-}
-if (-not $hasCert) {
-    Write-Warning "[VRLCRM] HTTPS sertifikasi yok. Once: scripts\windows\obtain-letsencrypt.ps1"
-} else {
-    & (Join-Path $PSScriptRoot "sync-caddy-config.ps1")
-}
 
 if ($hasTunnelToken) {
-    Write-Host "[VRLCRM] Stack + Caddy HTTPS + Cloudflare Tunnel baslatiliyor..."
+    Write-Host "[VRLCRM] Stack + Cloudflare Tunnel baslatiliyor..."
     $composeArgs = @("compose", "--profile", "tunnel", "up", "-d", "--remove-orphans")
 } else {
-    Write-Host "[VRLCRM] Stack + Caddy HTTPS baslatiliyor (tunnel token yok)..."
+    Write-Host "[VRLCRM] Tunnel token yok; web + db baslatiliyor..."
     $composeArgs = @("compose", "up", "-d", "--remove-orphans")
 }
 
@@ -74,4 +60,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "[VRLCRM] Konteyner durumu:"
 docker compose ps
 
+Write-Host ""
+Write-Host "Yerel test : http://localhost:8080"
+Write-Host "Dis erisim : Cloudflare tunnel hostname (internet gerekir)"
 Write-Host "[VRLCRM] Tamamlandi."

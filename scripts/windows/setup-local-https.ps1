@@ -21,7 +21,8 @@ if (-not (Test-Path ".env")) {
 $hostname = Read-EnvValue "CRM_HOSTNAME" "crm.metevarol.com.tr"
 $certPath = Join-Path $ProjectRoot "certs\live\$hostname\fullchain.pem"
 
-Write-Host "=== Yerel HTTPS kontrol listesi ==="
+Write-Host "=== Yerel HTTPS kontrol listesi (simdilik devre disi) ==="
+Write-Host "Ofis offline erisimi icin router DNS + --profile local-https gerekir."
 Write-Host ""
 Write-Host "1) .env icinde CLOUDFLARE_API_TOKEN ve CRM_HOSTNAME olmali"
 Write-Host "2) Sertifika al:"

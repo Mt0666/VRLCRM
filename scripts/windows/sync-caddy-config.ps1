@@ -1,3 +1,4 @@
+# SIMDIK KULLANILMIYOR — router yerel DNS gerekir. Ileride: --profile local-https
 # .env'den Caddyfile uretir + certbot symlinklerini Windows icin duzeltir
 # Kullanim: powershell -ExecutionPolicy Bypass -File scripts\windows\sync-caddy-config.ps1
 

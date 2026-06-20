@@ -1,3 +1,4 @@
+# SIMDIK KULLANILMIYOR — router yerel DNS gerekir. Ileride: --profile local-https
 # Let's Encrypt sertifikasi alir (telefona ozel kurulum gerekmez).
 # Kullanim: powershell -ExecutionPolicy Bypass -File scripts\windows\obtain-letsencrypt.ps1
 

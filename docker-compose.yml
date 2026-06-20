@@ -28,7 +28,8 @@ services:
     container_name: vrlcrm-web
     env_file:
       - .env
-    # HTTP sadece Docker agi icinde (Caddy + Tunnel). IP:8080 ile erisim kapali.
+    ports:
+      - "${WEB_PORT:-8080}:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ASPNETCORE_URLS: http://+:8080
@@ -53,10 +54,30 @@ services:
     networks:
       - vrlcrm
 
-  # Yerel HTTPS — once obtain-letsencrypt.ps1 calistir
+  # Cloudflare Tunnel — docker compose --profile tunnel up -d
+  # Zero Trust > Routes > Service URL: http://web:8080
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: vrlcrm-tunnel
+    profiles: ["tunnel"]
+    env_file:
+      - .env
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    command: tunnel --no-autoupdate run
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - vrlcrm
+
+  # Gelecek: ofis icinde internet kesilince HTTPS (router DNS gerekir)
+  # docker compose --profile local-https up -d
   caddy:
     image: caddy:2-alpine
     container_name: vrlcrm-caddy
+    profiles: ["local-https"]
     env_file:
       - .env
     environment:
@@ -67,24 +88,6 @@ services:
     volumes:
       - ./caddy/runtime/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./certs:/etc/certs:ro
-    depends_on:
-      web:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - vrlcrm
-
-  # Cloudflare Tunnel — docker compose --profile tunnel up -d
-  # Cloudflare Zero Trust > Public Hostname > Service URL: http://web:8080
-  tunnel:
-    image: cloudflare/cloudflared:latest
-    container_name: vrlcrm-tunnel
-    profiles: ["tunnel"]
-    env_file:
-      - .env
-    environment:
-      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
-    command: tunnel --no-autoupdate run
     depends_on:
       web:
         condition: service_healthy
