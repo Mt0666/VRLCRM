@@ -18,6 +18,8 @@ services:
       retries: 12
       start_period: 45s
     restart: unless-stopped
+    networks:
+      - vrlcrm
 
   web:
     build:
@@ -29,7 +31,7 @@ services:
     ports:
       - "${WEB_PORT:-8080}:8080"
     environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ASPNETCORE_URLS: http://+:8080
       Database__Server: db,1433
       Database__Name: VRLCRM
@@ -42,7 +44,37 @@ services:
         condition: service_healthy
     volumes:
       - stock-uploads:/app/wwwroot/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
     restart: unless-stopped
+    networks:
+      - vrlcrm
+
+  # Cloudflare Tunnel — docker compose --profile tunnel up -d
+  # Cloudflare Zero Trust > Public Hostname > Service URL: http://web:8080
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: vrlcrm-tunnel
+    profiles: ["tunnel"]
+    env_file:
+      - .env
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    command: tunnel --no-autoupdate run
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - vrlcrm
+
+networks:
+  vrlcrm:
+    driver: bridge
 
 volumes:
   sqldata:

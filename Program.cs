@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 using VRLCRM.Handlers;
 using VRLCRM.Infrastructure;
@@ -6,6 +7,13 @@ using VRLCRM.Models.Settings;
 using VRLCRM.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Host.UseSerilog((context, services, configuration) =>
     configuration
@@ -44,6 +52,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 
+app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 

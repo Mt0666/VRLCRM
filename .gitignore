@@ -416,6 +416,8 @@ ASALocalRun/
 .env
 .env.*
 !.env.example
+cloudflared/*.json
+cloudflared/config.yml
 *.local.json
 appsettings.*.local.json
 secrets.json

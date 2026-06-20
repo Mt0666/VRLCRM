@@ -1,0 +1,13 @@
+# Token yerine dosya tabanlı tunnel kullanacaksanız:
+# 1. cloudflared tunnel create vrlcrm
+# 2. credentials JSON dosyasını bu klasöre kopyalayın (git'e eklemeyin)
+# 3. Bu dosyayı config.yml olarak kopyalayın ve hostname'i güncelleyin
+# 4. docker-compose.override.yml içinde tunnel servisine volume mount ekleyin
+
+tunnel: TUNNEL_ID_BURAYA
+credentials-file: /etc/cloudflared/TUNNEL_ID.json
+
+ingress:
+  - hostname: crm.ornekdomain.com
+    service: http://web:8080
+  - service: http_status:404
