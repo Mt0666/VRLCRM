@@ -14,6 +14,8 @@ public interface ICategoryService
 
     Task<Category> CreateAsync(Category category, CancellationToken cancellationToken = default);
 
+    Task<(Category Category, bool Created)> GetOrCreateByNameAsync(string name, CancellationToken cancellationToken = default);
+
     Task<bool> UpdateAsync(Category category, CancellationToken cancellationToken = default);
 
     Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);

@@ -35,6 +35,7 @@ builder.Services.Configure<CompanyDocumentSettings>(
     builder.Configuration.GetSection(CompanyDocumentSettings.SectionName));
 builder.Services.AddScoped<OrderDocumentService>();
 builder.Services.AddScoped<InvoiceDocumentService>();
+builder.Services.AddScoped<PurchaseInvoiceImportService>();
 builder.Services.AddScoped<CustomerPaymentDocumentService>();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

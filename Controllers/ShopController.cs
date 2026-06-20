@@ -51,6 +51,24 @@ public class ShopController : Controller
         ViewBag.CartTotal = _cartService.GetTotal(customerId);
     }
 
+    private static bool CanPlaceShopOrder(Customer customer, decimal orderAmount) =>
+        customer.EffectiveCreditLimit > 0 && customer.HasSufficientCredit(orderAmount);
+
+    private static string GetCreditLimitMessage(Customer customer, decimal orderAmount)
+    {
+        if (customer.EffectiveCreditLimit <= 0)
+        {
+            return "Cari limitiniz tanımlı olmadığı için sipariş veremezsiniz.";
+        }
+
+        if (!customer.HasSufficientCredit(orderAmount))
+        {
+            return $"Cari limitiniz yetersiz. Kullanılabilir limit: {customer.AvailableCredit:N2} ₺.";
+        }
+
+        return string.Empty;
+    }
+
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
         var (customer, error) = await GetCurrentCustomerAsync(cancellationToken);
@@ -83,7 +101,14 @@ public class ShopController : Controller
 
         if (quantity <= 0) quantity = 1;
 
-        _cartService.AddItem(customer!.Id, new CartItem
+        var projectedCartTotal = _cartService.GetTotal(customer!.Id) + stock.Price * quantity;
+        if (!CanPlaceShopOrder(customer, projectedCartTotal))
+        {
+            TempData["ErrorMessage"] = GetCreditLimitMessage(customer, projectedCartTotal);
+            return RedirectToAction(nameof(Index));
+        }
+
+        _cartService.AddItem(customer.Id, new CartItem
         {
             StockItemId = stock.Id,
             Name = stock.Name,
@@ -108,7 +133,13 @@ public class ShopController : Controller
 
         if (quantity <= 0) quantity = 1;
 
-        _cartService.AddItem(customer!.Id, new CartItem
+        var projectedCartTotal = _cartService.GetTotal(customer!.Id) + stock.Price * quantity;
+        if (!CanPlaceShopOrder(customer, projectedCartTotal))
+        {
+            return Json(new { success = false, message = GetCreditLimitMessage(customer, projectedCartTotal) });
+        }
+
+        _cartService.AddItem(customer.Id, new CartItem
         {
             StockItemId = stock.Id,
             Name = stock.Name,
@@ -129,6 +160,9 @@ public class ShopController : Controller
         ViewBag.Customer = customer;
         ViewBag.CartItems = _cartService.GetItems(customer!.Id);
         ViewBag.CartTotal = _cartService.GetTotal(customer.Id);
+        var cartTotal = (decimal)ViewBag.CartTotal;
+        ViewBag.CanCheckout = CanPlaceShopOrder(customer, cartTotal);
+        ViewBag.CreditLimitMessage = GetCreditLimitMessage(customer, cartTotal);
         SetCartViewBag(customer.Id);
 
         return View();
@@ -207,6 +241,13 @@ public class ShopController : Controller
         if (cartItems.Count == 0)
         {
             TempData["ErrorMessage"] = "Sepetiniz boş.";
+            return RedirectToAction(nameof(Cart));
+        }
+
+        var cartTotal = _cartService.GetTotal(customer.Id);
+        if (!CanPlaceShopOrder(customer, cartTotal))
+        {
+            TempData["ErrorMessage"] = GetCreditLimitMessage(customer, cartTotal);
             return RedirectToAction(nameof(Cart));
         }
 

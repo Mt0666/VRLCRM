@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using VRLCRM.Application.Categories;
 using VRLCRM.Domain.Entities;
@@ -7,6 +8,9 @@ namespace VRLCRM.Infrastructure.Categories;
 
 public class CategoryService : ICategoryService
 {
+    private static readonly StringComparer TurkishNameComparer =
+        StringComparer.Create(CultureInfo.GetCultureInfo("tr-TR"), true);
+
     private readonly ApplicationDbContext _context;
 
     public CategoryService(ApplicationDbContext context)
@@ -52,6 +56,39 @@ public class CategoryService : ICategoryService
         _context.Categories.Add(category);
         await _context.SaveChangesAsync(cancellationToken);
         return category;
+    }
+
+    public async Task<(Category Category, bool Created)> GetOrCreateByNameAsync(
+        string name,
+        CancellationToken cancellationToken = default)
+    {
+        var trimmed = name.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            throw new ArgumentException("Kategori adı boş olamaz.", nameof(name));
+        }
+
+        var categories = await _context.Categories.ToListAsync(cancellationToken);
+        var existing = categories.FirstOrDefault(c => TurkishNameComparer.Equals(c.Name.Trim(), trimmed));
+        if (existing is not null)
+        {
+            if (!existing.IsActive)
+            {
+                existing.IsActive = true;
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+
+            return (existing, false);
+        }
+
+        var category = new Category
+        {
+            Name = trimmed,
+            IsActive = true
+        };
+        _context.Categories.Add(category);
+        await _context.SaveChangesAsync(cancellationToken);
+        return (category, true);
     }
 
     public async Task<bool> UpdateAsync(Category category, CancellationToken cancellationToken = default)

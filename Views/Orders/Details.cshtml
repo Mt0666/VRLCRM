@@ -84,7 +84,7 @@
         {
           <form asp-action="Update" asp-route-id="@Model.Id" method="post" id="orderEditForm">
             @Html.AntiForgeryToken()
-            <div class="table-responsive mb-0">
+            <div class="d-none d-md-block table-responsive mb-0">
               <table class="table table-bordered table-sm align-middle js-lines-table" id="linesTable">
                 <thead class="table-light">
                   <tr>
@@ -101,6 +101,7 @@
                 <tbody id="linesBody"></tbody>
               </table>
             </div>
+            <div class="d-md-none" id="orderLinesMobile"></div>
             <div class="d-flex justify-content-end mt-2">
               <div class="order-totals-card">
                 <div class="order-totals-row">
@@ -136,7 +137,7 @@
         }
         else
         {
-          <div class="table-responsive mb-0">
+          <div class="d-none d-md-block table-responsive mb-0">
             <table class="table table-bordered table-sm align-middle js-lines-table">
               <thead class="table-light">
                 <tr>
@@ -153,17 +154,55 @@
                 @foreach (var line in Model.Lines)
                 {
                   <tr>
-                    <td data-label="Ürün">@line.StockItem.Name</td>
-                    <td data-label="Açıklama" class="small text-body-secondary">@(line.Notes ?? "-")</td>
-                    <td data-label="Adet" class="text-center">@line.Quantity</td>
-                    <td data-label="Birim Fiyat" class="text-end">@line.UnitPrice.ToString("N2") ₺</td>
-                    <td data-label="KDV %" class="text-center">%@line.VatRate.ToString("N0")</td>
-                    <td data-label="KDV Tutarı" class="text-end">@line.VatAmount.ToString("N2") ₺</td>
-                    <td data-label="Toplam" class="text-end fw-semibold">@line.LineTotal.ToString("N2") ₺</td>
+                    <td>@line.StockItem.Name</td>
+                    <td class="small text-body-secondary">@(line.Notes ?? "-")</td>
+                    <td class="text-center">@line.Quantity</td>
+                    <td class="text-end">@line.UnitPrice.ToString("N2") ₺</td>
+                    <td class="text-center">%@line.VatRate.ToString("N0")</td>
+                    <td class="text-end">@line.VatAmount.ToString("N2") ₺</td>
+                    <td class="text-end fw-semibold">@line.LineTotal.ToString("N2") ₺</td>
                   </tr>
                 }
               </tbody>
             </table>
+          </div>
+
+          <div class="d-md-none">
+            @foreach (var line in Model.Lines)
+            {
+              <div class="card order-line-mobile-card mb-3">
+                <div class="card-body p-3">
+                  <div class="mb-3">
+                    <div class="order-line-mobile-label">Ürün</div>
+                    <div class="fw-semibold">@line.StockItem.Name</div>
+                  </div>
+                  <div class="mb-3">
+                    <div class="order-line-mobile-label">Açıklama</div>
+                    <div class="text-body-secondary">@(line.Notes ?? "-")</div>
+                  </div>
+                  <div class="order-line-mobile-row">
+                    <span class="order-line-mobile-label">Adet</span>
+                    <span>@line.Quantity</span>
+                  </div>
+                  <div class="order-line-mobile-row">
+                    <span class="order-line-mobile-label">Birim Fiyat</span>
+                    <span>@line.UnitPrice.ToString("N2") ₺</span>
+                  </div>
+                  <div class="order-line-mobile-row">
+                    <span class="order-line-mobile-label">KDV %</span>
+                    <span>%@line.VatRate.ToString("N0")</span>
+                  </div>
+                  <div class="order-line-mobile-row">
+                    <span class="order-line-mobile-label">KDV Tutarı</span>
+                    <span>@line.VatAmount.ToString("N2") ₺</span>
+                  </div>
+                  <div class="order-line-mobile-row order-line-mobile-row-total">
+                    <span class="order-line-mobile-label">Toplam</span>
+                    <span class="fw-bold">@line.LineTotal.ToString("N2") ₺</span>
+                  </div>
+                </div>
+              </div>
+            }
           </div>
 
           <div class="d-flex justify-content-end mt-2">
@@ -194,6 +233,30 @@
     </div>
   </div>
 </div>
+
+@section PageStyles {
+<style>
+  .order-line-mobile-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--bs-secondary-color);
+  }
+  .order-line-mobile-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+  }
+  .order-line-mobile-row-total {
+    border-bottom: none;
+    padding-top: 0.25rem;
+  }
+</style>
+}
 
 @section PageScripts {
 @if (canEdit)
@@ -260,22 +323,64 @@
     });
   }
 
+  function syncLineViews(stockId) {
+    const item = lines.get(stockId);
+    if (!item) return;
+    const fmt = function(v) { return v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'; };
+    const vatText = fmt(item.qty * item.price * (item.vatRate / 100));
+    const totalText = fmt(item.qty * item.price * (1 + item.vatRate / 100));
+    document.querySelectorAll('[data-stock-id="' + stockId + '"] .line-vat').forEach(function(el) {
+      el.textContent = vatText;
+    });
+    document.querySelectorAll('[data-stock-id="' + stockId + '"] .line-total').forEach(function(el) {
+      el.textContent = totalText;
+    });
+    document.querySelectorAll('[data-stock-id="' + stockId + '"] .line-qty').forEach(function(el) {
+      if (document.activeElement !== el) el.value = item.qty;
+    });
+    rebuildHiddenInputs();
+    updateTotals();
+  }
+
+  function bindLineEvents(root, stockId) {
+    const item = lines.get(stockId);
+    root.querySelectorAll('.line-qty').forEach(function(input) {
+      input.addEventListener('change', function() {
+        const qty = parseInt(this.value, 10);
+        if (!qty || qty <= 0) { this.value = item.qty; return; }
+        item.qty = qty;
+        syncLineViews(stockId);
+      });
+    });
+    root.querySelectorAll('.line-notes').forEach(function(input) {
+      input.addEventListener('input', function() {
+        item.notes = this.value;
+        document.querySelectorAll('[data-stock-id="' + stockId + '"] .line-notes').forEach(function(el) {
+          if (el !== input) el.value = item.notes;
+        });
+        rebuildHiddenInputs();
+      });
+    });
+    root.querySelectorAll('.remove-line').forEach(function(button) {
+      button.addEventListener('click', function() {
+        lines.delete(stockId);
+        renderLines();
+        rebuildHiddenInputs();
+        updateTotals();
+      });
+    });
+  }
+
   function renderLines() {
     const tbody = document.getElementById('linesBody');
+    const mobile = document.getElementById('orderLinesMobile');
     tbody.innerHTML = '';
+    mobile.innerHTML = '';
     const fmt = function(v) { return v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'; };
 
     lines.forEach(function(item, stockId) {
       const row = document.createElement('tr');
       row.dataset.stockId = stockId;
-
-      function refreshRowTotals() {
-        row.querySelector('.line-vat').textContent = fmt(item.qty * item.price * (item.vatRate / 100));
-        row.querySelector('.line-total').textContent = fmt(item.qty * item.price * (1 + item.vatRate / 100));
-        rebuildHiddenInputs();
-        updateTotals();
-      }
-
       row.innerHTML =
         '<td>' + item.name + '</td>' +
         '<td><input type="text" class="form-control form-control-sm line-notes" value="' + (item.notes || '').replace(/"/g, '&quot;') + '" /></td>' +
@@ -285,25 +390,36 @@
         '<td class="text-end line-vat">' + fmt(item.qty * item.price * (item.vatRate / 100)) + '</td>' +
         '<td class="text-end fw-semibold line-total">' + fmt(item.qty * item.price * (1 + item.vatRate / 100)) + '</td>' +
         '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-line py-0 px-1"><i class="ri-delete-bin-6-line"></i></button></td>';
-
-      row.querySelector('.line-qty').addEventListener('change', function() {
-        const qty = parseInt(this.value, 10);
-        if (!qty || qty <= 0) { this.value = item.qty; return; }
-        item.qty = qty;
-        refreshRowTotals();
-      });
-      row.querySelector('.line-notes').addEventListener('input', function() {
-        item.notes = this.value;
-        rebuildHiddenInputs();
-      });
-      row.querySelector('.remove-line').addEventListener('click', function() {
-        lines.delete(stockId);
-        renderLines();
-        rebuildHiddenInputs();
-        updateTotals();
-      });
-
+      bindLineEvents(row, stockId);
       tbody.appendChild(row);
+
+      const card = document.createElement('div');
+      card.className = 'card order-line-mobile-card mb-3';
+      card.dataset.stockId = stockId;
+      card.innerHTML =
+        '<div class="card-body p-3">' +
+          '<div class="d-flex justify-content-between align-items-start gap-2 mb-3">' +
+            '<div class="flex-grow-1">' +
+              '<div class="order-line-mobile-label">Ürün</div>' +
+              '<div class="fw-semibold">' + item.name + '</div>' +
+            '</div>' +
+            '<button type="button" class="btn btn-sm btn-outline-danger remove-line flex-shrink-0"><i class="ri-delete-bin-6-line"></i></button>' +
+          '</div>' +
+          '<div class="mb-3">' +
+            '<label class="order-line-mobile-label d-block mb-1">Açıklama</label>' +
+            '<input type="text" class="form-control form-control-sm line-notes" value="' + (item.notes || '').replace(/"/g, '&quot;') + '" />' +
+          '</div>' +
+          '<div class="mb-3">' +
+            '<label class="order-line-mobile-label d-block mb-1">Adet</label>' +
+            '<input type="number" class="form-control form-control-sm line-qty" value="' + item.qty + '" min="1" style="max-width:120px;" />' +
+          '</div>' +
+          '<div class="order-line-mobile-row"><span class="order-line-mobile-label">Birim Fiyat</span><span>' + fmt(item.price) + '</span></div>' +
+          '<div class="order-line-mobile-row"><span class="order-line-mobile-label">KDV %</span><span>%' + item.vatRate + '</span></div>' +
+          '<div class="order-line-mobile-row"><span class="order-line-mobile-label">KDV Tutarı</span><span class="line-vat">' + fmt(item.qty * item.price * (item.vatRate / 100)) + '</span></div>' +
+          '<div class="order-line-mobile-row order-line-mobile-row-total"><span class="order-line-mobile-label">Toplam</span><span class="line-total fw-bold">' + fmt(item.qty * item.price * (1 + item.vatRate / 100)) + '</span></div>' +
+        '</div>';
+      bindLineEvents(card, stockId);
+      mobile.appendChild(card);
     });
   }
 

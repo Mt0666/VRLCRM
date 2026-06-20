@@ -22,6 +22,7 @@ public class InvoicesController : Controller
     private readonly ICategoryService _categoryService;
     private readonly ISupplierService _supplierService;
     private readonly InvoiceDocumentService _documentService;
+    private readonly PurchaseInvoiceImportService _purchaseImportService;
 
     public InvoicesController(
         IInvoiceService invoiceService,
@@ -29,7 +30,8 @@ public class InvoicesController : Controller
         IStockService stockService,
         ICategoryService categoryService,
         ISupplierService supplierService,
-        InvoiceDocumentService documentService)
+        InvoiceDocumentService documentService,
+        PurchaseInvoiceImportService purchaseImportService)
     {
         _invoiceService = invoiceService;
         _customerService = customerService;
@@ -37,6 +39,7 @@ public class InvoicesController : Controller
         _categoryService = categoryService;
         _supplierService = supplierService;
         _documentService = documentService;
+        _purchaseImportService = purchaseImportService;
     }
 
     public IActionResult Index() => RedirectToAction(nameof(Sales));
@@ -150,6 +153,55 @@ public class InvoicesController : Controller
         return View(model);
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
+    public async Task<IActionResult> DownloadPurchaseImportTemplate(CancellationToken cancellationToken)
+    {
+        var bytes = await _purchaseImportService.GenerateTemplateAsync(cancellationToken);
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "alis-faturasi-sablonu.xlsx");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = AppRoles.Admin)]
+    public async Task<IActionResult> ImportPurchaseExcel(IFormFile file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest(new { errors = new[] { "Lütfen bir Excel dosyası seçin." } });
+        }
+
+        if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase) &&
+            !file.FileName.EndsWith(".xls", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { errors = new[] { "Yalnızca .xlsx veya .xls dosyaları yüklenebilir." } });
+        }
+
+        await using var stream = file.OpenReadStream();
+        var result = await _purchaseImportService.ParseAsync(stream, cancellationToken);
+
+        if (!result.Success)
+        {
+            return BadRequest(new { errors = result.Errors, warnings = result.Warnings });
+        }
+
+        return Json(new { lines = result.Lines, warnings = result.Warnings });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = AppRoles.Admin)]
+    public async Task<IActionResult> CreateCategoryQuick([FromForm] string name, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return BadRequest(new { error = "Kategori adı zorunludur." });
+        }
+
+        var trimmed = name.Trim();
+        var category = await _categoryService.GetOrCreateByNameAsync(trimmed, cancellationToken);
+        return Json(new { id = category.Category.Id, name = category.Category.Name, created = category.Created });
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = AppRoles.Admin)]
@@ -248,6 +300,7 @@ public class InvoicesController : Controller
                     StockCode = line.NewStockCode?.Trim() ?? string.Empty,
                     Name = line.NewProductName?.Trim() ?? string.Empty,
                     CategoryId = line.NewCategoryId ?? 0,
+                    NewCategoryName = line.NewCategoryName?.Trim(),
                     Barcode = line.NewBarcode?.Trim(),
                     VatRate = line.VatRate,
                     CriticalStockLevel = line.NewCriticalStockLevel ?? 5

@@ -46,11 +46,39 @@
             <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
           </div>
 
+          @* Excel ile toplu giriş *@
+          <div class="card border border-success mb-4">
+            <div class="card-body">
+              <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                  <h6 class="mb-1 fw-semibold">
+                    <i class="ri-file-excel-2-line me-1 text-success"></i>Excel ile Toplu Giriş
+                  </h6>
+                  <p class="text-body-secondary small mb-0">
+                    Tüm alış kalemlerini Excel şablonu ile toplu ekleyin.
+                    Stokta olmayan ürünler tabloda <span class="badge bg-label-info">Yeni</span> olarak görünür.
+                    Kategori listede yoksa Excel yüklenirken otomatik oluşturulur, ardından ürünler tabloya eklenir.
+                  </p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                  <a asp-action="DownloadPurchaseImportTemplate" class="btn btn-success">
+                    <i class="ri-file-download-line me-1"></i>Şablon İndir
+                  </a>
+                  <button type="button" id="importExcelBtn" class="btn btn-outline-success">
+                    <i class="ri-file-upload-line me-1"></i>Excel Yükle
+                  </button>
+                  <input type="file" id="excelImportInput" accept=".xlsx,.xls" class="d-none" />
+                </div>
+              </div>
+              <div id="excelImportMessage" class="alert alert-info py-2 px-3 small d-none mt-3 mb-0" role="alert"></div>
+            </div>
+          </div>
+
           @* Ürün Ekleme Paneli *@
           <div class="card border mb-4">
             <div class="card-header py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
-              <span class="fw-semibold small text-body"><i class="ri-add-circle-line me-1"></i>Ürün Ekle</span>
-              <div class="d-flex gap-2">
+              <span class="fw-semibold small text-body"><i class="ri-add-circle-line me-1"></i>Tek Tek Ürün Ekle</span>
+              <div class="d-flex gap-2 flex-wrap">
                 <button type="button" id="openNewProductBtn" class="btn btn-sm btn-outline-primary">
                   <i class="ri-add-box-line me-1"></i>Stokta Tanımsız Ürün
                 </button>
@@ -175,13 +203,18 @@
           </div>
           <div class="col-md-6">
             <label for="newCategoryId" class="form-label">Kategori <span class="text-danger">*</span></label>
-            <select id="newCategoryId" class="form-select">
+            <select id="newCategoryId" class="form-select mb-2">
               <option value="">Kategori seçin</option>
               @foreach (var category in Model.CategoryOptions)
               {
                 <option value="@category.Id">@category.Name</option>
               }
             </select>
+            <div class="input-group input-group-sm">
+              <input type="text" id="newCategoryName" class="form-control" maxlength="100" placeholder="veya yeni kategori adı yazın" />
+              <button type="button" id="createCategoryBtn" class="btn btn-outline-primary">Kategori Ekle</button>
+            </div>
+            <div id="createCategoryMessage" class="form-text"></div>
           </div>
           <div class="col-md-6">
             <label for="newBarcode" class="form-label">Barkod</label>
@@ -229,6 +262,7 @@
 @section PageScripts {
   <partial name="_ValidationScriptsPartial" />
   <script src="/vendor/libs/html5-qrcode/html5-qrcode.min.js"></script>
+  <script src="~/js/barcode-scanner.js" asp-append-version="true"></script>
   <script src="/js/form-draft-storage.js"></script>
   <script>
     const DRAFT_KEY = 'vrlcrm_draft_purchase';
@@ -238,6 +272,7 @@
     const categoryOptions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
       Model.CategoryOptions,
       new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+    const categoryNameById = Object.fromEntries(categoryOptions.map(function(c) { return [String(c.id), c.name]; }));
     const stockPrices  = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.price]; }));
     const stockNames   = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.name]; }));
     const stockVatRates = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.vatRate]; }));
@@ -246,13 +281,29 @@
 
     let lineIndex = 0;
     const lines = new Map();
-    let html5QrCode = null;
-    let modalHtml5QrCode = null;
-    let scannerRunning = false;
-    let modalScannerRunning = false;
     let scannedProduct = false;
+    let purchaseScanner = null;
+    let modalScanner = null;
     const newProductModalEl = document.getElementById('newProductModal');
     const newProductModal = newProductModalEl ? new bootstrap.Modal(newProductModalEl) : null;
+
+    function getCategoryName(categoryId) {
+      return categoryId ? (categoryNameById[String(categoryId)] || '') : '';
+    }
+
+    function addCategoryOption(category) {
+      var select = document.getElementById('newCategoryId');
+      var value = String(category.id);
+      if (!select.querySelector('option[value="' + value + '"]')) {
+        var option = document.createElement('option');
+        option.value = value;
+        option.textContent = category.name;
+        select.appendChild(option);
+      }
+      categoryNameById[value] = category.name;
+      categoryOptions.push({ id: category.id, name: category.name });
+      select.value = value;
+    }
 
     function persistDraft() {
       FormDraftStorage.save(DRAFT_KEY, {
@@ -311,8 +362,16 @@
         var row = document.createElement('tr');
         row.dataset.lineKey = lineKey;
         var badge = item.isNew ? ' <span class="badge bg-label-info ms-1">Yeni</span>' : '';
+        var metaParts = [];
+        if (item.code) metaParts.push(item.code);
+        if (item.isNew && (item.categoryName || item.categoryId)) {
+          metaParts.push(item.categoryName || getCategoryName(item.categoryId));
+        }
+        var metaHtml = metaParts.length
+          ? '<div class="small text-body-secondary">' + metaParts.join(' · ') + '</div>'
+          : '';
         row.innerHTML =
-          '<td data-label="Ürün">' + item.name + badge + (item.code ? '<div class="small text-body-secondary">' + item.code + '</div>' : '') + '</td>' +
+          '<td data-label="Ürün">' + item.name + badge + metaHtml + '</td>' +
           '<td data-label="Adet" class="text-center">' + item.qty + '</td>' +
           '<td data-label="Alış Fiyatı" class="text-end">' + fmt(item.price) + '</td>' +
           '<td data-label="KDV %" class="text-center">%' + item.vatRate + '</td>' +
@@ -347,7 +406,8 @@
             appendHidden(prefix + 'IsNewProduct', 'true') +
             appendHidden(prefix + 'NewStockCode', item.code) +
             appendHidden(prefix + 'NewProductName', item.name) +
-            appendHidden(prefix + 'NewCategoryId', item.categoryId) +
+            appendHidden(prefix + 'NewCategoryId', item.categoryId || '') +
+            appendHidden(prefix + 'NewCategoryName', item.categoryName || '') +
             appendHidden(prefix + 'NewBarcode', item.barcode || '') +
             appendHidden(prefix + 'NewCriticalStockLevel', item.criticalStockLevel) +
             appendHidden(prefix + 'Quantity', item.qty) +
@@ -406,7 +466,7 @@
 
       if (scannedProduct) {
         scannedProduct = false;
-        setTimeout(startScanner, 400);
+        setTimeout(function () { if (purchaseScanner) purchaseScanner.start(); }, 400);
       }
     }
 
@@ -441,14 +501,19 @@
       var stockCode = document.getElementById('newStockCode').value.trim();
       var name = document.getElementById('newProductName').value.trim();
       var categoryId = document.getElementById('newCategoryId').value;
+      var categoryName = document.getElementById('newCategoryName').value.trim();
       var barcode = document.getElementById('newBarcode').value.trim();
       var vatRate = parseFloat(document.getElementById('newVatRate').value);
       var criticalStockLevel = parseInt(document.getElementById('newCriticalStockLevel').value, 10);
       var qty = parseInt(document.getElementById('newLineQty').value, 10);
       var price = parseFloat(document.getElementById('newLinePrice').value);
 
-      if (!stockCode || !name || !categoryId) {
-        showNewProductMessage('Stok kodu, ürün adı ve kategori zorunludur.');
+      if (!stockCode || !name) {
+        showNewProductMessage('Stok kodu ve ürün adı zorunludur.');
+        return;
+      }
+      if (!categoryId && !categoryName) {
+        showNewProductMessage('Kategori seçin veya yeni kategori adı girin.');
         return;
       }
       if (!qty || qty <= 0) {
@@ -472,7 +537,8 @@
         isNew: true,
         name: name,
         code: stockCode,
-        categoryId: categoryId,
+        categoryId: categoryId || null,
+        categoryName: categoryId ? null : categoryName,
         barcode: barcode,
         criticalStockLevel: criticalStockLevel,
         qty: (existing ? existing.qty : 0) + qty,
@@ -487,6 +553,8 @@
       document.getElementById('newStockCode').value = '';
       document.getElementById('newProductName').value = '';
       document.getElementById('newCategoryId').value = '';
+      document.getElementById('newCategoryName').value = '';
+      document.getElementById('createCategoryMessage').textContent = '';
       document.getElementById('newBarcode').value = '';
       document.getElementById('newVatRate').value = '0';
       document.getElementById('newCriticalStockLevel').value = '5';
@@ -502,6 +570,125 @@
       openNewProductModal('');
     });
     document.getElementById('addNewProductBtn').addEventListener('click', addNewProductLine);
+
+    document.getElementById('createCategoryBtn').addEventListener('click', async function() {
+      var nameInput = document.getElementById('newCategoryName');
+      var message = document.getElementById('createCategoryMessage');
+      var name = nameInput.value.trim();
+      message.textContent = '';
+      if (!name) {
+        message.textContent = 'Kategori adı girin.';
+        message.className = 'form-text text-danger';
+        return;
+      }
+
+      var formData = new FormData();
+      formData.append('name', name);
+      var tokenInput = document.querySelector('#purchaseForm input[name="__RequestVerificationToken"]');
+      if (tokenInput) {
+        formData.append('__RequestVerificationToken', tokenInput.value);
+      }
+
+      try {
+        var response = await fetch('@Url.Action("CreateCategoryQuick", "Invoices")', {
+          method: 'POST',
+          body: formData
+        });
+        var payload = await response.json();
+        if (!response.ok) {
+          message.textContent = payload.error || 'Kategori eklenemedi.';
+          message.className = 'form-text text-danger';
+          return;
+        }
+
+        addCategoryOption(payload);
+        nameInput.value = '';
+        message.textContent = payload.created
+          ? '"' + payload.name + '" kategorisi eklendi ve seçildi.'
+          : '"' + payload.name + '" zaten vardı, seçildi.';
+        message.className = 'form-text text-success';
+      } catch (err) {
+        message.textContent = 'Kategori eklenirken hata oluştu.';
+        message.className = 'form-text text-danger';
+      }
+    });
+
+    function showExcelImportMessage(text, type) {
+      var box = document.getElementById('excelImportMessage');
+      if (!text) {
+        box.classList.add('d-none');
+        box.textContent = '';
+        box.className = 'alert py-2 px-3 small d-none mb-3';
+        return;
+      }
+      box.textContent = text;
+      box.className = 'alert py-2 px-3 small mb-3 alert-' + (type || 'info');
+      box.classList.remove('d-none');
+    }
+
+    function importLinesFromExcel(importedLines) {
+      importedLines.forEach(function(line) {
+        var lineKey = line.isNew ? ('new:' + line.code.toLowerCase()) : ('stock:' + line.stockId);
+        var existing = lines.get(lineKey);
+        var merged = {
+          isNew: !!line.isNew,
+          stockId: line.stockId || null,
+          name: line.name,
+          code: line.code || '',
+          categoryId: line.categoryId || null,
+          categoryName: line.categoryName || null,
+          barcode: line.barcode || '',
+          criticalStockLevel: line.criticalStockLevel || 5,
+          qty: (existing ? existing.qty : 0) + line.qty,
+          price: line.price,
+          vatRate: line.vatRate
+        };
+        lines.set(lineKey, merged);
+      });
+      renderLines();
+      rebuildHiddenInputs();
+      updateTotals();
+    }
+
+    document.getElementById('importExcelBtn').addEventListener('click', function() {
+      document.getElementById('excelImportInput').click();
+    });
+
+    document.getElementById('excelImportInput').addEventListener('change', async function() {
+      var file = this.files[0];
+      this.value = '';
+      if (!file) return;
+
+      showExcelImportMessage('Excel dosyası okunuyor…', 'info');
+      var formData = new FormData();
+      formData.append('file', file);
+      var tokenInput = document.querySelector('#purchaseForm input[name="__RequestVerificationToken"]');
+      if (tokenInput) {
+        formData.append('__RequestVerificationToken', tokenInput.value);
+      }
+
+      try {
+        var response = await fetch('@Url.Action("ImportPurchaseExcel", "Invoices")', {
+          method: 'POST',
+          body: formData
+        });
+        var payload = await response.json();
+        if (!response.ok) {
+          var errors = (payload.errors || []).join(' ');
+          showExcelImportMessage(errors || 'Excel içe aktarılamadı.', 'danger');
+          return;
+        }
+
+        importLinesFromExcel(payload.lines || []);
+        var warnings = (payload.warnings || []).join(' ');
+        showExcelImportMessage(
+          (payload.lines || []).length + ' kalem tabloya eklendi.' + (warnings ? ' ' + warnings : ''),
+          warnings ? 'warning' : 'success'
+        );
+      } catch (err) {
+        showExcelImportMessage('Excel yüklenirken bir hata oluştu.', 'danger');
+      }
+    });
 
     window.openNewProductFromSearch = function(name) {
       openNewProductModal(name || '');
@@ -533,111 +720,71 @@
       }
     });
 
-    // ── Barkod tarayıcı ─────────────────────────────────────────────────
-    function startScanner() {
-      document.getElementById('scannerWrapper').style.display = 'block';
-      scannerRunning = true;
-      document.getElementById('scannerBtn').innerHTML = '<i class="ri-camera-off-line me-1"></i>Kamerayı Kapat';
+    // ── Barkod tarayıcı — ortak iOS-uyumlu modül (/js/barcode-scanner.js) ──
+    purchaseScanner = VRLScanner.create({
+      readerId: 'qr-reader',
+      wrapperId: 'scannerWrapper',
+      toggleBtnId: 'scannerBtn',
+      stopBtnId: 'stopScannerBtn',
+      messageId: 'productMessage',
+      idleLabel: '<i class="ri-camera-line me-1"></i>Barkod Tara',
+      runningLabel: '<i class="ri-camera-off-line me-1"></i>Kamerayı Kapat',
+      onDetected: async function (decodedText) {
+        var msg = document.getElementById('productMessage');
+        msg.textContent = '';
 
-      if (!html5QrCode) html5QrCode = new Html5Qrcode('qr-reader');
+        var r = await fetch('@Url.Action("SearchProduct", "Invoices")' + '?term=' + encodeURIComponent(decodedText));
+        if (!r.ok) {
+          msg.textContent = 'Barkod bulunamadı: ' + decodedText;
+          openNewProductModal('');
+          document.getElementById('newBarcode').value = decodedText;
+          return;
+        }
+        var results = await r.json();
+        if (!results || results.length === 0) {
+          msg.textContent = 'Barkod bulunamadı: ' + decodedText;
+          openNewProductModal('');
+          document.getElementById('newBarcode').value = decodedText;
+          return;
+        }
 
-      html5QrCode.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: function(w, h) {
-            var side = Math.round(Math.min(w, h) * 0.72);
-            return { width: side, height: Math.round(side * 0.48) };
-          }
-        },
-        async function(decodedText) {
-          await stopScanner();
-          var msg = document.getElementById('productMessage');
-          msg.textContent = '';
+        var product = results[0];
+        var key = String(product.id);
+        productCache.set(key, product);
 
-          var r = await fetch('@Url.Action("SearchProduct", "Invoices")' + '?term=' + encodeURIComponent(decodedText));
-          if (!r.ok) {
-            msg.textContent = 'Barkod bulunamadı: ' + decodedText;
-            openNewProductModal('');
-            document.getElementById('newBarcode').value = decodedText;
-            return;
-          }
-          var results = await r.json();
-          if (!results || results.length === 0) {
-            msg.textContent = 'Barkod bulunamadı: ' + decodedText;
-            openNewProductModal('');
-            document.getElementById('newBarcode').value = decodedText;
-            return;
-          }
+        tsStock.clearOptions();
+        tsStock.addOption({ id: key, text: product.name + (product.stockCode ? ' (' + product.stockCode + ')' : '') });
+        tsStock.setValue(key, true);
+        document.getElementById('linePrice').value = product.price;
 
-          var product = results[0];
-          var key = String(product.id);
-          productCache.set(key, product);
+        scannedProduct = true;
 
-          tsStock.clearOptions();
-          tsStock.addOption({ id: key, text: product.name + (product.stockCode ? ' (' + product.stockCode + ')' : '') });
-          tsStock.setValue(key, true);
-          document.getElementById('linePrice').value = product.price;
+        var qtyInput = document.getElementById('lineQty');
+        qtyInput.value = 1;
+        qtyInput.select();
+        qtyInput.focus();
+      }
+    });
 
-          scannedProduct = true;
+    // Modal içindeki (yeni ürün) barkod tarayıcı — ayrı bir örnek.
+    modalScanner = VRLScanner.create({
+      readerId: 'modal-qr-reader',
+      wrapperId: 'modalScannerWrapper',
+      toggleBtnId: 'modalScannerBtn',
+      stopBtnId: 'modalStopScannerBtn',
+      idleLabel: '<i class="ri-camera-line"></i>',
+      runningLabel: '<i class="ri-camera-off-line"></i>',
+      onDetected: function (decodedText) {
+        document.getElementById('newBarcode').value = decodedText;
+      }
+    });
 
-          var qtyInput = document.getElementById('lineQty');
-          qtyInput.value = 1;
-          qtyInput.select();
-          qtyInput.focus();
-        },
-        function() {}
-      ).catch(function() {
-        document.getElementById('productMessage').textContent = 'Kamera başlatılamadı.';
-        document.getElementById('scannerWrapper').style.display = 'none';
-        scannerRunning = false;
-        document.getElementById('scannerBtn').innerHTML = '<i class="ri-camera-line me-1"></i>Barkod Tara';
+    // Modal kapanınca kamera açık kalmasın.
+    if (newProductModalEl) {
+      newProductModalEl.addEventListener('hidden.bs.modal', function () {
+        if (modalScanner) modalScanner.stop();
       });
     }
-
-    async function stopScanner() {
-      if (html5QrCode && scannerRunning) {
-        try { await html5QrCode.stop(); } catch(e) {}
-        scannerRunning = false;
-      }
-      document.getElementById('scannerWrapper').style.display = 'none';
-      document.getElementById('scannerBtn').innerHTML = '<i class="ri-camera-line me-1"></i>Barkod Tara';
-    }
-
-    document.getElementById('scannerBtn').addEventListener('click', function() {
-      if (scannerRunning) { stopScanner(); } else { startScanner(); }
-    });
-    document.getElementById('stopScannerBtn').addEventListener('click', stopScanner);
-
-    function startModalScanner() {
-      document.getElementById('modalScannerWrapper').style.display = 'block';
-      modalScannerRunning = true;
-      document.getElementById('modalScannerBtn').innerHTML = '<i class="ri-camera-off-line"></i>';
-      if (!modalHtml5QrCode) modalHtml5QrCode = new Html5Qrcode('modal-qr-reader');
-      modalHtml5QrCode.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 250, height: 120 } },
-        function(decodedText) {
-          document.getElementById('newBarcode').value = decodedText;
-          stopModalScanner();
-        },
-        function() {}
-      ).catch(function() { stopModalScanner(); });
-    }
-
-    async function stopModalScanner() {
-      if (modalHtml5QrCode && modalScannerRunning) {
-        try { await modalHtml5QrCode.stop(); } catch (e) {}
-        modalScannerRunning = false;
-      }
-      document.getElementById('modalScannerWrapper').style.display = 'none';
-      document.getElementById('modalScannerBtn').innerHTML = '<i class="ri-camera-line"></i>';
-    }
-
-    document.getElementById('modalScannerBtn').addEventListener('click', function() {
-      if (modalScannerRunning) stopModalScanner(); else startModalScanner();
-    });
-    document.getElementById('modalStopScannerBtn').addEventListener('click', stopModalScanner);
 
     document.getElementById('purchaseForm').addEventListener('submit', function(e) {
       var supplierEl = document.querySelector('#purchaseForm [name="SupplierId"]');

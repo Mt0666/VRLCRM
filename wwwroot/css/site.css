@@ -230,7 +230,34 @@
   box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.15) !important;
 }
 
-/* ── Sipariş/fatura satır tablosu mobil responsive ───────────────── */
+/* Sipariş satır mobil kartları */
+.order-line-mobile-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--bs-secondary-color);
+}
+.order-line-mobile-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+.order-line-mobile-row-total {
+  border-bottom: none;
+  padding-top: 0.25rem;
+}
+.order-line-mobile-card {
+  border-radius: 0.5rem;
+}
+
+/* Sipariş satır etiketleri — masaüstünde gizli, mobilde görünür */
+.line-mobile-label {
+  display: none;
+}
 @media (max-width: 767.98px) {
   .table-responsive table.js-lines-table,
   .table-responsive table.js-lines-table thead,
@@ -276,10 +303,37 @@
     flex-shrink: 0;
     margin-right: 0.75rem;
   }
-  .table-responsive table.js-lines-table tbody td[data-label=""]::before {
+  .table-responsive table.js-lines-table tbody td:has(.line-mobile-label)::before {
     display: none;
   }
-  .table-responsive table.js-lines-table tbody td[data-label=""] {
+  .table-responsive table.js-lines-table .line-mobile-label {
+    display: block;
+    flex: 0 0 42%;
+    max-width: 42%;
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    text-align: left;
+    line-height: 1.35;
+    padding-right: 0.5rem;
+  }
+  .table-responsive table.js-lines-table .line-mobile-value {
+    flex: 1;
+    text-align: right;
+    min-width: 0;
+  }
+  .table-responsive table.js-lines-table tbody td .form-control,
+  .table-responsive table.js-lines-table tbody td .btn {
+    flex: 1;
+    max-width: 58%;
+    margin-left: auto;
+  }
+  .table-responsive table.js-lines-table tbody td .line-qty {
+    max-width: 5.5rem;
+  }
+  .table-responsive table.js-lines-table tbody td.line-mobile-actions {
     justify-content: flex-end;
   }
   /* Boş durum satırı stacked layout'a girmesin */
@@ -326,4 +380,20 @@
   -webkit-appearance: none;
 }
 .pagination-goto input[type="number"] { -moz-appearance: textfield; }
+
+/* ── Barkod / QR tarayıcı ──────────────────────────────────────────────
+   html5-qrcode video'ya kendi inline boyutunu enjekte eder; iOS dahil tüm
+   cihazlarda video'yu kapsayıcı genişliğine göre, doğal en-boy oranıyla
+   (gerilmeden / garip şekilli olmadan) responsive tutar. */
+#qr-reader,
+#modal-qr-reader,
+#stock-qr-reader { line-height: 0; }
+
+#qr-reader video,
+#modal-qr-reader video,
+#stock-qr-reader video {
+  width: 100% !important;
+  height: auto !important;
+  display: block;
+}
 

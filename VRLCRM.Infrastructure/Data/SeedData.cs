@@ -19,6 +19,11 @@ public static class SeedData
         var seedOptions = serviceProvider.GetRequiredService<IOptions<SeedDataOptions>>().Value;
 
         await context.Database.MigrateAsync();
+
+        await context.Customers
+            .Where(c => c.CreditLimit == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.CreditLimit, 0m));
+
         await MockDataSeeder.SeedAsync(context);
 
         foreach (var roleName in seedOptions.DefaultRoles)

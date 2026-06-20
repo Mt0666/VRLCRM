@@ -142,6 +142,7 @@
 @section PageScripts {
   <partial name="_ValidationScriptsPartial" />
   <script src="/vendor/libs/html5-qrcode/html5-qrcode.min.js"></script>
+  <script src="~/js/barcode-scanner.js" asp-append-version="true"></script>
   <script src="/js/form-draft-storage.js"></script>
   <script>
     const DRAFT_KEY = 'vrlcrm_draft_sales';
@@ -156,9 +157,8 @@
 
     let lineIndex = 0;
     const lines = new Map();
-    let html5QrCode = null;
-    let scannerRunning = false;
     let scannedProduct = false;
+    let salesScanner = null;
 
     function persistDraft() {
       FormDraftStorage.save(DRAFT_KEY, { lines: Array.from(lines.entries()), lineIndex: lineIndex });
@@ -281,7 +281,7 @@
 
       if (scannedProduct) {
         scannedProduct = false;
-        setTimeout(startScanner, 400);
+        setTimeout(function () { if (salesScanner) salesScanner.start(); }, 400);
       }
     }
 
@@ -310,77 +310,47 @@
       }
     });
 
-    // ── Barkod tarayıcı ─────────────────────────────────────────────────
-    function startScanner() {
-      document.getElementById('scannerWrapper').style.display = 'block';
-      scannerRunning = true;
-      document.getElementById('scannerBtn').innerHTML = '<i class="ri-camera-off-line me-1"></i>Kamerayı Kapat';
+    // ── Barkod tarayıcı — ortak iOS-uyumlu modül (/js/barcode-scanner.js) ──
+    salesScanner = VRLScanner.create({
+      readerId: 'qr-reader',
+      wrapperId: 'scannerWrapper',
+      toggleBtnId: 'scannerBtn',
+      stopBtnId: 'stopScannerBtn',
+      messageId: 'productMessage',
+      idleLabel: '<i class="ri-camera-line me-1"></i>Barkod Tara',
+      runningLabel: '<i class="ri-camera-off-line me-1"></i>Kamerayı Kapat',
+      onDetected: async function (decodedText, scanner) {
+        const msg = document.getElementById('productMessage');
+        msg.textContent = '';
 
-      if (!html5QrCode) html5QrCode = new Html5Qrcode('qr-reader');
+        const r = await fetch('@Url.Action("SearchProduct", "Invoices")' + '?term=' + encodeURIComponent(decodedText));
+        if (!r.ok) {
+          msg.textContent = 'Barkod bulunamadı: ' + decodedText;
+          setTimeout(function () { scanner.start(); }, 2500);
+          return;
+        }
+        const results = await r.json();
+        if (!results || results.length === 0) {
+          msg.textContent = 'Barkod bulunamadı: ' + decodedText;
+          setTimeout(function () { scanner.start(); }, 2500);
+          return;
+        }
 
-      html5QrCode.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: function(w, h) {
-            const side = Math.round(Math.min(w, h) * 0.72);
-            return { width: side, height: Math.round(side * 0.48) };
-          }
-        },
-        async function(decodedText) {
-          await stopScanner();
-          const msg = document.getElementById('productMessage');
-          msg.textContent = '';
+        var product = results[0];
+        var key = String(product.id);
+        productCache.set(key, product);
 
-          const r = await fetch('@Url.Action("SearchProduct", "Invoices")' + '?term=' + encodeURIComponent(decodedText));
-          if (!r.ok) {
-            msg.textContent = 'Barkod bulunamadı: ' + decodedText;
-            setTimeout(startScanner, 2500);
-            return;
-          }
-          const results = await r.json();
-          if (!results || results.length === 0) {
-            msg.textContent = 'Barkod bulunamadı: ' + decodedText;
-            setTimeout(startScanner, 2500);
-            return;
-          }
+        tsStock.setValue(key, true);
+        document.getElementById('linePrice').value = product.price;
 
-          var product = results[0];
-          var key = String(product.id);
-          productCache.set(key, product);
+        scannedProduct = true;
 
-          tsStock.setValue(key, true);
-          document.getElementById('linePrice').value = product.price;
-
-          scannedProduct = true;
-
-          var qtyInput = document.getElementById('lineQty');
-          qtyInput.value = 1;
-          qtyInput.select();
-          qtyInput.focus();
-        },
-        function() {}
-      ).catch(function() {
-        document.getElementById('productMessage').textContent = 'Kamera başlatılamadı.';
-        document.getElementById('scannerWrapper').style.display = 'none';
-        scannerRunning = false;
-        document.getElementById('scannerBtn').innerHTML = '<i class="ri-camera-line me-1"></i>Barkod Tara';
-      });
-    }
-
-    async function stopScanner() {
-      if (html5QrCode && scannerRunning) {
-        try { await html5QrCode.stop(); } catch(e) {}
-        scannerRunning = false;
+        var qtyInput = document.getElementById('lineQty');
+        qtyInput.value = 1;
+        qtyInput.select();
+        qtyInput.focus();
       }
-      document.getElementById('scannerWrapper').style.display = 'none';
-      document.getElementById('scannerBtn').innerHTML = '<i class="ri-camera-line me-1"></i>Barkod Tara';
-    }
-
-    document.getElementById('scannerBtn').addEventListener('click', function() {
-      if (scannerRunning) { stopScanner(); } else { startScanner(); }
     });
-    document.getElementById('stopScannerBtn').addEventListener('click', stopScanner);
 
     document.getElementById('invoiceForm').addEventListener('submit', function() {
       FormDraftStorage.clear(DRAFT_KEY);

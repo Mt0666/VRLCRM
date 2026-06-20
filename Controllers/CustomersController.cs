@@ -50,8 +50,20 @@ public class CustomersController : Controller
         return PartialView("_OrdersPartial", orders);
     }
 
+    public async Task<IActionResult> InvoicesPartial(int id, CancellationToken cancellationToken)
+    {
+        var invoices = await _customerService.GetSalesInvoicesAsync(id, cancellationToken);
+        return PartialView("_InvoicesPartial", invoices);
+    }
+
     public async Task<IActionResult> PaymentsPartial(int id, CancellationToken cancellationToken)
     {
+        var customer = await _customerService.GetByIdAsync(id, cancellationToken);
+        if (customer is null)
+        {
+            return NotFound();
+        }
+
         var payments = await _customerService.GetIncomingPaymentsAsync(id, cancellationToken);
         ViewData["CustomerId"] = id;
         return PartialView("_PaymentsPartial", payments);
@@ -66,13 +78,15 @@ public class CustomersController : Controller
         }
 
         var payments = await _customerService.GetIncomingPaymentsAsync(id, cancellationToken);
-        var bytes = _paymentDocumentService.GeneratePdf(customer, payments);
-        return File(bytes, "application/pdf", $"{customer.FullName}-odemeler.pdf");
+        var pdfBytes = _paymentDocumentService.GeneratePdf(customer, payments);
+        var safeName = string.Join("-", customer.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        var fileName = $"odemeler-{safeName}-{DateTime.Now:yyyyMMdd}.pdf";
+        return File(pdfBytes, "application/pdf", fileName);
     }
 
     public IActionResult Create()
     {
-        return View(new CustomerFormViewModel());
+        return View(new CustomerFormViewModel { CreditLimit = 0 });
     }
 
     [HttpPost]
@@ -89,7 +103,7 @@ public class CustomersController : Controller
             await _customerService.CreateAsync(
                 CustomerViewModelMapper.ToCustomer(model),
                 CustomerViewModelMapper.ToAddress(model),
-                model.PhoneNumber,
+                model.B2bLoginPhone,
                 model.Password,
                 cancellationToken);
 
@@ -109,7 +123,10 @@ public class CustomersController : Controller
         if (customer is null)
             return NotFound();
 
-        return View(CustomerViewModelMapper.ToFormViewModel(customer));
+        var linkedUser = await _userManager.Users.FirstOrDefaultAsync(u => u.CustomerId == id, cancellationToken);
+        var vm = CustomerViewModelMapper.ToFormViewModel(customer);
+        vm.B2bLoginPhone = linkedUser?.UserName;
+        return View(vm);
     }
 
     [HttpPost]
@@ -131,7 +148,7 @@ public class CustomersController : Controller
             var updated = await _customerService.UpdateAsync(
                 CustomerViewModelMapper.ToCustomer(model),
                 CustomerViewModelMapper.ToAddress(model),
-                model.PhoneNumber,
+                model.B2bLoginPhone,
                 model.Password,
                 cancellationToken);
 

@@ -182,6 +182,7 @@ else
 
 @section PageScripts {
 <script src="/vendor/libs/html5-qrcode/html5-qrcode.min.js"></script>
+<script src="~/js/barcode-scanner.js" asp-append-version="true"></script>
 <script>
 (function () {
   const grid      = document.getElementById('productsGrid');
@@ -198,8 +199,6 @@ else
   const stopScannerBtn = document.getElementById('stopScannerBtn');
   if (!grid) return;
 
-  let html5QrCode = null;
-  let scannerRunning = false;
   let highlightTimer = null;
 
   // ── State (restored from URL) ──────────────────────────────────
@@ -342,58 +341,18 @@ else
     }
   }
 
-  async function stopScanner() {
-    if (html5QrCode && scannerRunning) {
-      try { await html5QrCode.stop(); } catch (e) {}
-      scannerRunning = false;
-    }
-    if (scannerWrapper) scannerWrapper.style.display = 'none';
-    if (scannerBtn) scannerBtn.innerHTML = '<i class="ri-barcode-line"></i><span class="d-none d-sm-inline ms-1">Barkod</span>';
-  }
-
-  function startScanner() {
-    if (!scannerWrapper || !scannerBtn || typeof Html5Qrcode === 'undefined') {
-      setScanMessage('Barkod okuyucu yüklenemedi.');
-      return;
-    }
-
-    scannerWrapper.style.display = 'block';
-    scannerRunning = true;
-    scannerBtn.innerHTML = '<i class="ri-camera-off-line"></i><span class="d-none d-sm-inline ms-1">Kapat</span>';
-    setScanMessage('');
-
-    if (!html5QrCode) html5QrCode = new Html5Qrcode('qr-reader');
-
-    html5QrCode.start(
-      { facingMode: 'environment' },
-      {
-        fps: 10,
-        qrbox: function (w, h) {
-          const side = Math.round(Math.min(w, h) * 0.72);
-          return { width: side, height: Math.round(side * 0.48) };
-        }
-      },
-      async function (decodedText) {
-        await stopScanner();
-        applyBarcodeSearch(decodedText);
-      },
-      function () {}
-    ).catch(function () {
-      setScanMessage('Kamera başlatılamadı. Tarayıcı izinlerini kontrol edin.');
-      scannerWrapper.style.display = 'none';
-      scannerRunning = false;
-      scannerBtn.innerHTML = '<i class="ri-barcode-line"></i><span class="d-none d-sm-inline ms-1">Barkod</span>';
+  // ── Barkod tarayıcı — ortak iOS-uyumlu modül (/js/barcode-scanner.js) ──
+  if (scannerBtn && scannerWrapper && window.VRLScanner) {
+    VRLScanner.create({
+      readerId: 'qr-reader',
+      wrapperId: 'scannerWrapper',
+      toggleBtnId: 'scannerBtn',
+      stopBtnId: 'stopScannerBtn',
+      messageId: 'scanMessage',
+      idleLabel: '<i class="ri-barcode-line"></i><span class="d-none d-sm-inline ms-1">Barkod</span>',
+      runningLabel: '<i class="ri-camera-off-line"></i><span class="d-none d-sm-inline ms-1">Kapat</span>',
+      onDetected: function (decodedText) { applyBarcodeSearch(decodedText); }
     });
-  }
-
-  if (scannerBtn) {
-    scannerBtn.addEventListener('click', function () {
-      if (scannerRunning) stopScanner();
-      else startScanner();
-    });
-  }
-  if (stopScannerBtn) {
-    stopScannerBtn.addEventListener('click', stopScanner);
   }
 
   // ── Search ─────────────────────────────────────────────────────

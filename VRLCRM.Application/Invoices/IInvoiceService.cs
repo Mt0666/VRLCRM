@@ -11,6 +11,8 @@ public class NewPurchaseProductInput
 
     public int CategoryId { get; set; }
 
+    public string? NewCategoryName { get; set; }
+
     public string? Barcode { get; set; }
 
     public decimal VatRate { get; set; } = 20m;

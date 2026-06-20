@@ -38,8 +38,8 @@
 
 <div class="mb-4">
   <label asp-for="CreditLimit" class="form-label"></label>
-  <input asp-for="CreditLimit" class="form-control" placeholder="Boş bırakılırsa 0" step="0.01" />
-  <div class="form-text">Boş bırakılırsa cari limit 0 ₺ olarak kaydedilir.</div>
+  <input asp-for="CreditLimit" class="form-control" placeholder="Limitsiz için boş bırakın" step="0.01" />
+  <div class="form-text">Boş bırakılırsa müşteri için cari limit uygulanmaz.</div>
   <span asp-validation-for="CreditLimit" class="text-danger small"></span>
 </div>
 
@@ -47,10 +47,10 @@
 
 <div class="row g-4 mb-4">
   <div class="col-md-6">
-    <label asp-for="Email" class="form-label"></label>
-    <input asp-for="Email" class="form-control" placeholder="E-Posta" autocomplete="off" />
-    <div class="form-text">Müşteri B2B ekranına bu mail ile giriş yapar.</div>
-    <span asp-validation-for="Email" class="text-danger small"></span>
+    <label asp-for="B2bLoginPhone" class="form-label"></label>
+    <input asp-for="B2bLoginPhone" class="form-control phone-mask" placeholder="555 123 4567" autocomplete="off" />
+    <div class="form-text">Müşteri B2B ekranına bu telefon numarası ile giriş yapar.</div>
+    <span asp-validation-for="B2bLoginPhone" class="text-danger small"></span>
   </div>
   <div class="col-md-6">
     <label asp-for="Password" class="form-label"></label>

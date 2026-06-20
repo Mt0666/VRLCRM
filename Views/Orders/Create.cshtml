@@ -46,9 +46,12 @@
               @* Kamera okuyucu alanı (varsayılan gizli) *@
               <div id="scannerWrapper" class="mb-3" style="display:none;">
                 <div id="qr-reader" style="width:100%; max-width:500px; margin:0 auto; border-radius:0.375rem; overflow:hidden;"></div>
-                <div class="d-flex justify-content-center mt-2">
+                <div class="d-flex justify-content-center gap-2 mt-2">
                   <button type="button" id="stopScannerBtn" class="btn btn-sm btn-outline-secondary">
                     <i class="ri-camera-off-line me-1"></i>Kamerayı Kapat
+                  </button>
+                  <button type="button" id="torchBtn" class="btn btn-sm btn-outline-warning" style="display:none;" title="Işık aç/kapat">
+                    <i class="ri-flashlight-line"></i>
                   </button>
                 </div>
               </div>
@@ -141,15 +144,15 @@
 @section PageScripts {
   <partial name="_ValidationScriptsPartial" />
   <script src="/vendor/libs/html5-qrcode/html5-qrcode.min.js"></script>
+  <script src="~/js/barcode-scanner.js" asp-append-version="true"></script>
   <script src="/js/form-draft-storage.js"></script>
   <script>
     const DRAFT_KEY = 'vrlcrm_draft_order_create';
     let lineIndex = 0;
     const lines = new Map();
     const productCache = new Map();
-    let html5QrCode = null;
-    let scannerRunning = false;
     let scannedProduct = false;
+    let orderScanner = null;
 
     function persistDraft() {
       FormDraftStorage.save(DRAFT_KEY, {
@@ -302,7 +305,7 @@
 
       if (scannedProduct) {
         scannedProduct = false;
-        setTimeout(startScanner, 400);
+        setTimeout(function () { if (orderScanner) orderScanner.start(); }, 400);
       }
     }
 
@@ -342,71 +345,42 @@
       }
     });
 
-    // ── Barkod tarayıcı ─────────────────────────────────────────────────
-    function startScanner() {
-      document.getElementById('scannerWrapper').style.display = 'block';
-      scannerRunning = true;
-      document.getElementById('scannerBtn').innerHTML = '<i class="ri-camera-off-line me-1"></i>Kamerayı Kapat';
+    // ── Barkod tarayıcı — ortak iOS-uyumlu modül (/js/barcode-scanner.js) ──
+    orderScanner = VRLScanner.create({
+      readerId: 'qr-reader',
+      wrapperId: 'scannerWrapper',
+      toggleBtnId: 'scannerBtn',
+      stopBtnId: 'stopScannerBtn',
+      torchBtnId: 'torchBtn',
+      messageId: 'productMessage',
+      idleLabel: '<i class="ri-camera-line me-1"></i>Barkod Tara',
+      runningLabel: '<i class="ri-camera-off-line me-1"></i>Kamerayı Kapat',
+      onDetected: async function (decodedText, scanner) {
+        var msg = document.getElementById('productMessage');
+        msg.textContent = '';
 
-      if (!html5QrCode) html5QrCode = new Html5Qrcode('qr-reader');
+        var r = await fetch('@Url.Action("LookupBarcode")' + '?barcode=' + encodeURIComponent(decodedText));
+        if (!r.ok) {
+          msg.textContent = 'Barkod bulunamadı: ' + decodedText;
+          setTimeout(function () { scanner.start(); }, 2500);
+          return;
+        }
+        var product = await r.json();
+        var key = String(product.id);
+        productCache.set(key, product);
 
-      html5QrCode.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: function(w, h) {
-            const side = Math.round(Math.min(w, h) * 0.72);
-            return { width: side, height: Math.round(side * 0.48) };
-          }
-        },
-        async function(decodedText) {
-          await stopScanner();
-          const msg = document.getElementById('productMessage');
-          msg.textContent = '';
+        tsProduct.clearOptions();
+        tsProduct.addOption({ id: key, text: product.name + (product.stockCode ? ' (' + product.stockCode + ')' : '') });
+        tsProduct.setValue(key, true);
 
-          const r = await fetch('@Url.Action("LookupBarcode")' + '?barcode=' + encodeURIComponent(decodedText));
-          if (!r.ok) {
-            msg.textContent = 'Barkod bulunamadı: ' + decodedText;
-            setTimeout(startScanner, 2500);
-            return;
-          }
-          var product = await r.json();
-          var key = String(product.id);
-          productCache.set(key, product);
+        scannedProduct = true; // Ekle'ye basınca kamera yeniden açılacak
 
-          tsProduct.clearOptions();
-          tsProduct.addOption({ id: key, text: product.name + (product.stockCode ? ' (' + product.stockCode + ')' : '') });
-          tsProduct.setValue(key, true);
-
-          scannedProduct = true; // Ekle'ye basınca kamera yeniden açılacak
-
-          var qtyInput = document.getElementById('scanQty');
-          qtyInput.value = 1;
-          qtyInput.select();
-          qtyInput.focus();
-        },
-        function() {}
-      ).catch(function() {
-        document.getElementById('productMessage').textContent = 'Kamera başlatılamadı.';
-        document.getElementById('scannerWrapper').style.display = 'none';
-        scannerRunning = false;
-        document.getElementById('scannerBtn').innerHTML = '<i class="ri-camera-line me-1"></i>Barkod Tara';
-      });
-    }
-
-    async function stopScanner() {
-      if (html5QrCode && scannerRunning) {
-        try { await html5QrCode.stop(); } catch(e) {}
-        scannerRunning = false;
+        var qtyInput = document.getElementById('scanQty');
+        qtyInput.value = 1;
+        qtyInput.select();
+        qtyInput.focus();
       }
-      document.getElementById('scannerWrapper').style.display = 'none';
-      document.getElementById('scannerBtn').innerHTML = '<i class="ri-camera-line me-1"></i>Barkod Tara';
-    }
-
-    document.getElementById('scannerBtn').addEventListener('click', function() {
-      if (scannerRunning) { stopScanner(); } else { startScanner(); }
     });
-    document.getElementById('stopScannerBtn').addEventListener('click', stopScanner);
   </script>
   <script>
   (function () {

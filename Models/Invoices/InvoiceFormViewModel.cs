@@ -18,6 +18,8 @@ public class InvoiceLineFormItem
 
     public int? NewCategoryId { get; set; }
 
+    public string? NewCategoryName { get; set; }
+
     public string? NewBarcode { get; set; }
 
     public int? NewCriticalStockLevel { get; set; }

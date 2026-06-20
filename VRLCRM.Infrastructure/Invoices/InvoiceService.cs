@@ -377,18 +377,13 @@ public class InvoiceService : IInvoiceService
                 throw new InvalidOperationException($"'{stockCode}' stok kodu zaten kullanılıyor.");
             }
 
-            var categoryExists = await _context.Categories
-                .AnyAsync(c => c.Id == input.CategoryId && c.IsActive, cancellationToken);
-            if (!categoryExists)
-            {
-                throw new InvalidOperationException("Geçerli bir kategori seçin.");
-            }
+            var categoryId = await ResolveCategoryIdForNewProductAsync(input, cancellationToken);
 
             var stock = new StockItem
             {
                 StockCode = stockCode,
                 Name = name,
-                CategoryId = input.CategoryId,
+                CategoryId = categoryId,
                 Barcode = input.Barcode?.Trim(),
                 Price = line.UnitPrice,
                 VatRate = input.VatRate,
@@ -410,6 +405,46 @@ public class InvoiceService : IInvoiceService
         return await _context.StockItems
             .FirstOrDefaultAsync(s => s.Id == line.StockItemId && s.IsActive, cancellationToken)
             ?? throw new InvalidOperationException("Geçersiz veya pasif stok kalemi seçildi.");
+    }
+
+    private async Task<int> ResolveCategoryIdForNewProductAsync(
+        NewPurchaseProductInput input,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(input.NewCategoryName))
+        {
+            var name = input.NewCategoryName.Trim();
+            var category = await _context.Categories
+                .FirstOrDefaultAsync(c => c.Name == name, cancellationToken);
+
+            if (category is null)
+            {
+                category = new Category
+                {
+                    Name = name,
+                    IsActive = true
+                };
+                _context.Categories.Add(category);
+                await _context.SaveChangesAsync(cancellationToken);
+                return category.Id;
+            }
+
+            if (!category.IsActive)
+            {
+                category.IsActive = true;
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+
+            return category.Id;
+        }
+
+        if (input.CategoryId > 0 &&
+            await _context.Categories.AnyAsync(c => c.Id == input.CategoryId && c.IsActive, cancellationToken))
+        {
+            return input.CategoryId;
+        }
+
+        throw new InvalidOperationException("Geçerli bir kategori seçin veya yeni kategori adı girin.");
     }
 
     private async Task<string> GenerateInvoiceNumberAsync(InvoiceType type, CancellationToken cancellationToken)
