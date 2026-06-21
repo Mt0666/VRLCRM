@@ -16,3 +16,5 @@
 **/Dockerfile*
 **/docker-compose*.yml
 **/.dockerignore
+certs/
+caddy/
