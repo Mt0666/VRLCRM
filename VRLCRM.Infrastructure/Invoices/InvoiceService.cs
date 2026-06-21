@@ -98,6 +98,7 @@ public class InvoiceService : IInvoiceService
         }
 
         var invoiceLines = new List<InvoiceLine>();
+        var invoiceLineSalePrices = new List<decimal?>(); // InvoiceLine ile paralel — kullanıcının girdiği satış fiyatı
         decimal subTotal = 0;
         decimal vatTotal = 0;
 
@@ -132,6 +133,7 @@ public class InvoiceService : IInvoiceService
                 VatAmount = lineVatAmount,
                 LineTotal = lineTotal
             });
+            invoiceLineSalePrices.Add(line.SalePrice);
         }
 
         var totalAmount = subTotal + vatTotal;
@@ -158,8 +160,11 @@ public class InvoiceService : IInvoiceService
         _context.Invoices.Add(invoice);
         await _context.SaveChangesAsync(cancellationToken);
 
-        foreach (var line in invoiceLines)
+        for (int i = 0; i < invoiceLines.Count; i++)
         {
+            var line = invoiceLines[i];
+            var salePrice = invoiceLineSalePrices[i];
+
             var stock = await _context.StockItems
                 .FirstAsync(s => s.Id == line.StockItemId, cancellationToken);
 
@@ -170,6 +175,11 @@ public class InvoiceService : IInvoiceService
             else
             {
                 stock.StockQuantity += line.Quantity;
+                // Alış fiyatını güncelle; satış fiyatını kullanıcı girdiyse onu, yoksa alış × 1.30 kullan
+                stock.PurchasePrice = line.UnitPrice;
+                stock.Price = salePrice.HasValue && salePrice.Value > 0
+                    ? salePrice.Value
+                    : Math.Round(line.UnitPrice * 1.30m, 2);
             }
 
             _context.StockMovements.Add(new StockMovement
@@ -385,7 +395,10 @@ public class InvoiceService : IInvoiceService
                 Name = name,
                 CategoryId = categoryId,
                 Barcode = input.Barcode?.Trim(),
-                Price = line.UnitPrice,
+                PurchasePrice = line.UnitPrice,
+                Price = line.SalePrice.HasValue && line.SalePrice.Value > 0
+                    ? line.SalePrice.Value
+                    : Math.Round(line.UnitPrice * 1.30m, 2),
                 VatRate = input.VatRate,
                 StockQuantity = 0,
                 CriticalStockLevel = input.CriticalStockLevel > 0 ? input.CriticalStockLevel : 5,

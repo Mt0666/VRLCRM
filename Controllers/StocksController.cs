@@ -15,21 +15,40 @@ public class StocksController : Controller
     private readonly IStockService _stockService;
     private readonly ICategoryService _categoryService;
     private readonly IStockImageStorage _imageStorage;
+    private readonly StockDocumentService _documentService;
 
     public StocksController(
         IStockService stockService,
         ICategoryService categoryService,
-        IStockImageStorage imageStorage)
+        IStockImageStorage imageStorage,
+        StockDocumentService documentService)
     {
         _stockService = stockService;
         _categoryService = categoryService;
         _imageStorage = imageStorage;
+        _documentService = documentService;
     }
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
         var stocks = await _stockService.GetAllAsync(cancellationToken);
         return View(stocks);
+    }
+
+    public async Task<IActionResult> ExportExcel(CancellationToken cancellationToken)
+    {
+        var stocks = await _stockService.GetAllAsync(cancellationToken);
+        var bytes = _documentService.GenerateExcel(stocks);
+        var fileName = $"urunler-{DateTime.Now:yyyyMMdd-HHmm}.xlsx";
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+    }
+
+    public async Task<IActionResult> ExportPdf(CancellationToken cancellationToken)
+    {
+        var stocks = await _stockService.GetAllAsync(cancellationToken);
+        var bytes = _documentService.GeneratePdf(stocks);
+        var fileName = $"urunler-{DateTime.Now:yyyyMMdd-HHmm}.pdf";
+        return File(bytes, "application/pdf", fileName);
     }
 
     public async Task<IActionResult> Details(int id, CancellationToken cancellationToken)

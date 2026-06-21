@@ -30,6 +30,9 @@ public class InvoiceLineFormItem
     [Range(0, double.MaxValue)]
     public decimal UnitPrice { get; set; }
 
+    [Range(0, double.MaxValue)]
+    public decimal? SalePrice { get; set; }
+
     [Range(0, 100)]
     public decimal VatRate { get; set; }
 }
@@ -44,6 +47,10 @@ public class InvoiceStockOption
 
     public string? Barcode { get; set; }
 
+    /// <summary>Son alış fiyatı — alış faturasında pre-fill için kullanılır.</summary>
+    public decimal PurchasePrice { get; set; }
+
+    /// <summary>Satış fiyatı (= PurchasePrice × 1.30) — satış faturası ve sipariş formlarında pre-fill için kullanılır.</summary>
     public decimal Price { get; set; }
 
     public decimal VatRate { get; set; }

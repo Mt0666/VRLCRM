@@ -74,12 +74,7 @@ public class OrderService : IOrderService
         var normalizedRate = NormalizeDiscountRate(discountRate);
         var (subTotal, vatTotal, totalAmount) = CalculateTotals(orderLines, normalizedRate);
 
-        if (customer.EffectiveCreditLimit <= 0)
-        {
-            throw new InvalidOperationException("Cari limitiniz tanımlı olmadığı için sipariş veremezsiniz.");
-        }
-
-        if (!customer.HasSufficientCredit(totalAmount))
+        if (!customer.IsUnlimitedCredit && !customer.HasSufficientCredit(totalAmount))
         {
             throw new InvalidOperationException(
                 $"Cari limitiniz yetersiz. Mevcut borç: {customer.Balance:N2} ₺, Sipariş tutarı: {totalAmount:N2} ₺, Limit: {customer.EffectiveCreditLimit:N2} ₺");

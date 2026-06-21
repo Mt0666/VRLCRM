@@ -20,9 +20,18 @@ public static class SeedData
 
         await context.Database.MigrateAsync();
 
-        await context.Customers
-            .Where(c => c.CreditLimit == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(c => c.CreditLimit, 0m));
+        // PurchasePrice kolonu migration dışında eklendiğinde güvenlik ağı
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF NOT EXISTS (
+                SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = 'dbo'
+                  AND TABLE_NAME  = 'StockItems'
+                  AND COLUMN_NAME = 'PurchasePrice'
+            )
+            BEGIN
+                ALTER TABLE [dbo].[StockItems]
+                ADD [PurchasePrice] decimal(18,2) NOT NULL DEFAULT 0;
+            END");
 
         foreach (var roleName in seedOptions.DefaultRoles)
         {

@@ -137,6 +137,7 @@ public class OrdersController : Controller
                 id = s.Id,
                 name = s.Name,
                 stockCode = s.StockCode,
+                purchasePrice = s.PurchasePrice,
                 price = s.Price,
                 vatRate = s.VatRate,
                 stockQuantity = s.StockQuantity
@@ -157,6 +158,7 @@ public class OrdersController : Controller
         {
             id = item.Id,
             name = item.Name,
+            purchasePrice = item.PurchasePrice,
             price = item.Price,
             vatRate = item.VatRate,
             stockQuantity = item.StockQuantity,

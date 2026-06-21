@@ -52,15 +52,10 @@ public class ShopController : Controller
     }
 
     private static bool CanPlaceShopOrder(Customer customer, decimal orderAmount) =>
-        customer.EffectiveCreditLimit > 0 && customer.HasSufficientCredit(orderAmount);
+        customer.HasSufficientCredit(orderAmount);
 
     private static string GetCreditLimitMessage(Customer customer, decimal orderAmount)
     {
-        if (customer.EffectiveCreditLimit <= 0)
-        {
-            return "Cari limitiniz tanımlı olmadığı için sipariş veremezsiniz.";
-        }
-
         if (!customer.HasSufficientCredit(orderAmount))
         {
             return $"Cari limitiniz yetersiz. Kullanılabilir limit: {customer.AvailableCredit:N2} ₺.";

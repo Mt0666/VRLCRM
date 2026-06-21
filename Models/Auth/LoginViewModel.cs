@@ -4,8 +4,8 @@ namespace VRLCRM.Models.Auth;
 
 public class LoginViewModel
 {
-    [Required(ErrorMessage = "Email adresi gereklidir.")]
-    [EmailAddress(ErrorMessage = "Geçerli bir email adresi giriniz.")]
+    [Required(ErrorMessage = "Kullanıcı adı gereklidir.")]
+    [Display(Name = "Email / Telefon")]
     public string Email { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Şifre gereklidir.")]

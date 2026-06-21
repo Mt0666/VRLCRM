@@ -54,7 +54,6 @@ public class CustomerService : ICustomerService
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
         customer.IsActive = true;
-        customer.CreditLimit = customer.CreditLimit ?? 0;
         customer.Address = address;
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync(cancellationToken);
@@ -139,7 +138,7 @@ public class CustomerService : ICustomerService
         existing.CompanyName = customer.CompanyName;
         existing.PhoneNumber = customer.PhoneNumber;
         existing.Notes = customer.Notes;
-        existing.CreditLimit = customer.CreditLimit ?? 0;
+        existing.CreditLimit = customer.CreditLimit;
 
         if (existing.Address is null)
         {

@@ -28,6 +28,9 @@ public class InvoiceLineInput
 
     public decimal UnitPrice { get; set; }
 
+    /// <summary>Alış faturasında kullanıcının belirlediği satış fiyatı. Null ise UnitPrice × 1.30 kullanılır.</summary>
+    public decimal? SalePrice { get; set; }
+
     public NewPurchaseProductInput? NewProduct { get; set; }
 }
 

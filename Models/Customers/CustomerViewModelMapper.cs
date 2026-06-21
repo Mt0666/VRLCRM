@@ -18,7 +18,7 @@ public static class CustomerViewModelMapper
             City = customer.Address?.City ?? string.Empty,
             District = customer.Address?.District ?? string.Empty,
             AddressLine = customer.Address?.AddressLine ?? string.Empty,
-            CreditLimit = customer.CreditLimit ?? 0,
+            CreditLimit = customer.CreditLimit,
             B2bLoginPhone = null
         };
     }
@@ -33,7 +33,7 @@ public static class CustomerViewModelMapper
             CompanyName = model.CompanyName?.Trim(),
             PhoneNumber = model.PhoneNumber.Trim(),
             Notes = model.Notes?.Trim(),
-            CreditLimit = model.CreditLimit ?? 0
+            CreditLimit = model.CreditLimit
         };
     }
 

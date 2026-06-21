@@ -29,15 +29,19 @@ public class StockFormViewModel
     [StringLength(200)]
     public string Name { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Fiyat zorunludur.")]
-    [Display(Name = "Fiyat")]
-    [Range(0, double.MaxValue, ErrorMessage = "Fiyat 0 veya daha büyük olmalıdır.")]
+    [Display(Name = "Alış Fiyatı")]
+    [Range(0, double.MaxValue, ErrorMessage = "Alış fiyatı 0 veya daha büyük olmalıdır.")]
+    public decimal? PurchasePrice { get; set; }
+
+    [Required(ErrorMessage = "Satış fiyatı zorunludur.")]
+    [Display(Name = "Satış Fiyatı")]
+    [Range(0, double.MaxValue, ErrorMessage = "Satış fiyatı 0 veya daha büyük olmalıdır.")]
     public decimal? Price { get; set; }
 
     [Required(ErrorMessage = "KDV Oranı zorunludur.")]
     [Display(Name = "KDV Oranı (%)")]
     [Range(0, 100, ErrorMessage = "KDV oranı 0-100 arasında olmalıdır.")]
-    public decimal VatRate { get; set; }
+    public decimal VatRate { get; set; } = 20m;
 
     [Required(ErrorMessage = "Stok adedi zorunludur.")]
     [Display(Name = "Stok Adedi")]

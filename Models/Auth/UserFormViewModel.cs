@@ -10,12 +10,13 @@ public class UserFormViewModel
     [Display(Name = "Tam Ad")]
     public string FullName { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Email adresi gereklidir.")]
-    [EmailAddress(ErrorMessage = "Geçerli bir email adresi giriniz.")]
-    public string Email { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Telefon numarası gereklidir.")]
+    [Phone(ErrorMessage = "Geçerli bir telefon numarası giriniz.")]
+    [Display(Name = "Telefon")]
+    public string PhoneNumber { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Şifre gereklidir.")]
-    [StringLength(100, ErrorMessage = "{0} en az {2} ve en fazla {1} karakter uzunluğunda olmalıdır.", MinimumLength = 8)]
+    [StringLength(100, ErrorMessage = "{0} en az {2} karakter uzunluğunda olmalıdır.", MinimumLength = 4)]
     [DataType(DataType.Password)]
     [Display(Name = "Şifre")]
     public string? Password { get; set; }

@@ -16,6 +16,10 @@ public class StockItem : BaseEntity
 
     public string Name { get; set; } = string.Empty;
 
+    /// <summary>Son alış faturasından gelen maliyet fiyatı.</summary>
+    public decimal PurchasePrice { get; set; }
+
+    /// <summary>Satış fiyatı. Alış faturası kaydedilince PurchasePrice × 1.30 olarak otomatik güncellenir.</summary>
     public decimal Price { get; set; }
 
     public decimal VatRate { get; set; } = 20m;

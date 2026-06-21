@@ -1,5 +1,4 @@
-@model IReadOnlyList<VRLCRM.Domain.Entities.Order>
-@using VRLCRM.Domain.Enums
+@model IReadOnlyList<VRLCRM.Models.Customers.CustomerTransactionRow>
 
 <div class="card-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3 px-4 pt-4 pb-2">
   <div class="d-flex align-items-center gap-2">
@@ -19,8 +18,9 @@
   <table class="table table-hover js-data-table mb-0">
     <thead>
       <tr>
-        <th>Sipariş No</th>
+        <th>No</th>
         <th>Tarih</th>
+        <th>Tür</th>
         <th>Durum</th>
         <th>Tutar</th>
         <th></th>
@@ -30,25 +30,45 @@
       @if (!Model.Any())
       {
         <tr>
-          <td colspan="4" class="text-center py-5 text-body-secondary">Sipariş kaydı bulunamadı.</td>
+          <td colspan="6" class="text-center py-5 text-body-secondary">Kayıt bulunamadı.</td>
         </tr>
       }
       else
       {
-        @foreach (var order in Model)
+        @foreach (var row in Model)
         {
           <tr>
-            <td>@order.OrderNumber</td>
-            <td>@order.OrderDate.ToLocalTime().ToString("dd.MM.yyyy")</td>
+            <td class="fw-semibold">@row.Number</td>
+            <td>@row.Date.ToLocalTime().ToString("dd.MM.yyyy")</td>
             <td>
-              <partial name="_OrderStatusBadge" model="order" />
+              @if (row.IsDirectInvoice)
+              {
+                <span class="badge bg-label-warning"><i class="ri-file-text-line me-1"></i>Fatura</span>
+              }
+              else
+              {
+                <span class="badge bg-label-primary"><i class="ri-shopping-bag-line me-1"></i>Sipariş</span>
+              }
             </td>
-            <td class="fw-semibold">@order.TotalAmount.ToString("N2") ₺</td>
             <td>
-              <a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id"
-                 class="btn btn-sm btn-outline-primary">
-                <i class="ri-eye-line me-1"></i>Detay
-              </a>
+              <span class="badge bg-label-@row.StatusColor">@row.StatusLabel</span>
+            </td>
+            <td class="fw-semibold">@row.TotalAmount.ToString("N2") ₺</td>
+            <td>
+              @if (row.IsDirectInvoice)
+              {
+                <a asp-controller="Invoices" asp-action="Details" asp-route-id="@row.Id"
+                   class="btn btn-sm btn-outline-primary">
+                  <i class="ri-eye-line me-1"></i>Detay
+                </a>
+              }
+              else
+              {
+                <a asp-controller="Orders" asp-action="Details" asp-route-id="@row.Id"
+                   class="btn btn-sm btn-outline-primary">
+                  <i class="ri-eye-line me-1"></i>Detay
+                </a>
+              }
             </td>
           </tr>
         }

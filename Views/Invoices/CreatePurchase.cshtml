@@ -126,18 +126,19 @@
               <thead class="table-light">
                 <tr>
                   <th>Ürün</th>
-                  <th class="text-center" style="width:80px">Adet</th>
-                  <th class="text-end" style="width:130px">Alış Fiyatı</th>
-                  <th class="text-center" style="width:80px">KDV %</th>
-                  <th class="text-end" style="width:130px">Ara Toplam</th>
-                  <th class="text-end" style="width:120px">KDV</th>
-                  <th class="text-end" style="width:130px">Toplam</th>
+                  <th class="text-center" style="width:70px">Adet</th>
+                  <th class="text-end" style="width:120px">Alış Fiyatı</th>
+                  <th class="text-end" style="width:140px">Satış Fiyatı</th>
+                  <th class="text-center" style="width:70px">KDV %</th>
+                  <th class="text-end" style="width:120px">Ara Toplam</th>
+                  <th class="text-end" style="width:110px">KDV</th>
+                  <th class="text-end" style="width:120px">Toplam</th>
                   <th style="width:50px"></th>
                 </tr>
               </thead>
               <tbody id="linesBody">
                 <tr id="emptyRow">
-                  <td colspan="8" class="text-center text-body-secondary py-4">
+                  <td colspan="9" class="text-center text-body-secondary py-4">
                     <i class="ri-inbox-line me-1"></i>Henüz ürün eklenmedi.
                   </td>
                 </tr>
@@ -247,6 +248,11 @@
             <label for="newLinePrice" class="form-label">Alış Fiyatı <span class="text-danger">*</span></label>
             <input type="number" id="newLinePrice" class="form-control" step="0.01" min="0" />
           </div>
+          <div class="col-md-6">
+            <label for="newLineSalePrice" class="form-label">Satış Fiyatı</label>
+            <input type="number" id="newLineSalePrice" class="form-control" step="0.01" min="0" placeholder="Otomatik: alış × 1.30" />
+            <div class="form-text">Boş bırakırsanız alış fiyatı × 1.30 uygulanır.</div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -274,6 +280,7 @@
       new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
     const categoryNameById = Object.fromEntries(categoryOptions.map(function(c) { return [String(c.id), c.name]; }));
     const stockPrices  = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.price]; }));
+    const purchasePrices = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.purchasePrice]; }));
     const stockNames   = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.name]; }));
     const stockVatRates = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.vatRate]; }));
     const productCache = new Map();
@@ -370,10 +377,16 @@
         var metaHtml = metaParts.length
           ? '<div class="small text-body-secondary">' + metaParts.join(' · ') + '</div>'
           : '';
+        var salePriceVal = item.salePrice != null ? item.salePrice : Math.round(item.price * 1.30 * 100) / 100;
         row.innerHTML =
           '<td data-label="Ürün">' + item.name + badge + metaHtml + '</td>' +
           '<td data-label="Adet" class="text-center">' + item.qty + '</td>' +
           '<td data-label="Alış Fiyatı" class="text-end">' + fmt(item.price) + '</td>' +
+          '<td data-label="Satış Fiyatı" class="text-end" style="padding:4px 8px">' +
+            '<input type="number" class="form-control form-control-sm text-end sale-price-input" ' +
+            'value="' + salePriceVal.toFixed(2) + '" step="0.01" min="0" ' +
+            'style="width:110px;margin-left:auto" data-line-key="' + lineKey + '" />' +
+          '</td>' +
           '<td data-label="KDV %" class="text-center">%' + item.vatRate + '</td>' +
           '<td data-label="Ara Toplam" class="text-end">' + fmt(lineSub) + '</td>' +
           '<td data-label="KDV" class="text-end">' + fmt(lineVat) + '</td>' +
@@ -386,6 +399,15 @@
           renderLines();
           rebuildHiddenInputs();
           updateTotals();
+        });
+        row.querySelector('.sale-price-input').addEventListener('change', function() {
+          var key = this.dataset.lineKey;
+          var item = lines.get(key);
+          if (item) {
+            item.salePrice = parseFloat(this.value) || 0;
+            lines.set(key, item);
+            rebuildHiddenInputs();
+          }
         });
       });
     }
@@ -412,6 +434,7 @@
             appendHidden(prefix + 'NewCriticalStockLevel', item.criticalStockLevel) +
             appendHidden(prefix + 'Quantity', item.qty) +
             appendHidden(prefix + 'UnitPrice', item.price) +
+            appendHidden(prefix + 'SalePrice', item.salePrice != null ? item.salePrice : (Math.round(item.price * 1.30 * 100) / 100)) +
             appendHidden(prefix + 'VatRate', item.vatRate));
         } else {
           container.insertAdjacentHTML('beforeend',
@@ -420,6 +443,7 @@
             appendHidden(prefix + 'StockName', item.name) +
             appendHidden(prefix + 'Quantity', item.qty) +
             appendHidden(prefix + 'UnitPrice', item.price) +
+            appendHidden(prefix + 'SalePrice', item.salePrice != null ? item.salePrice : (Math.round(item.price * 1.30 * 100) / 100)) +
             appendHidden(prefix + 'VatRate', item.vatRate));
         }
         lineIndex++;
@@ -453,6 +477,7 @@
         code: product ? product.stockCode : '',
         qty: (existing ? existing.qty : 0) + qty,
         price: price,
+        salePrice: Math.round(price * 1.30 * 100) / 100,
         vatRate: vatRate
       });
 
@@ -507,6 +532,8 @@
       var criticalStockLevel = parseInt(document.getElementById('newCriticalStockLevel').value, 10);
       var qty = parseInt(document.getElementById('newLineQty').value, 10);
       var price = parseFloat(document.getElementById('newLinePrice').value);
+      var salePriceRaw = parseFloat(document.getElementById('newLineSalePrice').value);
+      var salePrice = (!isNaN(salePriceRaw) && salePriceRaw > 0) ? salePriceRaw : Math.round(price * 1.30 * 100) / 100;
 
       if (!stockCode || !name) {
         showNewProductMessage('Stok kodu ve ürün adı zorunludur.');
@@ -543,6 +570,7 @@
         criticalStockLevel: criticalStockLevel,
         qty: (existing ? existing.qty : 0) + qty,
         price: price,
+        salePrice: salePrice,
         vatRate: vatRate
       });
 
@@ -560,11 +588,25 @@
       document.getElementById('newCriticalStockLevel').value = '5';
       document.getElementById('newLineQty').value = '1';
       document.getElementById('newLinePrice').value = '';
+      document.getElementById('newLineSalePrice').value = '';
+      document.getElementById('newLineSalePrice').removeAttribute('data-user-edited');
       showNewProductMessage('');
       if (newProductModal) {
         newProductModal.hide();
       }
     }
+
+    // Modal alış fiyatı değişince satış fiyatını otomatik hesapla
+    document.getElementById('newLinePrice').addEventListener('input', function() {
+      var v = parseFloat(this.value);
+      var salePriceInput = document.getElementById('newLineSalePrice');
+      if (!isNaN(v) && v > 0 && !salePriceInput.dataset.userEdited) {
+        salePriceInput.value = (Math.round(v * 1.30 * 100) / 100).toFixed(2);
+      }
+    });
+    document.getElementById('newLineSalePrice').addEventListener('input', function() {
+      this.dataset.userEdited = this.value ? '1' : '';
+    });
 
     document.getElementById('openNewProductBtn').addEventListener('click', function() {
       openNewProductModal('');
@@ -641,6 +683,7 @@
           criticalStockLevel: line.criticalStockLevel || 5,
           qty: (existing ? existing.qty : 0) + line.qty,
           price: line.price,
+          salePrice: Math.round(line.price * 1.30 * 100) / 100,
           vatRate: line.vatRate
         };
         lines.set(lineKey, merged);
@@ -714,8 +757,8 @@
         }
       },
       onChange: function(value) {
-        if (value && stockPrices[value] !== undefined) {
-          document.getElementById('linePrice').value = stockPrices[value];
+        if (value && purchasePrices[value] !== undefined) {
+          document.getElementById('linePrice').value = purchasePrices[value];
         }
       }
     });
@@ -748,7 +791,8 @@
         tsStock.clearOptions();
         tsStock.addOption({ id: key, text: product.name + (product.stockCode ? ' (' + product.stockCode + ')' : '') });
         tsStock.setValue(key, true);
-        document.getElementById('linePrice').value = product.price;
+        // Alış faturasında alış fiyatı ile pre-fill yap
+        document.getElementById('linePrice').value = product.purchasePrice || product.price;
 
         scannedProduct = true;
 

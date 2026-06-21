@@ -29,6 +29,10 @@ public class StockItemConfiguration : IEntityTypeConfiguration<StockItem>
             .IsRequired()
             .HasMaxLength(200);
 
+        builder.Property(s => s.PurchasePrice)
+            .HasPrecision(18, 2)
+            .HasDefaultValue(0m);
+
         builder.Property(s => s.Price)
             .HasPrecision(18, 2);
 

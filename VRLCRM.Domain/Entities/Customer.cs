@@ -30,10 +30,13 @@ public class Customer : BaseEntity
 
     public string FullName => $"{FirstName} {LastName}".Trim();
 
+    /// <summary>null veya 0 ise müşterinin limiti sınırsızdır.</summary>
+    public bool IsUnlimitedCredit => !CreditLimit.HasValue || CreditLimit.Value == 0;
+
     public decimal EffectiveCreditLimit => CreditLimit ?? 0;
 
-    public decimal AvailableCredit => EffectiveCreditLimit - Balance;
+    public decimal AvailableCredit => IsUnlimitedCredit ? decimal.MaxValue : CreditLimit!.Value - Balance;
 
     public bool HasSufficientCredit(decimal amountToAdd) =>
-        Balance + amountToAdd <= EffectiveCreditLimit;
+        IsUnlimitedCredit || Balance + amountToAdd <= CreditLimit!.Value;
 }

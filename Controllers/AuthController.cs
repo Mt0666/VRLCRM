@@ -46,14 +46,16 @@ public class AuthController : Controller
             return View(model);
         }
 
-        var user = await _userManager.FindByEmailAsync(model.Email);
+        var user = await _userManager.FindByEmailAsync(model.Email)
+                   ?? await _userManager.FindByNameAsync(model.Email);
         if (user is not null && await _userManager.IsInRoleAsync(user, "Customer"))
         {
             ModelState.AddModelError(string.Empty, "Müşteri hesabıyla yönetim paneline giriş yapılamaz. B2B Mağaza girişini kullanınız.");
             return View(model);
         }
 
-        var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, lockoutOnFailure: false);
+        var loginUsername = user?.UserName ?? model.Email;
+        var result = await _signInManager.PasswordSignInAsync(loginUsername, model.Password, model.RememberMe, lockoutOnFailure: false);
 
         if (result.Succeeded)
         {

@@ -31,22 +31,49 @@
 </div>
 
 <div class="row g-3 mb-3">
-  <div class="col-md-4">
+  <div class="col-md-3">
+    <label asp-for="PurchasePrice" class="form-label"></label>
+    <div class="input-group">
+      <input asp-for="PurchasePrice" class="form-control" placeholder="0,00" step="0.01" id="purchasePriceInput" />
+      <span class="input-group-text">₺</span>
+    </div>
+    <div class="form-text">Alış faturasından otomatik gelir.</div>
+    <span asp-validation-for="PurchasePrice" class="text-danger small"></span>
+  </div>
+  <div class="col-md-3">
     <label asp-for="Price" class="form-label"></label>
-    <input asp-for="Price" class="form-control" placeholder="0,00" step="0.01" />
+    <div class="input-group">
+      <input asp-for="Price" class="form-control" placeholder="0,00" step="0.01" id="salePriceInput" />
+      <span class="input-group-text">₺</span>
+    </div>
+    <div class="form-text">Alış × 1.30 — manuel değiştirilebilir.</div>
     <span asp-validation-for="Price" class="text-danger small"></span>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-2">
     <label asp-for="VatRate" class="form-label"></label>
     <input asp-for="VatRate" class="form-control" placeholder="0" step="0.01" />
     <span asp-validation-for="VatRate" class="text-danger small"></span>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-3">
     <label asp-for="StockQuantity" class="form-label"></label>
     <input asp-for="StockQuantity" class="form-control" placeholder="0" />
     <span asp-validation-for="StockQuantity" class="text-danger small"></span>
   </div>
 </div>
+<script>
+  (function () {
+    var purchaseInput = document.getElementById('purchasePriceInput');
+    var saleInput = document.getElementById('salePriceInput');
+    if (purchaseInput && saleInput) {
+      purchaseInput.addEventListener('input', function () {
+        var v = parseFloat(this.value);
+        if (!isNaN(v) && v > 0) {
+          saleInput.value = (Math.round(v * 1.30 * 100) / 100).toFixed(2);
+        }
+      });
+    }
+  })();
+</script>
 
 <div class="row g-3 mb-3">
   <div class="col-md-4">

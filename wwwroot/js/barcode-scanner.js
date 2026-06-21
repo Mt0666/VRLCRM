@@ -2,10 +2,9 @@
  * VRLScanner — html5-qrcode için ortak, iOS-uyumlu barkod/QR tarayıcı sarmalayıcısı.
  *
  * Platform farkları:
- *   Android Chrome : focusMode 'continuous' destekleniyor → 800ms sonra track üzerinden uygulanır.
- *   iOS Safari     : focusMode desteklenmiyor, zoom iOS 17+ destekleniyor.
- *                    aspectRatio taramayı kesiyor → kullanılmıyor.
- *                    2250ms sonra getRunningTrackCapabilities() ile zoom uygulanır.
+ *   Android Chrome : zoom + focusMode 'continuous' destekleniyor → 800ms sonra uygulanır.
+ *   iOS Safari     : focusMode desteklenmiyor, zoom iOS 17+ destekleniyor → 2250ms sonra uygulanır.
+ *                    aspectRatio taramayı kesiyor → hiç kullanılmıyor.
  *
  * Kullanım:
  *   const scanner = VRLScanner.create({
@@ -59,48 +58,71 @@
       return tracks && tracks.length ? tracks[0] : null;
     }
 
-    // Android: track üzerinden focusMode + torch kontrolü (800ms — dün çalışan yaklaşım)
-    function setupAndroid() {
+    /*
+     * Her iki platform için kamera kısıtlamalarını uygular.
+     *  - zoom   : hem Android hem iOS'ta okunabilirliği artırıyor (kullanıcı onayladı).
+     *  - focusMode 'continuous' : yalnızca Android'de destekleniyor.
+     *  - torch  : destekleniyorsa düğmeyi göster.
+     *
+     * Önce html5QrCode.getRunningTrackCapabilities() dene (kütüphane API'si),
+     * başarısız olursa doğrudan track.getCapabilities() ile aynı şeyi yap.
+     */
+    function applyTrackConstraints() {
       if (!running) return;
-      var track = getTrack();
-      if (!track || !track.getCapabilities) return;
-      var caps = {};
-      try { caps = track.getCapabilities() || {}; } catch (e) { return; }
 
+      var caps = null;
+      var usingLibApi = false;
+
+      // Yöntem 1: kütüphane API'si
+      if (html5QrCode && typeof html5QrCode.getRunningTrackCapabilities === 'function') {
+        try { caps = html5QrCode.getRunningTrackCapabilities(); usingLibApi = true; } catch (e) {}
+      }
+
+      // Yöntem 2: doğrudan track
+      if (!caps) {
+        var track = getTrack();
+        if (track && typeof track.getCapabilities === 'function') {
+          try { caps = track.getCapabilities(); } catch (e) {}
+        }
+      }
+
+      if (!caps) return;
+
+      // Torch düğmesi
       if (torchBtn && caps.torch) torchBtn.style.display = '';
 
-      if (caps.focusMode && caps.focusMode.indexOf('continuous') !== -1) {
-        try { track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch (e) {}
+      // Uygulanacak constraint'ler
+      var advanced = [];
+
+      // Zoom — Android ve iOS (17+) destekler, barkod okunabilirliğini artırıyor
+      if (caps.zoom && caps.zoom.max) {
+        var targetZoom = Math.min(caps.zoom.max, 2);
+        advanced.push({ zoom: targetZoom });
       }
-    }
 
-    // iOS: getRunningTrackCapabilities() ile zoom (2250ms — iOS 17+ destekler)
-    function setupIOS() {
-      if (!running || !html5QrCode) return;
-      try {
-        var caps = html5QrCode.getRunningTrackCapabilities();
-        var advanced = [];
-        if (caps.zoom) advanced.push({ zoom: Math.min(caps.zoom.max || 2, 2) });
-        if (caps.focusDistance) advanced.push({ focusDistance: 1 });
-        if (advanced.length) {
+      // focusMode: 'continuous' — yalnızca Android
+      if (!isIOS && caps.focusMode && Array.isArray(caps.focusMode) &&
+          caps.focusMode.indexOf('continuous') !== -1) {
+        advanced.push({ focusMode: 'continuous' });
+      }
+
+      if (!advanced.length) return;
+
+      if (usingLibApi) {
+        // html5QrCode.applyVideoConstraints API'si
+        try {
           html5QrCode.applyVideoConstraints({ advanced: advanced });
-        }
-      } catch (e) {}
-
-      // Torch (iOS 17.5+)
-      try {
-        var track = getTrack();
-        var trackCaps = track && track.getCapabilities ? track.getCapabilities() : {};
-        if (torchBtn && trackCaps.torch) torchBtn.style.display = '';
-      } catch (e) {}
+        } catch (e) {}
+      } else {
+        // Doğrudan track API'si
+        var t = getTrack();
+        if (t) { try { t.applyConstraints({ advanced: advanced }); } catch (e) {} }
+      }
     }
 
     function onStarted() {
-      if (isIOS) {
-        setTimeout(setupIOS, 2250);
-      } else {
-        setTimeout(setupAndroid, 800);
-      }
+      // Android daha hızlı hazır, iOS daha uzun süre beklemesi gerekiyor
+      setTimeout(applyTrackConstraints, isIOS ? 2250 : 800);
     }
 
     function handleDecoded(decodedText) {
@@ -144,7 +166,7 @@
       var config = {
         fps: 15,
         qrbox: wideBox,
-        // aspectRatio iOS'ta taramayı kesiyor — kullanılmıyor
+        // aspectRatio iOS'ta taramayı kesiyor — hiç kullanılmıyor
         videoConstraints: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
       };
 

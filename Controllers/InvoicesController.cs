@@ -129,6 +129,7 @@ public class InvoicesController : Controller
                 id = s.Id,
                 name = s.Name,
                 stockCode = s.StockCode,
+                purchasePrice = s.PurchasePrice,
                 price = s.Price,
                 vatRate = s.VatRate,
                 stockQuantity = s.StockQuantity
@@ -312,7 +313,8 @@ public class InvoicesController : Controller
         {
             StockItemId = line.StockItemId,
             Quantity = line.Quantity,
-            UnitPrice = line.UnitPrice
+            UnitPrice = line.UnitPrice,
+            SalePrice = line.SalePrice
         };
     }
 
@@ -341,6 +343,7 @@ public class InvoicesController : Controller
             Name = s.Name,
             StockCode = s.StockCode,
             Barcode = s.Barcode,
+            PurchasePrice = s.PurchasePrice,
             Price = s.Price,
             VatRate = s.VatRate
         }).ToList();
@@ -363,7 +366,7 @@ public class InvoicesController : Controller
         model.Stocks = activeStocks.Select(s => new SelectListItem
         {
             Value = s.Id.ToString(),
-            Text = $"{s.StockCode} - {s.Name} ({s.Price:N2} ₺)"
+            Text = $"{s.StockCode} - {s.Name} (Alış: {s.PurchasePrice:N2} ₺)"
         });
         model.StockOptions = activeStocks.Select(s => new InvoiceStockOption
         {
@@ -371,6 +374,7 @@ public class InvoicesController : Controller
             Name = s.Name,
             StockCode = s.StockCode,
             Barcode = s.Barcode,
+            PurchasePrice = s.PurchasePrice,
             Price = s.Price,
             VatRate = s.VatRate
         }).ToList();

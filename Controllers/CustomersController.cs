@@ -5,8 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using VRLCRM.Application.Customers;
 using VRLCRM.Domain.Constants;
 using VRLCRM.Domain.Entities;
+using VRLCRM.Domain.Enums;
 using VRLCRM.Models.Customers;
-using VRLCRM.Services;
 
 namespace VRLCRM.Controllers;
 
@@ -15,16 +15,11 @@ public class CustomersController : Controller
 {
     private readonly ICustomerService _customerService;
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly CustomerPaymentDocumentService _paymentDocumentService;
 
-    public CustomersController(
-        ICustomerService customerService,
-        UserManager<ApplicationUser> userManager,
-        CustomerPaymentDocumentService paymentDocumentService)
+    public CustomersController(ICustomerService customerService, UserManager<ApplicationUser> userManager)
     {
         _customerService = customerService;
         _userManager = userManager;
-        _paymentDocumentService = paymentDocumentService;
     }
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -47,7 +42,51 @@ public class CustomersController : Controller
     public async Task<IActionResult> OrdersPartial(int id, CancellationToken cancellationToken)
     {
         var orders = await _customerService.GetOrdersAsync(id, cancellationToken);
-        return PartialView("_OrdersPartial", orders);
+        var invoices = await _customerService.GetSalesInvoicesAsync(id, cancellationToken);
+
+        // Siparişlere bağlı fatura ID'leri — direkt faturalar bunların dışında kalanlar
+        var linkedInvoiceIds = orders
+            .Where(o => o.SalesInvoiceId.HasValue)
+            .Select(o => o.SalesInvoiceId!.Value)
+            .ToHashSet();
+
+        var rows = new List<CustomerTransactionRow>();
+
+        foreach (var o in orders)
+        {
+            rows.Add(new CustomerTransactionRow
+            {
+                Id = o.Id,
+                Number = o.OrderNumber,
+                Date = o.OrderDate,
+                IsDirectInvoice = false,
+                StatusLabel = o.StatusLabel,
+                StatusColor = o.Status switch
+                {
+                    OrderStatus.Approved => "success",
+                    OrderStatus.Cancelled => "danger",
+                    _ => "secondary"
+                },
+                TotalAmount = o.TotalAmount
+            });
+        }
+
+        foreach (var inv in invoices.Where(i => !linkedInvoiceIds.Contains(i.Id) && i.IsActive))
+        {
+            rows.Add(new CustomerTransactionRow
+            {
+                Id = inv.Id,
+                Number = inv.InvoiceNumber,
+                Date = inv.InvoiceDate,
+                IsDirectInvoice = true,
+                StatusLabel = "Faturalandırıldı",
+                StatusColor = "warning",
+                TotalAmount = inv.TotalAmount
+            });
+        }
+
+        rows = [.. rows.OrderByDescending(r => r.Date)];
+        return PartialView("_OrdersPartial", rows);
     }
 
     public async Task<IActionResult> InvoicesPartial(int id, CancellationToken cancellationToken)
@@ -56,37 +95,9 @@ public class CustomersController : Controller
         return PartialView("_InvoicesPartial", invoices);
     }
 
-    public async Task<IActionResult> PaymentsPartial(int id, CancellationToken cancellationToken)
-    {
-        var customer = await _customerService.GetByIdAsync(id, cancellationToken);
-        if (customer is null)
-        {
-            return NotFound();
-        }
-
-        var payments = await _customerService.GetIncomingPaymentsAsync(id, cancellationToken);
-        ViewData["CustomerId"] = id;
-        return PartialView("_PaymentsPartial", payments);
-    }
-
-    public async Task<IActionResult> ExportPaymentsPdf(int id, CancellationToken cancellationToken)
-    {
-        var customer = await _customerService.GetByIdAsync(id, cancellationToken);
-        if (customer is null)
-        {
-            return NotFound();
-        }
-
-        var payments = await _customerService.GetIncomingPaymentsAsync(id, cancellationToken);
-        var pdfBytes = _paymentDocumentService.GeneratePdf(customer, payments);
-        var safeName = string.Join("-", customer.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-        var fileName = $"odemeler-{safeName}-{DateTime.Now:yyyyMMdd}.pdf";
-        return File(pdfBytes, "application/pdf", fileName);
-    }
-
     public IActionResult Create()
     {
-        return View(new CustomerFormViewModel { CreditLimit = 0 });
+        return View(new CustomerFormViewModel());
     }
 
     [HttpPost]
@@ -125,7 +136,7 @@ public class CustomersController : Controller
 
         var linkedUser = await _userManager.Users.FirstOrDefaultAsync(u => u.CustomerId == id, cancellationToken);
         var vm = CustomerViewModelMapper.ToFormViewModel(customer);
-        vm.B2bLoginPhone = linkedUser?.UserName;
+        vm.B2bLoginPhone = linkedUser?.PhoneNumber;
         return View(vm);
     }
 

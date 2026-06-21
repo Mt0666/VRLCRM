@@ -25,12 +25,17 @@ public class UsersController : Controller
         foreach (var user in users)
         {
             var roles = await _userService.GetRolesAsync(user, cancellationToken);
+            var role = roles.FirstOrDefault() ?? "";
+
+            if (role == AppRoles.Customer)
+                continue;
+
             userViewModels.Add(new UserViewModel
             {
                 Id = user.Id,
-                Email = user.Email ?? "",
-                FullName = user.FullName,
-                Role = roles.FirstOrDefault() ?? "N/A"
+                PhoneNumber = user.PhoneNumber ?? user.UserName ?? "",
+                FullName = user.FullName ?? "",
+                Role = role
             });
         }
 
@@ -56,10 +61,12 @@ public class UsersController : Controller
         {
             var user = new ApplicationUser
             {
-                UserName = model.Email,
-                Email = model.Email,
+                UserName = model.PhoneNumber,
+                Email = model.PhoneNumber + "@staff.local",
+                PhoneNumber = model.PhoneNumber,
                 FullName = model.FullName,
-                EmailConfirmed = true
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true
             };
 
             await _userService.CreateUserAsync(user, model.Password!, model.SelectedRole, cancellationToken);
@@ -100,6 +107,6 @@ public class UserViewModel
 {
     public string Id { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
+    public string PhoneNumber { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
 }
