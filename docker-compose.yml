@@ -72,29 +72,6 @@ services:
     networks:
       - vrlcrm
 
-  # Gelecek: ofis icinde internet kesilince HTTPS (router DNS gerekir)
-  # docker compose --profile local-https up -d
-  caddy:
-    image: caddy:2-alpine
-    container_name: vrlcrm-caddy
-    profiles: ["local-https"]
-    env_file:
-      - .env
-    environment:
-      CRM_HOSTNAME: ${CRM_HOSTNAME:-crm.metevarol.com.tr}
-    ports:
-      - "443:443"
-      - "80:80"
-    volumes:
-      - ./caddy/runtime/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./certs:/etc/certs:ro
-    depends_on:
-      web:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - vrlcrm
-
 networks:
   vrlcrm:
     driver: bridge
