@@ -24,8 +24,6 @@ public static class SeedData
             .Where(c => c.CreditLimit == null)
             .ExecuteUpdateAsync(s => s.SetProperty(c => c.CreditLimit, 0m));
 
-        await MockDataSeeder.SeedAsync(context);
-
         foreach (var roleName in seedOptions.DefaultRoles)
         {
             if (await roleManager.RoleExistsAsync(roleName))
