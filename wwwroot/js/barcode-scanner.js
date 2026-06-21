@@ -1,35 +1,25 @@
 /*
  * VRLScanner — html5-qrcode için ortak, iOS-uyumlu barkod/QR tarayıcı sarmalayıcısı.
  *
- * Neden bu modül:
- *   Tarayıcı kodu eskiden 5 view'a kopyalanmıştı ve iOS'ta kötü çalışıyordu.
- *   iOS'taki TÜM tarayıcılar (Chrome, Firefox, Edge dahil) zorunlu olarak WebKit
- *   kullanır — yani sorunlar Safari/WebKit limitleridir. Bu modül iOS'ta doğru
- *   davranan tek bir yapılandırmayı merkezîleştirir:
- *     - Yüksek çözünürlük videoConstraints (bare facingMode yerine) -> net çizgiler.
- *     - aspectRatio KULLANILMAZ (iOS'ta video gerilmesinin/garip şekilli alanın sebebi).
- *     - focusMode / torch yalnızca cihaz capability bildirirse uygulanır (Android);
- *       iOS'ta desteklenmediği için atlanır (eski kör applyVideoConstraints no-op'tu).
- *     - Aynı kodu 2 kez okuma teyidi (yanlış okumayı azaltır).
+ * Platform farkları:
+ *   Android Chrome : focusMode 'continuous' destekleniyor → 800ms sonra track üzerinden uygulanır.
+ *   iOS Safari     : focusMode desteklenmiyor, zoom iOS 17+ destekleniyor.
+ *                    aspectRatio taramayı kesiyor → kullanılmıyor.
+ *                    2250ms sonra getRunningTrackCapabilities() ile zoom uygulanır.
  *
  * Kullanım:
  *   const scanner = VRLScanner.create({
- *     readerId: 'qr-reader',          // zorunlu — Html5Qrcode'un mount edileceği div id
- *     wrapperId: 'scannerWrapper',    // açılıp kapanan kapsayıcı (display toggle)
- *     toggleBtnId: 'scannerBtn',      // aç/kapa butonu (ikon/etiket otomatik değişir)
- *     stopBtnId: 'stopScannerBtn',
- *     torchBtnId: 'torchBtn',         // yalnız cihaz destekliyorsa görünür olur
- *     messageId: 'productMessage',    // başlatma hatası mesajı buraya yazılır
- *     idleLabel: '...',               // toggle butonu kapalıyken içeriği
- *     runningLabel: '...',            // toggle butonu açıkken içeriği
- *     onDetected: function (text, scanner) { ... }  // tarama başarılı (kamera durdurulur)
+ *     readerId, wrapperId, toggleBtnId, stopBtnId, torchBtnId,
+ *     messageId, idleLabel, runningLabel,
+ *     onDetected: function (text, scanner) { ... }
  *   });
- *   // scanner.start() / scanner.stop() / scanner.toggle() / scanner.isRunning()
  */
 (function (window, document) {
   'use strict';
 
-  // 1D barkodlar için geniş, görüntüye göre ölçeklenen tarama kutusu.
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
   function wideBox(viewfinderWidth, viewfinderHeight) {
     var side = Math.round(Math.min(viewfinderWidth, viewfinderHeight) * 0.72);
     return { width: side, height: Math.round(side * 0.48) };
@@ -49,14 +39,11 @@
 
     var idleLabel    = opts.idleLabel    || '<i class="ri-camera-line me-1"></i>Barkod Tara';
     var runningLabel = opts.runningLabel || '<i class="ri-camera-off-line me-1"></i>Kamerayı Kapat';
-    var doubleConfirm = opts.doubleConfirm !== false; // varsayılan: açık
     var startErrorMessage = opts.startErrorMessage || 'Kamera başlatılamadı. Tarayıcı izinlerini kontrol edin.';
     var onDetected = typeof opts.onDetected === 'function' ? opts.onDetected : function () {};
 
     var html5QrCode = null;
     var running = false;
-    var pendingCode = null;
-    var pendingHits = 0;
     var torchOn = false;
 
     function setMessage(text) {
@@ -72,34 +59,52 @@
       return tracks && tracks.length ? tracks[0] : null;
     }
 
-    // Kamera başladıktan sonra: yalnız cihaz destekliyorsa torch butonu göster ve
-    // sürekli (continuous) odağı iste. iOS bunları desteklemez -> sessizce atlanır.
-    function setupTrackFeatures() {
+    // Android: track üzerinden focusMode + torch kontrolü (800ms — dün çalışan yaklaşım)
+    function setupAndroid() {
       if (!running) return;
       var track = getTrack();
       if (!track || !track.getCapabilities) return;
       var caps = {};
-      try { caps = track.getCapabilities() || {}; } catch (e) { caps = {}; }
+      try { caps = track.getCapabilities() || {}; } catch (e) { return; }
 
-      if (torchBtn && caps.torch) {
-        torchBtn.style.display = '';
-      }
-      if (caps.focusMode && caps.focusMode.indexOf && caps.focusMode.indexOf('continuous') !== -1) {
+      if (torchBtn && caps.torch) torchBtn.style.display = '';
+
+      if (caps.focusMode && caps.focusMode.indexOf('continuous') !== -1) {
         try { track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch (e) {}
       }
     }
 
-    function handleDecoded(decodedText) {
-      if (doubleConfirm) {
-        if (decodedText !== pendingCode) { pendingCode = decodedText; pendingHits = 1; return; }
-        if (++pendingHits < 2) return;
-      }
-      pendingCode = null; pendingHits = 0;
-      stop().then(function () { onDetected(decodedText, api); });
+    // iOS: getRunningTrackCapabilities() ile zoom (2250ms — iOS 17+ destekler)
+    function setupIOS() {
+      if (!running || !html5QrCode) return;
+      try {
+        var caps = html5QrCode.getRunningTrackCapabilities();
+        var advanced = [];
+        if (caps.zoom) advanced.push({ zoom: Math.min(caps.zoom.max || 2, 2) });
+        if (caps.focusDistance) advanced.push({ focusDistance: 1 });
+        if (advanced.length) {
+          html5QrCode.applyVideoConstraints({ advanced: advanced });
+        }
+      } catch (e) {}
+
+      // Torch (iOS 17.5+)
+      try {
+        var track = getTrack();
+        var trackCaps = track && track.getCapabilities ? track.getCapabilities() : {};
+        if (torchBtn && trackCaps.torch) torchBtn.style.display = '';
+      } catch (e) {}
     }
 
     function onStarted() {
-      setTimeout(setupTrackFeatures, 800);
+      if (isIOS) {
+        setTimeout(setupIOS, 2250);
+      } else {
+        setTimeout(setupAndroid, 800);
+      }
+    }
+
+    function handleDecoded(decodedText) {
+      stop().then(function () { onDetected(decodedText, api); });
     }
 
     function onStartError(err) {
@@ -124,7 +129,6 @@
     function start() {
       if (running) return;
       if (typeof Html5Qrcode === 'undefined') { setMessage('Barkod okuyucu yüklenemedi.'); return; }
-      // Kamera yalnızca güvenli bağlamda (HTTPS veya localhost) çalışır — iOS bunda katıdır.
       if (window.isSecureContext === false) {
         setMessage('Kamera yalnızca güvenli bağlantıda (HTTPS) çalışır.');
         return;
@@ -132,22 +136,18 @@
 
       if (wrapperEl) wrapperEl.style.display = 'block';
       running = true;
-      pendingCode = null; pendingHits = 0;
       if (toggleBtn) toggleBtn.innerHTML = runningLabel;
       setMessage('');
 
       if (!html5QrCode) html5QrCode = new Html5Qrcode(readerId);
 
       var config = {
-        fps: 10,
+        fps: 15,
         qrbox: wideBox,
-        // Çözünürlük ilk argümana DEĞİL videoConstraints'e verilir: html5-qrcode'un ilk argümanı
-        // tam 1 anahtar kabul eder (facingMode VEYA deviceId). Gerçek kamera kısıtları burada.
-        // 'ideal' spec gereği asla reddedilmez -> daha net görüntü (iOS bulanıklık için ana kazanç).
+        // aspectRatio iOS'ta taramayı kesiyor — kullanılmıyor
         videoConstraints: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
       };
 
-      // İlk argüman tek anahtarlı olmalı; gerçek kısıtlar yukarıdaki videoConstraints'ten gelir.
       html5QrCode.start({ facingMode: 'environment' }, config, handleDecoded, function () {})
         .then(onStarted)
         .catch(onStartError);
@@ -162,7 +162,6 @@
     }
 
     function stop() {
-      pendingCode = null; pendingHits = 0;
       var p = Promise.resolve();
       if (html5QrCode && running) {
         if (torchOn) {
@@ -200,12 +199,7 @@
       });
     }
 
-    var api = {
-      start: start,
-      stop: stop,
-      toggle: toggle,
-      isRunning: function () { return running; }
-    };
+    var api = { start: start, stop: stop, toggle: toggle, isRunning: function () { return running; } };
     return api;
   }
 

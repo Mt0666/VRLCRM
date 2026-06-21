@@ -733,22 +733,15 @@
         var msg = document.getElementById('productMessage');
         msg.textContent = '';
 
-        var r = await fetch('@Url.Action("SearchProduct", "Invoices")' + '?term=' + encodeURIComponent(decodedText));
+        var r = await fetch('@Url.Action("LookupBarcode", "Orders")' + '?barcode=' + encodeURIComponent(decodedText));
         if (!r.ok) {
           msg.textContent = 'Barkod bulunamadı: ' + decodedText;
           openNewProductModal('');
           document.getElementById('newBarcode').value = decodedText;
           return;
         }
-        var results = await r.json();
-        if (!results || results.length === 0) {
-          msg.textContent = 'Barkod bulunamadı: ' + decodedText;
-          openNewProductModal('');
-          document.getElementById('newBarcode').value = decodedText;
-          return;
-        }
 
-        var product = results[0];
+        var product = await r.json();
         var key = String(product.id);
         productCache.set(key, product);
 

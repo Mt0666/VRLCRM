@@ -340,6 +340,7 @@ public class InvoicesController : Controller
             Id = s.Id,
             Name = s.Name,
             StockCode = s.StockCode,
+            Barcode = s.Barcode,
             Price = s.Price,
             VatRate = s.VatRate
         }).ToList();
@@ -369,6 +370,7 @@ public class InvoicesController : Controller
             Id = s.Id,
             Name = s.Name,
             StockCode = s.StockCode,
+            Barcode = s.Barcode,
             Price = s.Price,
             VatRate = s.VatRate
         }).ToList();

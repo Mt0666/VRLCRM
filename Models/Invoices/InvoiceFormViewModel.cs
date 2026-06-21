@@ -42,6 +42,8 @@ public class InvoiceStockOption
 
     public string StockCode { get; set; } = string.Empty;
 
+    public string? Barcode { get; set; }
+
     public decimal Price { get; set; }
 
     public decimal VatRate { get; set; }

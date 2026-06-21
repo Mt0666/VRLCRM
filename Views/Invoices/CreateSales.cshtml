@@ -294,11 +294,11 @@
     var tsStock = new TomSelect('#stockSelect', {
       valueField: 'id',
       labelField: 'text',
-      searchField: 'text',
+      searchField: ['text', 'barcode'],
       create: false,
-      placeholder: 'Ürün adı veya kodu ile arayın…',
+      placeholder: 'Ürün adı, kodu veya barkod ile arayın…',
       options: stockOptions.map(function(s) {
-        return { id: String(s.id), text: s.name + (s.stockCode ? ' (' + s.stockCode + ')' : '') };
+        return { id: String(s.id), text: s.name + (s.stockCode ? ' (' + s.stockCode + ')' : ''), barcode: s.barcode || '' };
       }),
       render: {
         no_results: function() { return '<div class="no-results">Ürün bulunamadı.</div>'; }
@@ -323,23 +323,20 @@
         const msg = document.getElementById('productMessage');
         msg.textContent = '';
 
-        const r = await fetch('@Url.Action("SearchProduct", "Invoices")' + '?term=' + encodeURIComponent(decodedText));
+        const r = await fetch('@Url.Action("LookupBarcode", "Orders")' + '?barcode=' + encodeURIComponent(decodedText));
         if (!r.ok) {
           msg.textContent = 'Barkod bulunamadı: ' + decodedText;
           setTimeout(function () { scanner.start(); }, 2500);
           return;
         }
-        const results = await r.json();
-        if (!results || results.length === 0) {
-          msg.textContent = 'Barkod bulunamadı: ' + decodedText;
-          setTimeout(function () { scanner.start(); }, 2500);
-          return;
-        }
 
-        var product = results[0];
+        var product = await r.json();
         var key = String(product.id);
         productCache.set(key, product);
 
+        if (!tsStock.options[key]) {
+          tsStock.addOption({ id: key, text: product.name + (product.stockCode ? ' (' + product.stockCode + ')' : ''), barcode: product.barcode || '' });
+        }
         tsStock.setValue(key, true);
         document.getElementById('linePrice').value = product.price;
 
