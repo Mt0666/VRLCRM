@@ -6,7 +6,7 @@ services:
       - .env
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      # MSSQL_SA_PASSWORD .env dosyasından env_file ile okunur (; gibi özel karakterler için)
     ports:
       - "${SQL_PORT:-1433}:1433"
     volumes:
@@ -36,9 +36,8 @@ services:
       Database__Server: db,1433
       Database__Name: VRLCRM
       Database__User: sa
-      Database__Password: ${MSSQL_SA_PASSWORD}
+      # Database__Password yerine MSSQL_SA_PASSWORD .env'den env_file ile okunur
       SeedData__AdminEmail: ${SeedData__AdminEmail:-admin@vrlcrm.local}
-      SeedData__AdminPassword: ${SeedData__AdminPassword}
     depends_on:
       db:
         condition: service_healthy

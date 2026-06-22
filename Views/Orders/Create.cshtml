@@ -402,9 +402,14 @@
       labelField: 'text',
       searchField: ['text', 'barcode'],
       create: false,
-      loadThrottle: 0,
+      loadThrottle: 2000,
+      shouldLoad: function(query) { return query.length > 0; },
+      openOnFocus: false,
       selectOnTab: false,
       placeholder: 'Ürün adı, kodu veya barkod ile arayın…',
+      onType: function(value) {
+        if (!value.length) this.close();
+      },
       load: function(query, callback) {
         if (!query.length) return callback();
         fetch('@Url.Action("SearchProduct", "Orders")' + '?term=' + encodeURIComponent(query))

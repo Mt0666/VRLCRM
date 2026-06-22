@@ -802,12 +802,32 @@
     var tsStock = new TomSelect('#stockSelect', {
       valueField: 'id',
       labelField: 'text',
-      searchField: 'text',
+      searchField: ['text', 'barcode'],
       create: false,
-      placeholder: 'Ürün adı veya kodu ile arayın…',
-      options: stockOptions.map(function(s) {
-        return { id: String(s.id), text: s.name + (s.stockCode ? ' (' + s.stockCode + ')' : '') };
-      }),
+      loadThrottle: 2000,
+      shouldLoad: function(query) { return query.length > 0; },
+      openOnFocus: false,
+      selectOnTab: false,
+      placeholder: 'Ürün adı, kodu veya barkod ile arayın…',
+      onType: function(value) {
+        if (!value.length) this.close();
+      },
+      load: function(query, callback) {
+        if (!query.length) return callback();
+        fetch('@Url.Action("SearchProduct", "Invoices")' + '?term=' + encodeURIComponent(query))
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            var results = data.map(function(item) {
+              return {
+                id: String(item.id),
+                text: item.name + (item.stockCode ? ' (' + item.stockCode + ')' : ''),
+                barcode: item.barcode || ''
+              };
+            });
+            callback(results);
+          })
+          .catch(function() { callback(); });
+      },
       render: {
         no_results: function(data, escape) {
           var term = escape(data.input);

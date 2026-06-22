@@ -339,10 +339,31 @@
       labelField: 'text',
       searchField: ['text', 'barcode'],
       create: false,
+      loadThrottle: 2000,
+      shouldLoad: function(query) { return query.length > 0; },
+      openOnFocus: false,
+      selectOnTab: false,
       placeholder: 'Ürün adı, kodu veya barkod ile arayın…',
-      options: stockOptions.map(function(s) {
-        return { id: String(s.id), text: s.name + (s.stockCode ? ' (' + s.stockCode + ')' : ''), barcode: s.barcode || '' };
-      }),
+      onType: function(value) {
+        if (!value.length) this.close();
+      },
+      load: function(query, callback) {
+        if (!query.length) return callback();
+        fetch('@Url.Action("SearchProduct", "Invoices")' + '?term=' + encodeURIComponent(query))
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            var results = data.map(function(item) {
+              productCache.set(String(item.id), item);
+              return {
+                id: String(item.id),
+                text: item.name + (item.stockCode ? ' (' + item.stockCode + ')' : ''),
+                barcode: item.barcode || ''
+              };
+            });
+            callback(results);
+          })
+          .catch(function() { callback(); });
+      },
       render: {
         no_results: function() { return '<div class="no-results">Ürün bulunamadı.</div>'; }
       },

@@ -133,6 +133,7 @@ public class InvoicesController : Controller
                 id = s.Id,
                 name = s.Name,
                 stockCode = s.StockCode,
+                barcode = s.Barcode,
                 purchasePrice = s.PurchasePrice,
                 price = s.Price,
                 vatRate = s.VatRate,
