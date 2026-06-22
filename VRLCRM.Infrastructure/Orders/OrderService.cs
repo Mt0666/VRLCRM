@@ -188,7 +188,11 @@ public class OrderService : IOrderService
             }
 
             var stock = stocks[line.StockItemId];
-            var vatRate = stock.VatRate;
+            var vatRate = line.VatRate ?? stock.VatRate;
+            if (vatRate < 0 || vatRate > 100)
+            {
+                throw new InvalidOperationException("KDV oranı 0-100 arasında olmalıdır.");
+            }
             var lineSubTotal = line.Quantity * line.UnitPrice;
             var lineVatAmount = lineSubTotal * (vatRate / 100m);
             var lineTotal = lineSubTotal + lineVatAmount;

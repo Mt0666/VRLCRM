@@ -44,6 +44,7 @@ services:
         condition: service_healthy
     volumes:
       - stock-uploads:/app/wwwroot/uploads
+      - dataprotection-keys:/app/dataprotection-keys
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/ || exit 1"]
       interval: 30s
@@ -79,3 +80,4 @@ networks:
 volumes:
   sqldata:
   stock-uploads:
+  dataprotection-keys:

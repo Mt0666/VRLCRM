@@ -57,7 +57,7 @@
               </div>
               @* Ekleme satırı *@
               <div class="row g-3 align-items-center">
-                <div class="col-md-6">
+                <div class="col-md-5">
                   <select id="productSelect" style="width:100%">
                     <option value=""></option>
                   </select>
@@ -66,7 +66,10 @@
                 <div class="col-md-2">
                   <input type="number" id="scanQty" class="form-control" value="1" min="1" placeholder="Adet" />
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-2">
+                  <input type="number" id="lineUnitPrice" class="form-control" step="0.01" min="0" placeholder="Satış Fiyatı" />
+                </div>
+                <div class="col-md-3">
                   <button type="button" id="addProductBtn" class="btn btn-primary w-100">
                     <i class="ri-add-line me-1"></i>Ekle
                   </button>
@@ -232,7 +235,7 @@
           '<td data-label="Ürün">' + item.name + '</td>' +
           '<td data-label="Açıklama"><input type="text" class="form-control form-control-sm line-notes" value="' + (item.notes || '').replace(/"/g, '&quot;') + '" placeholder="Ürün açıklaması" /></td>' +
           '<td data-label="Adet" class="text-center"><input type="number" class="form-control form-control-sm line-qty text-center" value="' + item.qty + '" min="1" style="width:70px;margin:0 auto;" /></td>' +
-          '<td data-label="Birim Fiyat" class="text-end">' + fmt(item.price) + '</td>' +
+          '<td data-label="Birim Fiyat" class="text-end" style="padding:4px 8px"><input type="number" class="form-control form-control-sm text-end line-price" value="' + item.price.toFixed(2) + '" step="0.01" min="0" style="width:110px;margin-left:auto" /></td>' +
           '<td data-label="KDV %" class="text-center">%' + item.vatRate + '</td>' +
           '<td data-label="Ara Toplam" class="text-end line-sub">' + fmt(item.qty * item.price) + '</td>' +
           '<td data-label="KDV" class="text-end line-vat">' + fmt(item.qty * item.price * (item.vatRate / 100)) + '</td>' +
@@ -244,6 +247,12 @@
           const qty = parseInt(this.value, 10);
           if (!qty || qty <= 0) { this.value = item.qty; return; }
           item.qty = qty;
+          refreshRowTotals();
+        });
+        row.querySelector('.line-price').addEventListener('change', function() {
+          const price = parseFloat(this.value);
+          if (isNaN(price) || price < 0) { this.value = item.price.toFixed(2); return; }
+          item.price = price;
           refreshRowTotals();
         });
         row.querySelector('.line-notes').addEventListener('input', function() {
@@ -278,6 +287,7 @@
     function addSelectedProduct() {
       var stockId = tsProduct.getValue();
       var qty = parseInt(document.getElementById('scanQty').value, 10) || 1;
+      var customPrice = parseFloat(document.getElementById('lineUnitPrice').value);
       var msg = document.getElementById('productMessage');
       msg.textContent = '';
 
@@ -286,11 +296,12 @@
       var product = productCache.get(stockId);
       if (!product) { msg.textContent = 'Ürün bilgisi bulunamadı.'; return; }
 
+      var finalPrice = (!isNaN(customPrice) && customPrice >= 0) ? customPrice : product.price;
       var existing = lines.get(stockId);
       lines.set(stockId, {
         name: product.name,
         qty: (existing ? existing.qty : 0) + qty,
-        price: product.price,
+        price: finalPrice,
         vatRate: product.vatRate,
         notes: existing ? existing.notes : ''
       });
@@ -302,48 +313,162 @@
       tsProduct.clear();
       tsProduct.clearOptions();
       document.getElementById('scanQty').value = 1;
+      document.getElementById('lineUnitPrice').value = '';
 
       if (scannedProduct) {
         scannedProduct = false;
         setTimeout(function () { if (orderScanner) orderScanner.start(); }, 400);
+      } else {
+        // Ürün eklendikten sonra ürün arama alanına dön
+        setTimeout(function() { tsProduct.focus(); }, 80);
       }
     }
 
     document.getElementById('addProductBtn').addEventListener('click', addSelectedProduct);
+    // Adet'te Enter → Fiyat alanına geç
     document.getElementById('scanQty').addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      var priceInput = document.getElementById('lineUnitPrice');
+      if (priceInput) { priceInput.focus(); priceInput.select(); }
+    });
+    // Fiyat'ta Enter → ürün ekle (addSelectedProduct zaten ürün arama alanına döner)
+    document.getElementById('lineUnitPrice').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') { e.preventDefault(); addSelectedProduct(); }
     });
     document.getElementById('orderDiscountRate').addEventListener('input', updateTotals);
+    // Enter tuşu form göndermesini engelle (fiziksel barkod okuyucular Enter gönderiyor)
+    document.getElementById('orderForm').addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      if (e.target.tagName === 'TEXTAREA') return;
+      if (e.target.type === 'submit' || e.target.tagName === 'BUTTON') return;
+      e.preventDefault();
+    });
     document.getElementById('orderForm').addEventListener('submit', function() {
       FormDraftStorage.clear(DRAFT_KEY);
     });
 
     restoreDraft();
 
+    function focusQtyInput() {
+      var qty = document.getElementById('scanQty');
+      if (qty) { qty.focus(); qty.select(); }
+    }
+
+    function selectFromSearch(query) {
+      var msg = document.getElementById('productMessage');
+      return fetch('@Url.Action("SearchProduct", "Orders")' + '?term=' + encodeURIComponent(query))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.length) {
+            if (msg) msg.textContent = 'Ürün bulunamadı: ' + query;
+            return;
+          }
+          if (msg) msg.textContent = '';
+          data.forEach(function(item) {
+            var key = String(item.id);
+            productCache.set(key, item);
+            if (!tsProduct.options[key]) {
+              tsProduct.addOption({
+                id: key,
+                text: item.name + (item.stockCode ? ' (' + item.stockCode + ')' : ''),
+                barcode: item.barcode || ''
+              });
+            }
+          });
+
+          // Tam barkod/stok kodu eşleşmesi veya tek sonuç → Enter ile seç
+          var match = data.find(function(item) { return item.barcode === query; })
+            || data.find(function(item) { return item.stockCode === query; })
+            || (data.length === 1 ? data[0] : null);
+
+          if (!match) {
+            tsProduct.setTextboxValue(query);
+            tsProduct.refreshOptions(false);
+            tsProduct.open();
+            return;
+          }
+
+          tsProduct.setValue(String(match.id));
+        })
+        .catch(function() {
+          if (msg) msg.textContent = 'Arama başarısız.';
+        });
+    }
+
     // ── TomSelect AJAX ürün arama ───────────────────────────────────────
     var tsProduct = new TomSelect('#productSelect', {
       valueField: 'id',
       labelField: 'text',
-      searchField: 'text',
+      searchField: ['text', 'barcode'],
       create: false,
-      placeholder: 'Ürün adı veya kodu ile arayın…',
+      loadThrottle: 0,
+      selectOnTab: false,
+      placeholder: 'Ürün adı, kodu veya barkod ile arayın…',
       load: function(query, callback) {
         if (!query.length) return callback();
-        fetch('@Url.Action("SearchProduct")' + '?term=' + encodeURIComponent(query))
+        fetch('@Url.Action("SearchProduct", "Orders")' + '?term=' + encodeURIComponent(query))
           .then(function(r) { return r.json(); })
           .then(function(data) {
             var results = data.map(function(item) {
               productCache.set(String(item.id), item);
-              return { id: String(item.id), text: item.name + (item.stockCode ? ' (' + item.stockCode + ')' : '') };
+              return {
+                id: String(item.id),
+                text: item.name + (item.stockCode ? ' (' + item.stockCode + ')' : ''),
+                barcode: item.barcode || ''
+              };
             });
             callback(results);
           })
           .catch(function() { callback(); });
       },
+      onChange: function(value) {
+        var priceInput = document.getElementById('lineUnitPrice');
+        if (!priceInput) return;
+        if (value) {
+          var product = productCache.get(String(value));
+          if (product && product.price != null) {
+            priceInput.value = parseFloat(product.price).toFixed(2);
+          }
+        } else {
+          priceInput.value = '';
+        }
+      },
+      onItemAdd: function() {
+        setTimeout(focusQtyInput, 50);
+      },
       render: {
         no_results: function() { return '<div class="no-results">Ürün bulunamadı.</div>'; }
       }
     });
+
+    // Enter: ürünü seç ve adete geç (yazarken otomatik seçim yok)
+    setTimeout(function() {
+      if (!tsProduct.control_input) return;
+      tsProduct.control_input.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter') return;
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        if (tsProduct.getValue()) {
+          focusQtyInput();
+          return;
+        }
+
+        // Dropdown açık ve satır seçiliyse onu al
+        if (tsProduct.isOpen && tsProduct.activeOption) {
+          var activeVal = tsProduct.activeOption.dataset.value;
+          if (activeVal) {
+            tsProduct.setValue(activeVal);
+            return;
+          }
+        }
+
+        var capturedText = this.value.trim();
+        if (capturedText) selectFromSearch(capturedText);
+      }, true);
+    }, 100);
 
     // ── Barkod tarayıcı — ortak iOS-uyumlu modül (/js/barcode-scanner.js) ──
     orderScanner = VRLScanner.create({
@@ -358,27 +483,9 @@
       onDetected: async function (decodedText, scanner) {
         var msg = document.getElementById('productMessage');
         msg.textContent = '';
-
-        var r = await fetch('@Url.Action("LookupBarcode")' + '?barcode=' + encodeURIComponent(decodedText));
-        if (!r.ok) {
-          msg.textContent = 'Barkod bulunamadı: ' + decodedText;
-          setTimeout(function () { scanner.start(); }, 2500);
-          return;
-        }
-        var product = await r.json();
-        var key = String(product.id);
-        productCache.set(key, product);
-
-        tsProduct.clearOptions();
-        tsProduct.addOption({ id: key, text: product.name + (product.stockCode ? ' (' + product.stockCode + ')' : '') });
-        tsProduct.setValue(key, true);
-
-        scannedProduct = true; // Ekle'ye basınca kamera yeniden açılacak
-
-        var qtyInput = document.getElementById('scanQty');
-        qtyInput.value = 1;
-        qtyInput.select();
-        qtyInput.focus();
+        tsProduct.setTextboxValue(decodedText);
+        await selectFromSearch(decodedText);
+        scannedProduct = true;
       }
     });
   </script>

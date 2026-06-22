@@ -33,6 +33,30 @@ public static class SeedData
                 ADD [PurchasePrice] decimal(18,2) NOT NULL DEFAULT 0;
             END");
 
+        // Invoices tablosuna iskonto kolonları
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF NOT EXISTS (
+                SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = 'dbo'
+                  AND TABLE_NAME  = 'Invoices'
+                  AND COLUMN_NAME = 'DiscountRate'
+            )
+            BEGIN
+                ALTER TABLE [dbo].[Invoices]
+                ADD [DiscountRate] decimal(18,2) NOT NULL DEFAULT 0;
+            END
+
+            IF NOT EXISTS (
+                SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = 'dbo'
+                  AND TABLE_NAME  = 'Invoices'
+                  AND COLUMN_NAME = 'DiscountAmount'
+            )
+            BEGIN
+                ALTER TABLE [dbo].[Invoices]
+                ADD [DiscountAmount] decimal(18,2) NOT NULL DEFAULT 0;
+            END");
+
         foreach (var roleName in seedOptions.DefaultRoles)
         {
             if (await roleManager.RoleExistsAsync(roleName))

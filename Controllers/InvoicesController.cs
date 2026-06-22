@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -23,6 +24,7 @@ public class InvoicesController : Controller
     private readonly ISupplierService _supplierService;
     private readonly InvoiceDocumentService _documentService;
     private readonly PurchaseInvoiceImportService _purchaseImportService;
+    private readonly IAntiforgery _antiforgery;
 
     public InvoicesController(
         IInvoiceService invoiceService,
@@ -31,7 +33,8 @@ public class InvoicesController : Controller
         ICategoryService categoryService,
         ISupplierService supplierService,
         InvoiceDocumentService documentService,
-        PurchaseInvoiceImportService purchaseImportService)
+        PurchaseInvoiceImportService purchaseImportService,
+        IAntiforgery antiforgery)
     {
         _invoiceService = invoiceService;
         _customerService = customerService;
@@ -40,6 +43,7 @@ public class InvoicesController : Controller
         _supplierService = supplierService;
         _documentService = documentService;
         _purchaseImportService = purchaseImportService;
+        _antiforgery = antiforgery;
     }
 
     public IActionResult Index() => RedirectToAction(nameof(Sales));
@@ -154,6 +158,14 @@ public class InvoicesController : Controller
         return View(model);
     }
 
+    [HttpGet]
+    [Authorize(Roles = AppRoles.Admin)]
+    public IActionResult GetFreshToken()
+    {
+        var tokens = _antiforgery.GetAndStoreTokens(HttpContext);
+        return Json(new { token = tokens.RequestToken });
+    }
+
     [Authorize(Roles = AppRoles.Admin)]
     public async Task<IActionResult> DownloadPurchaseImportTemplate(CancellationToken cancellationToken)
     {
@@ -185,7 +197,8 @@ public class InvoicesController : Controller
             return BadRequest(new { errors = result.Errors, warnings = result.Warnings });
         }
 
-        return Json(new { lines = result.Lines, warnings = result.Warnings });
+        var tokens = _antiforgery.GetAndStoreTokens(HttpContext);
+        return Json(new { lines = result.Lines, warnings = result.Warnings, token = tokens.RequestToken });
     }
 
     [HttpPost]
@@ -211,6 +224,80 @@ public class InvoicesController : Controller
         model.InvoiceType = InvoiceType.Purchase;
         await PopulatePurchaseSelectListsAsync(model, cancellationToken);
         return await SaveInvoiceAsync(model, nameof(Purchase), cancellationToken);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = AppRoles.Admin)]
+    public async Task<IActionResult> UpdateSales(int id, InvoiceFormViewModel model, CancellationToken cancellationToken)
+    {
+        if (model.Lines.Count == 0)
+        {
+            TempData["ErrorMessage"] = "Faturada en az bir kalem olmalıdır.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        try
+        {
+            var lines = model.Lines.Select(l => new InvoiceLineUpdateInput
+            {
+                StockItemId = l.StockItemId,
+                Quantity = l.Quantity,
+                UnitPrice = l.UnitPrice,
+                VatRate = l.VatRate
+            }).ToList();
+
+            var updated = await _invoiceService.UpdateSalesInvoiceAsync(id, model.DiscountRate, lines, cancellationToken);
+            if (!updated)
+            {
+                return NotFound();
+            }
+
+            TempData["SuccessMessage"] = "Satış faturası güncellendi.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+            return RedirectToAction(nameof(Details), new { id });
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = AppRoles.Admin)]
+    public async Task<IActionResult> UpdatePurchase(int id, InvoiceFormViewModel model, CancellationToken cancellationToken)
+    {
+        if (model.Lines.Count == 0)
+        {
+            TempData["ErrorMessage"] = "Faturada en az bir kalem olmalıdır.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        try
+        {
+            var lines = model.Lines.Select(l => new InvoiceLineUpdateInput
+            {
+                StockItemId = l.StockItemId,
+                Quantity = l.Quantity,
+                UnitPrice = l.UnitPrice,
+                VatRate = l.VatRate
+            }).ToList();
+
+            var updated = await _invoiceService.UpdatePurchaseInvoiceAsync(id, model.DiscountRate, lines, cancellationToken);
+            if (!updated)
+            {
+                return NotFound();
+            }
+
+            TempData["SuccessMessage"] = "Alış faturası güncellendi.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+            return RedirectToAction(nameof(Details), new { id });
+        }
     }
 
     [HttpPost]
@@ -272,6 +359,7 @@ public class InvoicesController : Controller
                 model.InvoiceDate,
                 model.Notes,
                 lines,
+                model.DiscountRate,
                 cancellationToken);
 
             TempData["SuccessMessage"] = "Fatura başarıyla oluşturuldu.";

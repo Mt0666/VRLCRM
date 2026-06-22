@@ -118,6 +118,14 @@
                 <span>Toplam KDV</span>
                 <span id="vatTotal">0,00 ₺</span>
               </div>
+              <div class="order-totals-row align-items-center gap-2">
+                <span>Fatura İskontosu (%)</span>
+                <input type="number" id="invoiceDiscountRate" name="DiscountRate" class="form-control form-control-sm text-end" value="0" min="0" max="100" step="0.01" style="width:110px" />
+              </div>
+              <div class="order-totals-row d-none" id="discountAmountRow">
+                <span>İskonto Tutarı</span>
+                <span id="discountAmount">0,00 ₺</span>
+              </div>
               <div class="order-totals-grand">
                 <span>Genel Toplam</span>
                 <span id="grandTotal">0,00 ₺</span>
@@ -161,7 +169,11 @@
     let salesScanner = null;
 
     function persistDraft() {
-      FormDraftStorage.save(DRAFT_KEY, { lines: Array.from(lines.entries()), lineIndex: lineIndex });
+      FormDraftStorage.save(DRAFT_KEY, {
+        lines: Array.from(lines.entries()),
+        lineIndex: lineIndex,
+        discount: document.getElementById('invoiceDiscountRate').value
+      });
     }
 
     function restoreDraft() {
@@ -170,12 +182,16 @@
       lines.clear();
       draft.lines.forEach(function(entry) { lines.set(entry[0], entry[1]); });
       lineIndex = draft.lineIndex || lines.size;
+      if (draft.discount !== undefined) {
+        document.getElementById('invoiceDiscountRate').value = draft.discount;
+      }
       renderLines();
       rebuildHiddenInputs();
       updateTotals();
     }
 
     FormDraftStorage.bindFormFields(DRAFT_KEY, '#invoiceForm', ['CustomerId', 'InvoiceDate', 'Notes']);
+    document.getElementById('invoiceDiscountRate').addEventListener('input', updateTotals);
 
     // ── Toplamlar ───────────────────────────────────────────────────────
     function updateTotals() {
@@ -185,11 +201,21 @@
         vat += lineSub * (item.vatRate / 100);
         sub += lineSub;
       });
-      const grand = sub + vat;
+      const rate = parseFloat(document.getElementById('invoiceDiscountRate').value) || 0;
+      const gross = sub + vat;
+      const discountAmt = gross * (Math.min(Math.max(rate, 0), 100) / 100);
+      const grand = gross - discountAmt;
       const fmt = function(v) { return v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'; };
       document.getElementById('subTotal').textContent = fmt(sub);
       document.getElementById('vatTotal').textContent = fmt(vat);
       document.getElementById('grandTotal').textContent = fmt(grand);
+      var discountRow = document.getElementById('discountAmountRow');
+      if (rate > 0) {
+        discountRow.classList.remove('d-none');
+        document.getElementById('discountAmount').textContent = fmt(discountAmt);
+      } else {
+        discountRow.classList.add('d-none');
+      }
       persistDraft();
     }
 
@@ -282,12 +308,29 @@
       if (scannedProduct) {
         scannedProduct = false;
         setTimeout(function () { if (salesScanner) salesScanner.start(); }, 400);
+      } else {
+        setTimeout(function() { tsStock.focus(); }, 80);
       }
     }
 
     document.getElementById('addLineBtn').addEventListener('click', addLine);
+    // Adet'te Enter → Fiyat alanına geç
     document.getElementById('lineQty').addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      var priceInput = document.getElementById('linePrice');
+      if (priceInput) { priceInput.focus(); priceInput.select(); }
+    });
+    // Fiyat'ta Enter → ürün ekle
+    document.getElementById('linePrice').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') { e.preventDefault(); addLine(); }
+    });
+    // Enter tuşu form göndermesini engelle (fiziksel barkod okuyucular Enter gönderiyor)
+    document.getElementById('invoiceForm').addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      if (e.target.tagName === 'TEXTAREA') return;
+      if (e.target.type === 'submit' || e.target.tagName === 'BUTTON') return;
+      e.preventDefault();
     });
 
     // ── TomSelect ürün seçimi ───────────────────────────────────────────
@@ -307,8 +350,48 @@
         if (value && stockPrices[value] !== undefined) {
           document.getElementById('linePrice').value = stockPrices[value];
         }
+      },
+      onItemAdd: function() {
+        setTimeout(function() {
+          var qty = document.getElementById('lineQty');
+          if (qty) { qty.focus(); qty.select(); }
+        }, 50);
       }
     });
+
+    // Barkod okuyucu Enter'ı — her durumda çalışır
+    setTimeout(function() {
+      if (!tsStock.control_input) return;
+      tsStock.control_input.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+
+        var capturedText = this.value.trim();
+
+        setTimeout(function() {
+          if (tsStock.getValue()) {
+            var qty = document.getElementById('lineQty');
+            if (qty) { qty.focus(); qty.select(); }
+            return;
+          }
+          if (!capturedText) return;
+          var msg = document.getElementById('productMessage');
+          if (msg) msg.textContent = 'Barkod aranıyor…';
+          fetch('@Url.Action("LookupBarcode", "Orders")' + '?barcode=' + encodeURIComponent(capturedText))
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(product) {
+              if (!product) { if (msg) msg.textContent = 'Barkod bulunamadı: ' + capturedText; return; }
+              if (msg) msg.textContent = '';
+              var key = String(product.id);
+              tsStock.setValue(key, true);
+              if (product.price != null) document.getElementById('linePrice').value = parseFloat(product.price).toFixed(2);
+              var qty = document.getElementById('lineQty');
+              if (qty) { qty.focus(); qty.select(); }
+            })
+            .catch(function() { if (msg) msg.textContent = 'Barkod araması başarısız.'; });
+        }, 150);
+      });
+    }, 100);
 
     // ── Barkod tarayıcı — ortak iOS-uyumlu modül (/js/barcode-scanner.js) ──
     salesScanner = VRLScanner.create({

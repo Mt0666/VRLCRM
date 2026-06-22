@@ -1,6 +1,5 @@
-using System.Globalization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Localization;
 using Serilog;
 using VRLCRM.Handlers;
 using VRLCRM.Infrastructure;
@@ -43,18 +42,25 @@ builder.Services.AddScoped<CustomerPaymentDocumentService>();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
-builder.Services.AddControllersWithViews();
 
-var trCulture = new CultureInfo("tr-TR")
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new System.IO.DirectoryInfo("/app/dataprotection-keys"))
+    .SetApplicationName("VRLCRM");
+
+builder.Services.AddAntiforgery(options =>
 {
-    NumberFormat = { NumberDecimalSeparator = ".", NumberGroupSeparator = "," }
-};
-builder.Services.Configure<RequestLocalizationOptions>(opts =>
-{
-    opts.DefaultRequestCulture = new RequestCulture(trCulture);
-    opts.SupportedCultures = [trCulture];
-    opts.SupportedUICultures = [trCulture];
+    options.Cookie.Name = ".VRLCRM.Antiforgery";
+    options.HeaderName = "X-CSRF-TOKEN";
 });
+
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.ValueCountLimit = int.MaxValue;
+    options.ValueLengthLimit = int.MaxValue;
+    options.MultipartBodyLengthLimit = long.MaxValue;
+});
+
+builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
@@ -71,7 +77,6 @@ app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
-app.UseRequestLocalization();
 app.UseRouting();
 
 app.UseSession();

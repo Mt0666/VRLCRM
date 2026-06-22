@@ -49,15 +49,21 @@
               </td>
               <td>@movement.Quantity</td>
               <td>
-                @(movement.ReferenceType switch
+                @if (movement.ReferenceType == StockMovementReferenceType.Invoice)
                 {
-                  StockMovementReferenceType.Invoice => "Fatura",
-                  StockMovementReferenceType.Order   => "Sipariş",
-                  StockMovementReferenceType.Manual  => "Manuel",
-                  _                                  => movement.ReferenceType.ToString()
-                }) #@movement.ReferenceId
+                  <a asp-controller="Invoices" asp-action="Details" asp-route-id="@movement.ReferenceId">Fatura #@movement.ReferenceId</a>
+                }
+                else
+                {
+                  <span>@(movement.ReferenceType switch
+                  {
+                    StockMovementReferenceType.Order   => "Sipariş",
+                    StockMovementReferenceType.Manual  => "Manuel",
+                    _                                  => movement.ReferenceType.ToString()
+                  }) #@movement.ReferenceId</span>
+                }
               </td>
-              <td>@(movement.Notes ?? "-")</td>
+              <td class="small">@(string.IsNullOrWhiteSpace(movement.Notes) ? "-" : movement.Notes)</td>
             </tr>
           }
         }

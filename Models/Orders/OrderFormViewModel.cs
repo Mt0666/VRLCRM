@@ -15,6 +15,9 @@ public class OrderLineFormItem
     [Range(0, double.MaxValue)]
     public decimal UnitPrice { get; set; }
 
+    [Range(0, 100)]
+    public decimal? VatRate { get; set; }
+
     [StringLength(500)]
     public string? Notes { get; set; }
 }

@@ -157,6 +157,14 @@
                 <span>Toplam KDV</span>
                 <span id="vatTotal">0,00 ₺</span>
               </div>
+              <div class="order-totals-row align-items-center gap-2">
+                <span>Fatura İskontosu (%)</span>
+                <input type="number" id="invoiceDiscountRate" name="DiscountRate" class="form-control form-control-sm text-end" value="0" min="0" max="100" step="0.01" style="width:110px" />
+              </div>
+              <div class="order-totals-row d-none" id="discountAmountRow">
+                <span>İskonto Tutarı</span>
+                <span id="discountAmount">0,00 ₺</span>
+              </div>
               <div class="order-totals-grand">
                 <span>Genel Toplam</span>
                 <span id="grandTotal">0,00 ₺</span>
@@ -315,7 +323,8 @@
     function persistDraft() {
       FormDraftStorage.save(DRAFT_KEY, {
         lines: Array.from(lines.entries()),
-        lineIndex: lineIndex
+        lineIndex: lineIndex,
+        discount: document.getElementById('invoiceDiscountRate').value
       });
     }
 
@@ -325,12 +334,16 @@
       lines.clear();
       draft.lines.forEach(function(entry) { lines.set(entry[0], entry[1]); });
       lineIndex = draft.lineIndex || lines.size;
+      if (draft.discount !== undefined) {
+        document.getElementById('invoiceDiscountRate').value = draft.discount;
+      }
       renderLines();
       rebuildHiddenInputs();
       updateTotals();
     }
 
     FormDraftStorage.bindFormFields(DRAFT_KEY, '#purchaseForm', ['SupplierId', 'InvoiceDate', 'Notes']);
+    document.getElementById('invoiceDiscountRate').addEventListener('input', updateTotals);
 
     // ── Toplamlar ───────────────────────────────────────────────────────
     function updateTotals() {
@@ -340,11 +353,21 @@
         vat += lineSub * (item.vatRate / 100);
         sub += lineSub;
       });
-      var grand = sub + vat;
+      var gross = sub + vat;
+      var rate = parseFloat(document.getElementById('invoiceDiscountRate').value) || 0;
+      var discountAmt = gross * (Math.min(Math.max(rate, 0), 100) / 100);
+      var grand = gross - discountAmt;
       var fmt = function(v) { return v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'; };
       document.getElementById('subTotal').textContent = fmt(sub);
       document.getElementById('vatTotal').textContent = fmt(vat);
       document.getElementById('grandTotal').textContent = fmt(grand);
+      var discountRow = document.getElementById('discountAmountRow');
+      if (rate > 0) {
+        discountRow.classList.remove('d-none');
+        document.getElementById('discountAmount').textContent = fmt(discountAmt);
+      } else {
+        discountRow.classList.add('d-none');
+      }
       persistDraft();
     }
 
@@ -380,7 +403,7 @@
         var salePriceVal = item.salePrice != null ? item.salePrice : Math.round(item.price * 1.30 * 100) / 100;
         row.innerHTML =
           '<td data-label="Ürün">' + item.name + badge + metaHtml + '</td>' +
-          '<td data-label="Adet" class="text-center">' + item.qty + '</td>' +
+          '<td data-label="Adet" class="text-center" style="padding:4px 8px"><input type="number" class="form-control form-control-sm text-center line-qty-input" value="' + item.qty + '" min="1" step="1" style="width:80px;margin:0 auto" data-line-key="' + lineKey + '" /></td>' +
           '<td data-label="Alış Fiyatı" class="text-end">' + fmt(item.price) + '</td>' +
           '<td data-label="Satış Fiyatı" class="text-end" style="padding:4px 8px">' +
             '<input type="number" class="form-control form-control-sm text-end sale-price-input" ' +
@@ -397,6 +420,23 @@
         row.querySelector('.remove-line').addEventListener('click', function() {
           lines.delete(lineKey);
           renderLines();
+          rebuildHiddenInputs();
+          updateTotals();
+        });
+        row.querySelector('.line-qty-input').addEventListener('change', function() {
+          var key = this.dataset.lineKey;
+          var it = lines.get(key);
+          var qty = parseInt(this.value, 10);
+          if (!it || isNaN(qty) || qty <= 0) { this.value = it ? it.qty : 1; return; }
+          it.qty = qty;
+          lines.set(key, it);
+          var lineSub = it.qty * it.price;
+          var lineVat = lineSub * (it.vatRate / 100);
+          var row = this.closest('tr');
+          var fmt = function(v) { return v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'; };
+          row.querySelector('td:nth-child(6)').textContent = fmt(lineSub);
+          row.querySelector('td:nth-child(7)').textContent = fmt(lineVat);
+          row.querySelector('td:nth-child(8)').textContent = fmt(lineSub + lineVat);
           rebuildHiddenInputs();
           updateTotals();
         });
@@ -492,12 +532,29 @@
       if (scannedProduct) {
         scannedProduct = false;
         setTimeout(function () { if (purchaseScanner) purchaseScanner.start(); }, 400);
+      } else {
+        setTimeout(function() { tsStock.focus(); }, 80);
       }
     }
 
     document.getElementById('addLineBtn').addEventListener('click', addLine);
+    // Adet'te Enter → Fiyat alanına geç
     document.getElementById('lineQty').addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      var priceInput = document.getElementById('linePrice');
+      if (priceInput) { priceInput.focus(); priceInput.select(); }
+    });
+    // Fiyat'ta Enter → ürün ekle
+    document.getElementById('linePrice').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') { e.preventDefault(); addLine(); }
+    });
+    // Enter tuşu form göndermesini engelle (fiziksel barkod okuyucular Enter gönderiyor)
+    document.getElementById('purchaseForm').addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      if (e.target.tagName === 'TEXTAREA') return;
+      if (e.target.type === 'submit' || e.target.tagName === 'BUTTON') return;
+      e.preventDefault();
     });
 
     function showNewProductMessage(text) {
@@ -722,6 +779,10 @@
           return;
         }
 
+        if (payload.token) {
+          var tokenInput = document.querySelector('#purchaseForm input[name="__RequestVerificationToken"]');
+          if (tokenInput) tokenInput.value = payload.token;
+        }
         importLinesFromExcel(payload.lines || []);
         var warnings = (payload.warnings || []).join(' ');
         showExcelImportMessage(
@@ -760,8 +821,44 @@
         if (value && purchasePrices[value] !== undefined) {
           document.getElementById('linePrice').value = purchasePrices[value];
         }
+      },
+      onItemAdd: function() {
+        setTimeout(function() {
+          var qty = document.getElementById('lineQty');
+          if (qty) { qty.focus(); qty.select(); }
+        }, 50);
       }
     });
+
+    // Barkod okuyucu Enter'ı — her durumda çalışır
+    setTimeout(function() {
+      if (!tsStock.control_input) return;
+      tsStock.control_input.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+
+        var capturedText = this.value.trim();
+
+        setTimeout(function() {
+          if (tsStock.getValue()) {
+            var qty = document.getElementById('lineQty');
+            if (qty) { qty.focus(); qty.select(); }
+            return;
+          }
+          if (!capturedText) return;
+          fetch('@Url.Action("LookupBarcode", "Orders")' + '?barcode=' + encodeURIComponent(capturedText))
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(product) {
+              if (!product) return;
+              var key = String(product.id);
+              tsStock.setValue(key, true);
+              if (product.purchasePrice != null) document.getElementById('linePrice').value = parseFloat(product.purchasePrice).toFixed(2);
+              var qty = document.getElementById('lineQty');
+              if (qty) { qty.focus(); qty.select(); }
+            });
+        }, 150);
+      });
+    }, 100);
 
     // ── Barkod tarayıcı — ortak iOS-uyumlu modül (/js/barcode-scanner.js) ──
     purchaseScanner = VRLScanner.create({
@@ -834,6 +931,20 @@
       }
       supplierError.classList.add('d-none');
       FormDraftStorage.clear(DRAFT_KEY);
+
+      // Formu göndermeden önce taze antiforgery token al
+      e.preventDefault();
+      var form = this;
+      fetch('@Url.Action("GetFreshToken", "Invoices")', { method: 'GET', credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.token) {
+            var t = form.querySelector('input[name="__RequestVerificationToken"]');
+            if (t) t.value = data.token;
+          }
+          form.submit();
+        })
+        .catch(function() { form.submit(); });
     });
 
     restoreDraft();

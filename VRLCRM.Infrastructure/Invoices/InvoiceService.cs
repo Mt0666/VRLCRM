@@ -62,6 +62,7 @@ public class InvoiceService : IInvoiceService
         DateTime invoiceDate,
         string? notes,
         IReadOnlyList<InvoiceLineInput> lines,
+        decimal discountRate = 0m,
         CancellationToken cancellationToken = default)
     {
         if (lines.Count == 0)
@@ -136,7 +137,10 @@ public class InvoiceService : IInvoiceService
             invoiceLineSalePrices.Add(line.SalePrice);
         }
 
-        var totalAmount = subTotal + vatTotal;
+        var grossTotal = subTotal + vatTotal;
+        var clampedRate = Math.Min(Math.Max(discountRate, 0m), 100m);
+        var discountAmount = Math.Round(grossTotal * clampedRate / 100m, 2);
+        var totalAmount = grossTotal - discountAmount;
 
         if (invoiceType == InvoiceType.Sales && customer is not null && !customer.HasSufficientCredit(totalAmount))
         {
@@ -152,6 +156,8 @@ public class InvoiceService : IInvoiceService
             Notes = notes?.Trim(),
             SubTotal = subTotal,
             VatTotal = vatTotal,
+            DiscountRate = clampedRate,
+            DiscountAmount = discountAmount,
             TotalAmount = totalAmount,
             Lines = invoiceLines,
             InvoiceNumber = await GenerateInvoiceNumberAsync(invoiceType, cancellationToken)
@@ -264,6 +270,8 @@ public class InvoiceService : IInvoiceService
             Notes = $"Sipariş: {order.OrderNumber}" + (string.IsNullOrWhiteSpace(order.Notes) ? "" : $" | {order.Notes}"),
             SubTotal = order.SubTotal,
             VatTotal = order.VatTotal,
+            DiscountRate = order.DiscountRate,
+            DiscountAmount = Math.Round(order.GrossTotal * order.DiscountRate / 100m, 2),
             TotalAmount = order.TotalAmount,
             Lines = invoiceLines,
             InvoiceNumber = await GenerateInvoiceNumberAsync(InvoiceType.Sales, cancellationToken)
@@ -296,6 +304,187 @@ public class InvoiceService : IInvoiceService
         await transaction.CommitAsync(cancellationToken);
 
         return invoice;
+    }
+
+    public async Task<bool> UpdateSalesInvoiceAsync(
+        int id,
+        decimal discountRate,
+        IReadOnlyList<InvoiceLineUpdateInput> lines,
+        CancellationToken cancellationToken = default)
+    {
+        if (lines.Count == 0)
+        {
+            throw new InvalidOperationException("Faturada en az bir kalem olmalıdır.");
+        }
+
+        var invoice = await _context.Invoices
+            .Include(i => i.Lines)
+            .ThenInclude(l => l.StockItem)
+            .FirstOrDefaultAsync(i => i.Id == id && i.IsActive, cancellationToken);
+
+        if (invoice is null)
+        {
+            return false;
+        }
+
+        if (invoice.InvoiceType != InvoiceType.Sales)
+        {
+            throw new InvalidOperationException("Yalnızca satış faturaları düzenlenebilir.");
+        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        var customer = await _context.Customers
+            .FirstOrDefaultAsync(c => c.Id == invoice.CustomerId && c.IsActive, cancellationToken)
+            ?? throw new InvalidOperationException("Müşteri bulunamadı.");
+
+        var oldTotal = invoice.TotalAmount;
+        var now = DateTime.UtcNow;
+        var oldQtyByStock = AggregateQuantities(invoice.Lines.Select(l => (l.StockItemId, l.Quantity)));
+
+        var allStockIds = oldQtyByStock.Keys
+            .Union(lines.Select(l => l.StockItemId))
+            .Distinct()
+            .ToList();
+
+        var stocks = await _context.StockItems
+            .Where(s => allStockIds.Contains(s.Id) && s.IsActive)
+            .ToDictionaryAsync(s => s.Id, cancellationToken);
+
+        if (stocks.Count != allStockIds.Count)
+        {
+            throw new InvalidOperationException("Geçersiz veya pasif ürün seçildi.");
+        }
+
+        var newLines = BuildInvoiceLinesFromUpdateInput(lines, stocks, out var subTotal, out var vatTotal);
+        var newQtyByStock = AggregateQuantities(lines.Select(l => (l.StockItemId, l.Quantity)));
+
+        var grossTotal = subTotal + vatTotal;
+        var clampedRate = Math.Min(Math.Max(discountRate, 0m), 100m);
+        var discountAmount = Math.Round(grossTotal * clampedRate / 100m, 2);
+        var newTotal = grossTotal - discountAmount;
+
+        var balanceDelta = newTotal - oldTotal;
+        if (balanceDelta > 0 && !customer.HasSufficientCredit(balanceDelta))
+        {
+            throw new InvalidOperationException(
+                $"Kredi limiti aşıldı! Mevcut bakiye: {customer.Balance:N2} ₺, Artış: {balanceDelta:N2} ₺, Limit: {customer.EffectiveCreditLimit:N2} ₺");
+        }
+
+        customer.Balance -= oldTotal;
+
+        ApplyNetInvoiceEditStockMovements(
+            InvoiceType.Sales,
+            invoice.Id,
+            invoice.InvoiceNumber,
+            now,
+            oldQtyByStock,
+            newQtyByStock,
+            stocks);
+
+        _context.InvoiceLines.RemoveRange(invoice.Lines);
+
+        invoice.SubTotal = subTotal;
+        invoice.VatTotal = vatTotal;
+        invoice.DiscountRate = clampedRate;
+        invoice.DiscountAmount = discountAmount;
+        invoice.TotalAmount = newTotal;
+        invoice.Lines = newLines;
+
+        customer.Balance += newTotal;
+
+        await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> UpdatePurchaseInvoiceAsync(
+        int id,
+        decimal discountRate,
+        IReadOnlyList<InvoiceLineUpdateInput> lines,
+        CancellationToken cancellationToken = default)
+    {
+        if (lines.Count == 0)
+        {
+            throw new InvalidOperationException("Faturada en az bir kalem olmalıdır.");
+        }
+
+        var invoice = await _context.Invoices
+            .Include(i => i.Lines)
+            .ThenInclude(l => l.StockItem)
+            .FirstOrDefaultAsync(i => i.Id == id && i.IsActive, cancellationToken);
+
+        if (invoice is null)
+        {
+            return false;
+        }
+
+        if (invoice.InvoiceType != InvoiceType.Purchase)
+        {
+            throw new InvalidOperationException("Yalnızca alış faturaları düzenlenebilir.");
+        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        var supplier = await _context.Suppliers
+            .FirstOrDefaultAsync(s => s.Id == invoice.SupplierId && s.IsActive, cancellationToken)
+            ?? throw new InvalidOperationException("Tedarikçi bulunamadı.");
+
+        var oldTotal = invoice.TotalAmount;
+        var now = DateTime.UtcNow;
+        var oldQtyByStock = AggregateQuantities(invoice.Lines.Select(l => (l.StockItemId, l.Quantity)));
+
+        var allStockIds = oldQtyByStock.Keys
+            .Union(lines.Select(l => l.StockItemId))
+            .Distinct()
+            .ToList();
+
+        var stocks = await _context.StockItems
+            .Where(s => allStockIds.Contains(s.Id) && s.IsActive)
+            .ToDictionaryAsync(s => s.Id, cancellationToken);
+
+        if (stocks.Count != allStockIds.Count)
+        {
+            throw new InvalidOperationException("Geçersiz veya pasif ürün seçildi.");
+        }
+
+        var newLines = BuildInvoiceLinesFromUpdateInput(lines, stocks, out var subTotal, out var vatTotal);
+        var newQtyByStock = AggregateQuantities(lines.Select(l => (l.StockItemId, l.Quantity)));
+        var newUnitPricesByStock = lines
+            .GroupBy(l => l.StockItemId)
+            .ToDictionary(g => g.Key, g => g.Last().UnitPrice);
+
+        var grossTotal = subTotal + vatTotal;
+        var clampedRate = Math.Min(Math.Max(discountRate, 0m), 100m);
+        var discountAmount = Math.Round(grossTotal * clampedRate / 100m, 2);
+        var newTotal = grossTotal - discountAmount;
+
+        supplier.Balance -= oldTotal;
+
+        ApplyNetInvoiceEditStockMovements(
+            InvoiceType.Purchase,
+            invoice.Id,
+            invoice.InvoiceNumber,
+            now,
+            oldQtyByStock,
+            newQtyByStock,
+            stocks,
+            newUnitPricesByStock);
+
+        _context.InvoiceLines.RemoveRange(invoice.Lines);
+
+        invoice.SubTotal = subTotal;
+        invoice.VatTotal = vatTotal;
+        invoice.DiscountRate = clampedRate;
+        invoice.DiscountAmount = discountAmount;
+        invoice.TotalAmount = newTotal;
+        invoice.Lines = newLines;
+
+        supplier.Balance += newTotal;
+
+        await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return true;
     }
 
     public async Task<bool> DeactivateAsync(int id, CancellationToken cancellationToken = default)
@@ -458,6 +647,129 @@ public class InvoiceService : IInvoiceService
         }
 
         throw new InvalidOperationException("Geçerli bir kategori seçin veya yeni kategori adı girin.");
+    }
+
+    private static Dictionary<int, int> AggregateQuantities(IEnumerable<(int StockItemId, int Quantity)> items)
+    {
+        var result = new Dictionary<int, int>();
+        foreach (var (stockItemId, quantity) in items)
+        {
+            result[stockItemId] = result.GetValueOrDefault(stockItemId) + quantity;
+        }
+
+        return result;
+    }
+
+    private static List<InvoiceLine> BuildInvoiceLinesFromUpdateInput(
+        IReadOnlyList<InvoiceLineUpdateInput> lines,
+        IReadOnlyDictionary<int, StockItem> stocks,
+        out decimal subTotal,
+        out decimal vatTotal)
+    {
+        subTotal = 0;
+        vatTotal = 0;
+        var invoiceLines = new List<InvoiceLine>();
+
+        foreach (var line in lines)
+        {
+            if (line.Quantity <= 0)
+            {
+                throw new InvalidOperationException("Miktar 0'dan büyük olmalıdır.");
+            }
+
+            if (line.VatRate < 0 || line.VatRate > 100)
+            {
+                throw new InvalidOperationException("KDV oranı 0-100 arasında olmalıdır.");
+            }
+
+            if (!stocks.TryGetValue(line.StockItemId, out var stock))
+            {
+                throw new InvalidOperationException("Geçersiz veya pasif ürün seçildi.");
+            }
+
+            var lineSubTotal = line.Quantity * line.UnitPrice;
+            var lineVatAmount = lineSubTotal * (line.VatRate / 100m);
+            var lineTotal = lineSubTotal + lineVatAmount;
+
+            subTotal += lineSubTotal;
+            vatTotal += lineVatAmount;
+
+            invoiceLines.Add(new InvoiceLine
+            {
+                StockItemId = stock.Id,
+                Quantity = line.Quantity,
+                UnitPrice = line.UnitPrice,
+                VatRate = line.VatRate,
+                VatAmount = lineVatAmount,
+                LineTotal = lineTotal
+            });
+        }
+
+        return invoiceLines;
+    }
+
+    private void ApplyNetInvoiceEditStockMovements(
+        InvoiceType invoiceType,
+        int invoiceId,
+        string invoiceNumber,
+        DateTime movementDate,
+        Dictionary<int, int> oldQtyByStock,
+        Dictionary<int, int> newQtyByStock,
+        Dictionary<int, StockItem> stocks,
+        Dictionary<int, decimal>? newUnitPricesByStock = null)
+    {
+        foreach (var stockId in oldQtyByStock.Keys.Union(newQtyByStock.Keys))
+        {
+            var oldQty = oldQtyByStock.GetValueOrDefault(stockId);
+            var newQty = newQtyByStock.GetValueOrDefault(stockId);
+            var stockDelta = invoiceType == InvoiceType.Sales ? oldQty - newQty : newQty - oldQty;
+
+            if (!stocks.TryGetValue(stockId, out var stock))
+            {
+                continue;
+            }
+
+            if (invoiceType == InvoiceType.Purchase &&
+                newUnitPricesByStock?.TryGetValue(stockId, out var unitPrice) == true)
+            {
+                stock.PurchasePrice = unitPrice;
+                stock.Price = Math.Round(unitPrice * 1.30m, 2);
+            }
+
+            if (stockDelta == 0)
+            {
+                continue;
+            }
+
+            if (stockDelta < 0 && stock.StockQuantity < Math.Abs(stockDelta))
+            {
+                throw new InvalidOperationException(
+                    $"{stock.Name} için stok yetersiz. Fatura düzenlenemez; stoktan çıkış yapılmış olabilir.");
+            }
+
+            stock.StockQuantity += stockDelta;
+
+            var qty = Math.Abs(stockDelta);
+            var isIn = stockDelta > 0;
+            var noteAction = invoiceType switch
+            {
+                InvoiceType.Sales when isIn => "iade",
+                InvoiceType.Sales => "çıkış",
+                InvoiceType.Purchase when isIn => "giriş",
+                _ => "geri alındı"
+            };
+
+            _context.StockMovements.Add(new StockMovement
+            {
+                StockItemId = stockId,
+                MovementType = isIn ? StockMovementType.In : StockMovementType.Out,
+                Quantity = qty,
+                ReferenceType = StockMovementReferenceType.Invoice,
+                ReferenceId = invoiceId,
+                MovementDate = movementDate,
+                Notes = $"Fatura düzenleme - stok {(isIn ? "girişi" : "çıkışı")}: {invoiceNumber} ({qty} adet {noteAction})"
+            });
+        }
     }
 
     private async Task<string> GenerateInvoiceNumberAsync(InvoiceType type, CancellationToken cancellationToken)

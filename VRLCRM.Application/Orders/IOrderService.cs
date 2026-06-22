@@ -10,6 +10,8 @@ public class OrderLineInput
 
     public decimal UnitPrice { get; set; }
 
+    public decimal? VatRate { get; set; }
+
     public string? Notes { get; set; }
 }
 

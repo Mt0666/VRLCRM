@@ -4,6 +4,7 @@
   ViewData["Title"] = "Fatura Detayı";
   var typeText = Model.InvoiceType == InvoiceType.Sales ? "Satış Faturası" : "Alış Faturası";
   var isAdmin = User.IsInRole(AppRoles.Admin);
+  var canEdit = Model.IsActive && isAdmin;
 }
 
 <div class="row g-6">
@@ -86,6 +87,62 @@
           <p class="mb-4 text-body-secondary"><i class="ri-sticky-note-line me-1"></i>@Model.Notes</p>
         }
 
+        @if (canEdit)
+        {
+          <form asp-action="@(Model.InvoiceType == InvoiceType.Sales ? "UpdateSales" : "UpdatePurchase")" asp-route-id="@Model.Id" method="post" id="invoiceEditForm">
+            @Html.AntiForgeryToken()
+            <div class="d-none d-md-block table-responsive mb-0">
+              <table class="table table-bordered table-sm align-middle js-lines-table" id="linesTable">
+                <thead class="table-light">
+                  <tr>
+                    <th>Ürün</th>
+                    <th class="text-center" style="width:80px">Adet</th>
+                    <th class="text-end" style="width:130px">Birim Fiyat</th>
+                    <th class="text-center" style="width:80px">KDV %</th>
+                    <th class="text-end" style="width:120px">KDV Tutarı</th>
+                    <th class="text-end" style="width:130px">Toplam</th>
+                    <th style="width:50px"></th>
+                  </tr>
+                </thead>
+                <tbody id="linesBody"></tbody>
+              </table>
+            </div>
+            <div class="d-md-none" id="invoiceLinesMobile"></div>
+            <div class="d-flex justify-content-end mt-2">
+              <div class="order-totals-card">
+                <div class="order-totals-row">
+                  <span>Ara Toplam</span>
+                  <span id="subTotal">@Model.SubTotal.ToString("N2") ₺</span>
+                </div>
+                <div class="order-totals-row">
+                  <span>Toplam KDV</span>
+                  <span id="vatTotal">@Model.VatTotal.ToString("N2") ₺</span>
+                </div>
+                <div class="order-totals-row align-items-center gap-2">
+                  <span>Fatura İskontosu (%)</span>
+                  <input type="number" id="invoiceDiscountRate" name="DiscountRate" class="form-control form-control-sm text-end"
+                         value="@Model.DiscountRate.ToString(System.Globalization.CultureInfo.InvariantCulture)" min="0" max="100" step="0.01" style="width:110px" />
+                </div>
+                <div class="order-totals-row" id="discountAmountRow" style="@(Model.DiscountRate > 0 ? "" : "display:none;")">
+                  <span>İskonto Tutarı</span>
+                  <span id="discountAmount">@Model.DiscountAmount.ToString("N2") ₺</span>
+                </div>
+                <div class="order-totals-grand">
+                  <span>Genel Toplam</span>
+                  <span id="grandTotal">@Model.TotalAmount.ToString("N2") ₺</span>
+                </div>
+              </div>
+            </div>
+            <div id="lineInputs"></div>
+            <div class="mt-3">
+              <button type="submit" class="btn btn-primary btn-sm">
+                <i class="ri-save-line me-1"></i>Değişiklikleri Kaydet
+              </button>
+            </div>
+          </form>
+        }
+        else
+        {
         <div class="table-responsive mb-0">
           <table class="table table-bordered table-sm align-middle js-lines-table">
             <thead class="table-light">
@@ -124,18 +181,236 @@
               <span>Toplam KDV</span>
               <span>@Model.VatTotal.ToString("N2") ₺</span>
             </div>
+            @if (Model.DiscountRate > 0)
+            {
+              <div class="order-totals-row">
+                <span>İskonto (%@Model.DiscountRate.ToString("G29"))</span>
+                <span class="text-danger">-@Model.DiscountAmount.ToString("N2") ₺</span>
+              </div>
+            }
             <div class="order-totals-grand">
               <span>Genel Toplam</span>
               <span>@Model.TotalAmount.ToString("N2") ₺</span>
             </div>
           </div>
         </div>
+        }
       </div>
     </div>
   </div>
 </div>
 
+@section PageStyles {
+@if (canEdit)
+{
+<style>
+  .order-line-mobile-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--bs-secondary-color);
+  }
+  .order-line-mobile-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+  }
+  .order-line-mobile-row-total {
+    border-bottom: none;
+    padding-top: 0.25rem;
+  }
+</style>
+}
+}
+
 @section PageScripts {
+@if (canEdit)
+{
+<script>
+(function () {
+  const initialLines = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Lines.Select(l => new {
+    stockId = l.StockItemId.ToString(),
+    name = l.StockItem.Name,
+    qty = l.Quantity,
+    price = l.UnitPrice,
+    vatRate = l.VatRate
+  })));
+
+  let lineIndex = 0;
+  const lines = new Map();
+  initialLines.forEach(function(item) {
+    lines.set(item.stockId, {
+      name: item.name,
+      qty: item.qty,
+      price: item.price,
+      vatRate: item.vatRate
+    });
+  });
+
+  function updateTotals() {
+    let sub = 0, vat = 0;
+    lines.forEach(function(item) {
+      const lineSub = item.qty * item.price;
+      vat += lineSub * (item.vatRate / 100);
+      sub += lineSub;
+    });
+    const rate = parseFloat(document.getElementById('invoiceDiscountRate').value) || 0;
+    const gross = sub + vat;
+    const discountAmt = gross * (Math.min(Math.max(rate, 0), 100) / 100);
+    const grand = gross - discountAmt;
+    const fmt = function(v) { return v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'; };
+    document.getElementById('subTotal').textContent = fmt(sub);
+    document.getElementById('vatTotal').textContent = fmt(vat);
+    document.getElementById('grandTotal').textContent = fmt(grand);
+    var discountRow = document.getElementById('discountAmountRow');
+    if (rate > 0) {
+      discountRow.style.display = '';
+      document.getElementById('discountAmount').textContent = fmt(discountAmt);
+    } else {
+      discountRow.style.display = 'none';
+    }
+  }
+
+  function rebuildHiddenInputs() {
+    const container = document.getElementById('lineInputs');
+    container.innerHTML = '';
+    lineIndex = 0;
+    lines.forEach(function(item, stockId) {
+      container.insertAdjacentHTML('beforeend',
+        '<input type="hidden" name="Lines[' + lineIndex + '].StockItemId" value="' + stockId + '" />' +
+        '<input type="hidden" name="Lines[' + lineIndex + '].StockName" value="' + item.name.replace(/"/g, '&quot;') + '" />' +
+        '<input type="hidden" name="Lines[' + lineIndex + '].Quantity" value="' + item.qty + '" />' +
+        '<input type="hidden" name="Lines[' + lineIndex + '].UnitPrice" value="' + item.price + '" />' +
+        '<input type="hidden" name="Lines[' + lineIndex + '].VatRate" value="' + item.vatRate + '" />');
+      lineIndex++;
+    });
+  }
+
+  function syncLineViews(stockId) {
+    const item = lines.get(stockId);
+    if (!item) return;
+    const fmt = function(v) { return v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'; };
+    const vatText = fmt(item.qty * item.price * (item.vatRate / 100));
+    const totalText = fmt(item.qty * item.price * (1 + item.vatRate / 100));
+    document.querySelectorAll('[data-stock-id="' + stockId + '"] .line-vat').forEach(function(el) {
+      el.textContent = vatText;
+    });
+    document.querySelectorAll('[data-stock-id="' + stockId + '"] .line-total').forEach(function(el) {
+      el.textContent = totalText;
+    });
+    document.querySelectorAll('[data-stock-id="' + stockId + '"] .line-qty').forEach(function(el) {
+      if (document.activeElement !== el) el.value = item.qty;
+    });
+    document.querySelectorAll('[data-stock-id="' + stockId + '"] .line-price').forEach(function(el) {
+      if (document.activeElement !== el) el.value = item.price.toFixed(2);
+    });
+    document.querySelectorAll('[data-stock-id="' + stockId + '"] .line-vat-rate').forEach(function(el) {
+      if (document.activeElement !== el) el.value = item.vatRate;
+    });
+    rebuildHiddenInputs();
+    updateTotals();
+  }
+
+  function bindLineEvents(root, stockId) {
+    const item = lines.get(stockId);
+    root.querySelectorAll('.line-qty').forEach(function(input) {
+      input.addEventListener('change', function() {
+        const qty = parseInt(this.value, 10);
+        if (!qty || qty <= 0) { this.value = item.qty; return; }
+        item.qty = qty;
+        syncLineViews(stockId);
+      });
+    });
+    root.querySelectorAll('.line-price').forEach(function(input) {
+      input.addEventListener('change', function() {
+        const price = parseFloat(this.value);
+        if (isNaN(price) || price < 0) { this.value = item.price.toFixed(2); return; }
+        item.price = price;
+        syncLineViews(stockId);
+      });
+    });
+    root.querySelectorAll('.line-vat-rate').forEach(function(input) {
+      input.addEventListener('change', function() {
+        const vatRate = parseFloat(this.value);
+        if (isNaN(vatRate) || vatRate < 0 || vatRate > 100) { this.value = item.vatRate; return; }
+        item.vatRate = vatRate;
+        syncLineViews(stockId);
+      });
+    });
+    root.querySelectorAll('.remove-line').forEach(function(button) {
+      button.addEventListener('click', function() {
+        lines.delete(stockId);
+        renderLines();
+        rebuildHiddenInputs();
+        updateTotals();
+      });
+    });
+  }
+
+  function renderLines() {
+    const tbody = document.getElementById('linesBody');
+    const mobile = document.getElementById('invoiceLinesMobile');
+    tbody.innerHTML = '';
+    mobile.innerHTML = '';
+    const fmt = function(v) { return v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'; };
+
+    lines.forEach(function(item, stockId) {
+      const row = document.createElement('tr');
+      row.dataset.stockId = stockId;
+      row.innerHTML =
+        '<td>' + item.name + '</td>' +
+        '<td class="text-center"><input type="number" class="form-control form-control-sm line-qty text-center" value="' + item.qty + '" min="1" style="width:70px;margin:0 auto;" /></td>' +
+        '<td class="text-end" style="padding:4px 8px"><input type="number" class="form-control form-control-sm text-end line-price" value="' + item.price.toFixed(2) + '" step="0.01" min="0" style="width:110px;margin-left:auto" /></td>' +
+        '<td class="text-center" style="padding:4px 8px"><input type="number" class="form-control form-control-sm text-center line-vat-rate" value="' + item.vatRate + '" step="0.01" min="0" max="100" style="width:70px;margin:0 auto;" /></td>' +
+        '<td class="text-end line-vat">' + fmt(item.qty * item.price * (item.vatRate / 100)) + '</td>' +
+        '<td class="text-end fw-semibold line-total">' + fmt(item.qty * item.price * (1 + item.vatRate / 100)) + '</td>' +
+        '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-line py-0 px-1"><i class="ri-delete-bin-6-line"></i></button></td>';
+      bindLineEvents(row, stockId);
+      tbody.appendChild(row);
+
+      const card = document.createElement('div');
+      card.className = 'card order-line-mobile-card mb-3';
+      card.dataset.stockId = stockId;
+      card.innerHTML =
+        '<div class="card-body p-3">' +
+          '<div class="d-flex justify-content-between align-items-start gap-2 mb-3">' +
+            '<div class="flex-grow-1">' +
+              '<div class="order-line-mobile-label">Ürün</div>' +
+              '<div class="fw-semibold">' + item.name + '</div>' +
+            '</div>' +
+            '<button type="button" class="btn btn-sm btn-outline-danger remove-line flex-shrink-0"><i class="ri-delete-bin-6-line"></i></button>' +
+          '</div>' +
+          '<div class="mb-3">' +
+            '<label class="order-line-mobile-label d-block mb-1">Adet</label>' +
+            '<input type="number" class="form-control form-control-sm line-qty" value="' + item.qty + '" min="1" style="max-width:120px;" />' +
+          '</div>' +
+          '<div class="mb-3">' +
+            '<label class="order-line-mobile-label d-block mb-1">Birim Fiyat</label>' +
+            '<input type="number" class="form-control form-control-sm line-price" value="' + item.price.toFixed(2) + '" step="0.01" min="0" style="max-width:140px;" />' +
+          '</div>' +
+          '<div class="mb-3">' +
+            '<label class="order-line-mobile-label d-block mb-1">KDV %</label>' +
+            '<input type="number" class="form-control form-control-sm line-vat-rate" value="' + item.vatRate + '" step="0.01" min="0" max="100" style="max-width:120px;" />' +
+          '</div>' +
+          '<div class="order-line-mobile-row"><span class="order-line-mobile-label">KDV Tutarı</span><span class="line-vat">' + fmt(item.qty * item.price * (item.vatRate / 100)) + '</span></div>' +
+          '<div class="order-line-mobile-row order-line-mobile-row-total"><span class="order-line-mobile-label">Toplam</span><span class="line-total fw-bold">' + fmt(item.qty * item.price * (1 + item.vatRate / 100)) + '</span></div>' +
+        '</div>';
+      bindLineEvents(card, stockId);
+      mobile.appendChild(card);
+    });
+  }
+
+  document.getElementById('invoiceDiscountRate').addEventListener('input', updateTotals);
+  renderLines();
+  rebuildHiddenInputs();
+  updateTotals();
+})();
+</script>
+}
 <script>
 (function () {
   const d = window.driver && window.driver.js && window.driver.js.driver;

@@ -34,6 +34,17 @@ public class InvoiceLineInput
     public NewPurchaseProductInput? NewProduct { get; set; }
 }
 
+public class InvoiceLineUpdateInput
+{
+    public int StockItemId { get; set; }
+
+    public int Quantity { get; set; }
+
+    public decimal UnitPrice { get; set; }
+
+    public decimal VatRate { get; set; }
+}
+
 public interface IInvoiceService
 {
     Task<IReadOnlyList<Invoice>> GetAllAsync(CancellationToken cancellationToken = default);
@@ -49,9 +60,22 @@ public interface IInvoiceService
         DateTime invoiceDate,
         string? notes,
         IReadOnlyList<InvoiceLineInput> lines,
+        decimal discountRate = 0m,
         CancellationToken cancellationToken = default);
 
     Task<Invoice> CreateSalesInvoiceFromOrderAsync(int orderId, CancellationToken cancellationToken = default);
+
+    Task<bool> UpdateSalesInvoiceAsync(
+        int id,
+        decimal discountRate,
+        IReadOnlyList<InvoiceLineUpdateInput> lines,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> UpdatePurchaseInvoiceAsync(
+        int id,
+        decimal discountRate,
+        IReadOnlyList<InvoiceLineUpdateInput> lines,
+        CancellationToken cancellationToken = default);
 
     Task<bool> DeactivateAsync(int id, CancellationToken cancellationToken = default);
 }

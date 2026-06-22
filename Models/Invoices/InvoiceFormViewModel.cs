@@ -82,6 +82,9 @@ public class InvoiceFormViewModel
     [StringLength(2000)]
     public string? Notes { get; set; }
 
+    [Range(0, 100)]
+    public decimal DiscountRate { get; set; }
+
     public List<InvoiceLineFormItem> Lines { get; set; } = [];
 
     public IEnumerable<SelectListItem> Customers { get; set; } = [];

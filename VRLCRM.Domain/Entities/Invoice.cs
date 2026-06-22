@@ -23,6 +23,10 @@ public class Invoice : BaseEntity
 
     public decimal VatTotal { get; set; }
 
+    public decimal DiscountRate { get; set; }
+
+    public decimal DiscountAmount { get; set; }
+
     public decimal TotalAmount { get; set; }
 
     public string? Notes { get; set; }

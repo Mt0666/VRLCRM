@@ -137,6 +137,7 @@ public class OrdersController : Controller
                 id = s.Id,
                 name = s.Name,
                 stockCode = s.StockCode,
+                barcode = s.Barcode,
                 purchasePrice = s.PurchasePrice,
                 price = s.Price,
                 vatRate = s.VatRate,
@@ -162,7 +163,8 @@ public class OrdersController : Controller
             price = item.Price,
             vatRate = item.VatRate,
             stockQuantity = item.StockQuantity,
-            stockCode = item.StockCode
+            stockCode = item.StockCode,
+            barcode = item.Barcode
         });
     }
 
@@ -235,6 +237,7 @@ public class OrdersController : Controller
             StockItemId = l.StockItemId,
             Quantity = l.Quantity,
             UnitPrice = l.UnitPrice,
+            VatRate = l.VatRate,
             Notes = l.Notes
         }).ToList();
 
