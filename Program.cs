@@ -1,4 +1,6 @@
+using System.Globalization;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Localization;
 using Serilog;
 using VRLCRM.Handlers;
 using VRLCRM.Infrastructure;
@@ -43,6 +45,17 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddControllersWithViews();
 
+var trCulture = new CultureInfo("tr-TR")
+{
+    NumberFormat = { NumberDecimalSeparator = ".", NumberGroupSeparator = "," }
+};
+builder.Services.Configure<RequestLocalizationOptions>(opts =>
+{
+    opts.DefaultRequestCulture = new RequestCulture(trCulture);
+    opts.SupportedCultures = [trCulture];
+    opts.SupportedUICultures = [trCulture];
+});
+
 var app = builder.Build();
 
 app.UseSerilogRequestLogging();
@@ -58,6 +71,7 @@ app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
+app.UseRequestLocalization();
 app.UseRouting();
 
 app.UseSession();

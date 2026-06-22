@@ -156,9 +156,9 @@ public class PurchaseInvoiceImportService
             var productName = GetCellText(sheet, row, 2);
             var barcode = GetCellText(sheet, row, 3);
             var categoryName = GetCellText(sheet, row, 4);
-            var qtyText = GetCellText(sheet, row, 5);
-            var priceText = GetCellText(sheet, row, 6);
-            var vatText = GetCellText(sheet, row, 7);
+            var qtyText      = GetCellText(sheet, row, 5);
+            var priceText    = GetCellText(sheet, row, 6);
+            var vatText      = GetCellText(sheet, row, 7);
             var criticalText = GetCellText(sheet, row, 8);
 
             if (string.IsNullOrWhiteSpace(stockCode) && string.IsNullOrWhiteSpace(productName))
@@ -183,7 +183,7 @@ public class PurchaseInvoiceImportService
                 continue;
             }
 
-            if (!TryParseDecimal(priceText, out var price) || price < 0)
+            if (!TryGetCellDecimal(sheet, row, 6, out var price) || price < 0)
             {
                 result.Errors.Add($"Satır {row}: Geçerli bir alış fiyatı girin.");
                 continue;
@@ -353,23 +353,69 @@ public class PurchaseInvoiceImportService
         return cell.GetFormattedString().Trim();
     }
 
+    /// <summary>
+    /// Sayısal hücre ise doğrudan numeric değer döner (locale sorununu önler).
+    /// Metin hücresi ise string parse edilir.
+    /// </summary>
+    private static bool TryGetCellDecimal(IXLWorksheet sheet, int row, int col, out decimal value)
+    {
+        value = 0;
+        var cell = sheet.Cell(row, col);
+        if (cell.IsEmpty()) return false;
+
+        if (cell.DataType == XLDataType.Number)
+        {
+            value = (decimal)cell.GetDouble();
+            return true;
+        }
+
+        var text = cell.GetFormattedString().Replace("₺", "").Trim();
+        return TryParseDecimal(text, out value);
+    }
+
     private static bool TryParseInt(string text, out int value)
     {
-        text = text.Replace(".", "").Replace(",", ".");
+        text = text.Replace(".", "").Replace(",", "").Trim();
         return int.TryParse(text, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out value)
             || int.TryParse(text, out value);
     }
 
+    /// <summary>
+    /// Ondalık ayracı "." veya "," olarak destekler.
+    /// Son gelen ayraç ondalık ayracı olarak kabul edilir:
+    ///   "10.75"    → 10,75  (nokta = ondalık)
+    ///   "10,75"    → 10,75  (virgül = ondalık)
+    ///   "1.000,75" → 1000,75 (Türkçe format)
+    ///   "1,000.75" → 1000,75 (İngilizce format)
+    /// </summary>
     private static bool TryParseDecimal(string text, out decimal value)
     {
-        text = text.Replace("₺", "").Trim();
-        if (decimal.TryParse(text, System.Globalization.NumberStyles.Number, new System.Globalization.CultureInfo("tr-TR"), out value))
+        value = 0;
+        text = text.Replace("₺", "").Replace(" ", "").Trim();
+        if (string.IsNullOrEmpty(text)) return false;
+
+        var dotIdx   = text.LastIndexOf('.');
+        var commaIdx = text.LastIndexOf(',');
+
+        string normalized;
+        if (dotIdx > commaIdx)
         {
-            return true;
+            // Nokta ondalık ayraç: "10.75" veya "1,000.75"
+            normalized = text.Replace(",", "");
+        }
+        else if (commaIdx > dotIdx)
+        {
+            // Virgül ondalık ayraç: "10,75" veya "1.000,75"
+            normalized = text.Replace(".", "").Replace(",", ".");
+        }
+        else
+        {
+            // Ayraç yok
+            normalized = text;
         }
 
-        text = text.Replace(".", "").Replace(",", ".");
-        return decimal.TryParse(text, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out value);
+        return decimal.TryParse(normalized, System.Globalization.NumberStyles.Number,
+            System.Globalization.CultureInfo.InvariantCulture, out value);
     }
 
     private static bool TryParseVatRate(IXLWorksheet sheet, int row, int col, string text, out decimal vatRate)
