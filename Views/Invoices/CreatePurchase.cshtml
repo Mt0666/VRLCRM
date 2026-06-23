@@ -306,6 +306,40 @@
       return categoryId ? (categoryNameById[String(categoryId)] || '') : '';
     }
 
+    function findProductConflict(stockCode, barcode, name, excludeLineKey) {
+      var code = (stockCode || '').trim().toLowerCase();
+      var bc = (barcode || '').trim().toLowerCase();
+      var nm = (name || '').trim().toLowerCase();
+
+      for (var i = 0; i < stockOptions.length; i++) {
+        var s = stockOptions[i];
+        if (code && s.stockCode && s.stockCode.toLowerCase() === code) {
+          return 'Bu stok kodu zaten kayıtlı: ' + s.stockCode + ' (' + s.name + ')';
+        }
+        if (bc && s.barcode && s.barcode.toLowerCase() === bc) {
+          return 'Bu barkod zaten kayıtlı: ' + s.barcode + ' (' + s.name + ')';
+        }
+        if (nm && s.name && s.name.toLowerCase() === nm) {
+          return 'Bu ürün adı zaten kayıtlı: ' + s.name;
+        }
+      }
+
+      var conflict = null;
+      lines.forEach(function(item, key) {
+        if (excludeLineKey && key === excludeLineKey) return;
+        if (code && item.code && item.code.toLowerCase() === code) {
+          conflict = 'Bu stok kodu fatura listesinde zaten var.';
+        }
+        if (bc && item.barcode && item.barcode.toLowerCase() === bc) {
+          conflict = 'Bu barkod fatura listesinde zaten var.';
+        }
+        if (nm && item.name && item.name.toLowerCase() === nm) {
+          conflict = 'Bu ürün adı fatura listesinde zaten var.';
+        }
+      });
+      return conflict;
+    }
+
     function addCategoryOption(category) {
       var select = document.getElementById('newCategoryId');
       var value = String(category.id);
@@ -616,6 +650,12 @@
       }
 
       var lineKey = 'new:' + stockCode.toLowerCase();
+      var conflict = findProductConflict(stockCode, barcode, name, lineKey);
+      if (conflict) {
+        showNewProductMessage(conflict);
+        return;
+      }
+
       var existing = lines.get(lineKey);
       lines.set(lineKey, {
         isNew: true,

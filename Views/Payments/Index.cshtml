@@ -1,5 +1,6 @@
 @model IEnumerable<VRLCRM.Domain.Entities.Payment>
 @using VRLCRM.Domain.Enums
+@using VRLCRM.Helpers
 @{
     ViewData["Title"] = "Kasa & Banka Hareketleri";
 
@@ -16,15 +17,21 @@
 <div class="card">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
         <h5 class="mb-0">Tahsilat ve Ödemeler</h5>
-        <div class="d-flex gap-2 align-items-center">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
             <button id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
               <i class="ri-question-line"></i>
             </button>
             <a asp-action="CreateIncoming" class="btn btn-success btn-sm">
-                <i class="ri-arrow-down-circle-line me-1"></i>Yeni Tahsilat Al
+                <i class="ri-arrow-down-circle-line me-1"></i>Müşteriden Tahsilat
+            </a>
+            <a asp-action="CreateCustomerOutgoing" class="btn btn-outline-danger btn-sm">
+                <i class="ri-arrow-up-circle-line me-1"></i>Müşteriye Ödeme
+            </a>
+            <a asp-action="CreateSupplierIncoming" class="btn btn-outline-success btn-sm">
+                <i class="ri-arrow-down-circle-line me-1"></i>Tedarikçiden Tahsilat
             </a>
             <a asp-action="CreateOutgoing" class="btn btn-danger btn-sm">
-                <i class="ri-arrow-up-circle-line me-1"></i>Yeni Ödeme Yap
+                <i class="ri-arrow-up-circle-line me-1"></i>Tedarikçiye Ödeme
             </a>
         </div>
     </div>
@@ -56,16 +63,15 @@
                         </td>
                         <td>@item.PaymentDate.ToString("dd.MM.yyyy")</td>
                         <td>
-                            @if (item.Type == PaymentType.Incoming)
-                            {
-                                <span class="badge bg-label-success"><i class="ri-arrow-down-line me-1"></i>Tahsilat</span>
+                            @{
+                                var typeLabel = PaymentDisplayHelper.GetPaymentTypeLabel(item);
+                                var isInflow = item.Type == PaymentType.Incoming;
                             }
-                            else
-                            {
-                                <span class="badge bg-label-danger"><i class="ri-arrow-up-line me-1"></i>Ödeme</span>
-                            }
+                            <span class="badge @(isInflow ? "bg-label-success" : "bg-label-danger")">
+                                <i class="ri @(isInflow ? "ri-arrow-down-line" : "ri-arrow-up-line") me-1"></i>@typeLabel
+                            </span>
                         </td>
-                        <td>@(item.Type == PaymentType.Incoming ? item.Customer?.FullName : item.Supplier?.CompanyName)</td>
+                        <td>@PaymentDisplayHelper.GetPartyName(item)</td>
                         <td>@MethodLabel(item.Method)</td>
                         <td><strong>@item.Amount.ToString("N2") ₺</strong></td>
                         <td><partial name="_StatusBadge" model="item.IsActive" /></td>

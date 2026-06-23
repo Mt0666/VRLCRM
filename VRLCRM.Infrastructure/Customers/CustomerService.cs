@@ -106,13 +106,11 @@ public class CustomerService : ICustomerService
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Payment>> GetIncomingPaymentsAsync(int customerId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Payment>> GetPaymentsAsync(int customerId, CancellationToken cancellationToken = default)
     {
         return await _context.Payments
             .AsNoTracking()
-            .Where(p => p.CustomerId == customerId &&
-                        p.Type == PaymentType.Incoming &&
-                        p.IsActive)
+            .Where(p => p.CustomerId == customerId && p.IsActive)
             .OrderByDescending(p => p.PaymentDate)
             .ToListAsync(cancellationToken);
     }

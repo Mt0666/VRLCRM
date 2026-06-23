@@ -13,7 +13,7 @@ public interface ICustomerService
 
     Task<IReadOnlyList<Invoice>> GetSalesInvoicesAsync(int customerId, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<Payment>> GetIncomingPaymentsAsync(int customerId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Payment>> GetPaymentsAsync(int customerId, CancellationToken cancellationToken = default);
 
     Task<Customer?> GetByIdWithHistoryAsync(int id, CancellationToken cancellationToken = default);
 

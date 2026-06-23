@@ -5,6 +5,7 @@ using VRLCRM.Application.Customers;
 using VRLCRM.Application.Payments;
 using VRLCRM.Application.Suppliers;
 using VRLCRM.Domain.Constants;
+using VRLCRM.Domain.Entities;
 using VRLCRM.Domain.Enums;
 using VRLCRM.Models.Payments;
 
@@ -67,8 +68,46 @@ public class PaymentsController : Controller
         try
         {
             await _paymentService.CreateIncomingPaymentAsync(
-                model.CustomerId.Value, model.Amount, model.Method, model.PaymentDate, model.Notes, cancellationToken);
+                model.CustomerId!.Value, model.Amount, model.Method, model.PaymentDate, model.Notes, cancellationToken);
             TempData["SuccessMessage"] = "Tahsilat başarıyla kaydedildi.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View(model);
+        }
+    }
+
+    public async Task<IActionResult> CreateCustomerOutgoing(CancellationToken cancellationToken)
+    {
+        var model = new PaymentFormViewModel { Type = PaymentType.Outgoing };
+        await PopulateCustomersAsync(model, cancellationToken);
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateCustomerOutgoing(PaymentFormViewModel model, CancellationToken cancellationToken)
+    {
+        model.Type = PaymentType.Outgoing;
+        await PopulateCustomersAsync(model, cancellationToken);
+
+        if (!model.CustomerId.HasValue)
+        {
+            ModelState.AddModelError(nameof(model.CustomerId), "Müşteri seçilmelidir.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        try
+        {
+            await _paymentService.CreateOutgoingPaymentToCustomerAsync(
+                model.CustomerId!.Value, model.Amount, model.Method, model.PaymentDate, model.Notes, cancellationToken);
+            TempData["SuccessMessage"] = "Müşteriye ödeme başarıyla kaydedildi.";
             return RedirectToAction(nameof(Index));
         }
         catch (InvalidOperationException ex)
@@ -105,8 +144,46 @@ public class PaymentsController : Controller
         try
         {
             await _paymentService.CreateOutgoingPaymentAsync(
-                model.SupplierId.Value, model.Amount, model.Method, model.PaymentDate, model.Notes, cancellationToken);
+                model.SupplierId!.Value, model.Amount, model.Method, model.PaymentDate, model.Notes, cancellationToken);
             TempData["SuccessMessage"] = "Ödeme başarıyla kaydedildi.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View(model);
+        }
+    }
+
+    public async Task<IActionResult> CreateSupplierIncoming(CancellationToken cancellationToken)
+    {
+        var model = new PaymentFormViewModel { Type = PaymentType.Incoming };
+        await PopulateSuppliersAsync(model, cancellationToken);
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateSupplierIncoming(PaymentFormViewModel model, CancellationToken cancellationToken)
+    {
+        model.Type = PaymentType.Incoming;
+        await PopulateSuppliersAsync(model, cancellationToken);
+
+        if (!model.SupplierId.HasValue)
+        {
+            ModelState.AddModelError(nameof(model.SupplierId), "Tedarikçi seçilmelidir.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        try
+        {
+            await _paymentService.CreateIncomingPaymentFromSupplierAsync(
+                model.SupplierId!.Value, model.Amount, model.Method, model.PaymentDate, model.Notes, cancellationToken);
+            TempData["SuccessMessage"] = "Tedarikçiden tahsilat başarıyla kaydedildi.";
             return RedirectToAction(nameof(Index));
         }
         catch (InvalidOperationException ex)
@@ -163,4 +240,5 @@ public class PaymentsController : Controller
                 Selected = s.Id == model.SupplierId
             });
     }
+
 }

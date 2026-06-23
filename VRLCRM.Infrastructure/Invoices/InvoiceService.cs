@@ -576,6 +576,19 @@ public class InvoiceService : IInvoiceService
                 throw new InvalidOperationException($"'{stockCode}' stok kodu zaten kullanılıyor.");
             }
 
+            if (!string.IsNullOrWhiteSpace(input.Barcode) &&
+                await _context.StockItems.AnyAsync(s => s.Barcode == input.Barcode.Trim(), cancellationToken))
+            {
+                throw new InvalidOperationException($"'{input.Barcode.Trim()}' barkodu zaten kullanılıyor.");
+            }
+
+            if (await _context.StockItems.AnyAsync(
+                    s => s.Name.ToLower() == name.ToLower(),
+                    cancellationToken))
+            {
+                throw new InvalidOperationException($"'{name}' adlı ürün zaten kayıtlı.");
+            }
+
             var categoryId = await ResolveCategoryIdForNewProductAsync(input, cancellationToken);
 
             var stock = new StockItem

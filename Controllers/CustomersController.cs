@@ -7,6 +7,7 @@ using VRLCRM.Domain.Constants;
 using VRLCRM.Domain.Entities;
 using VRLCRM.Domain.Enums;
 using VRLCRM.Models.Customers;
+using VRLCRM.Services;
 
 namespace VRLCRM.Controllers;
 
@@ -15,11 +16,16 @@ public class CustomersController : Controller
 {
     private readonly ICustomerService _customerService;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly CustomerPaymentDocumentService _paymentDocumentService;
 
-    public CustomersController(ICustomerService customerService, UserManager<ApplicationUser> userManager)
+    public CustomersController(
+        ICustomerService customerService,
+        UserManager<ApplicationUser> userManager,
+        CustomerPaymentDocumentService paymentDocumentService)
     {
         _customerService = customerService;
         _userManager = userManager;
+        _paymentDocumentService = paymentDocumentService;
     }
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -93,6 +99,32 @@ public class CustomersController : Controller
     {
         var invoices = await _customerService.GetSalesInvoicesAsync(id, cancellationToken);
         return PartialView("_InvoicesPartial", invoices);
+    }
+
+    public async Task<IActionResult> PaymentsPartial(int id, CancellationToken cancellationToken)
+    {
+        var customer = await _customerService.GetByIdAsync(id, cancellationToken);
+        if (customer is null)
+        {
+            return NotFound();
+        }
+
+        var payments = await _customerService.GetPaymentsAsync(id, cancellationToken);
+        ViewData["CustomerId"] = id;
+        return PartialView("_PaymentsPartial", payments);
+    }
+
+    public async Task<IActionResult> ExportPaymentsPdf(int id, CancellationToken cancellationToken)
+    {
+        var customer = await _customerService.GetByIdAsync(id, cancellationToken);
+        if (customer is null)
+        {
+            return NotFound();
+        }
+
+        var payments = await _customerService.GetPaymentsAsync(id, cancellationToken);
+        var bytes = _paymentDocumentService.GeneratePdf(customer, payments);
+        return File(bytes, "application/pdf", $"{customer.FullName}-odemeler.pdf");
     }
 
     public IActionResult Create()

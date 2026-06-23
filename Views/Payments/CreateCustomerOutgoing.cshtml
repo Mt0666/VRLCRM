@@ -1,7 +1,7 @@
 @model VRLCRM.Models.Payments.PaymentFormViewModel
 @using VRLCRM.Domain.Enums
 @{
-  ViewData["Title"] = "Yeni Ödeme Yap";
+  ViewData["Title"] = "Müşteriye Ödeme";
   var methodItems = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>
   {
     new() { Value = ((int)PaymentMethod.Cash).ToString(),         Text = "Nakit" },
@@ -16,23 +16,23 @@
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <div>
-          <h5 class="mb-0 text-danger"><i class="ri-arrow-up-circle-line me-2"></i>Yeni Ödeme Yap</h5>
-          <small class="text-body-secondary">Tedarikçiye ödeme — tedarikçi borcu azalır</small>
+          <h5 class="mb-0 text-danger"><i class="ri-arrow-up-circle-line me-2"></i>Müşteriye Ödeme Yap</h5>
+          <small class="text-body-secondary">Müşteriye iade veya ödeme kaydı — cari borç artar</small>
         </div>
         <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
           <i class="ri-arrow-left-line me-1"></i>Listeye Dön
         </a>
       </div>
       <div class="card-body">
-        <form asp-action="CreateOutgoing" method="post">
+        <form asp-action="CreateCustomerOutgoing" method="post">
           <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
           <div class="mb-3">
-            <label asp-for="SupplierId" class="form-label"></label>
-            <select asp-for="SupplierId" asp-items="Model.Suppliers" class="form-select select2">
-              <option value="">Tedarikçi seçin</option>
+            <label asp-for="CustomerId" class="form-label"></label>
+            <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select select2">
+              <option value="">Müşteri seçin</option>
             </select>
-            <span asp-validation-for="SupplierId" class="text-danger small"></span>
+            <span asp-validation-for="CustomerId" class="text-danger small"></span>
           </div>
 
           <div class="row g-3 mb-3">

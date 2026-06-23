@@ -71,6 +71,44 @@ public class PaymentService : IPaymentService
         return payment;
     }
 
+    public async Task<Payment> CreateOutgoingPaymentToCustomerAsync(
+        int customerId,
+        decimal amount,
+        PaymentMethod method,
+        DateTime paymentDate,
+        string? notes,
+        CancellationToken cancellationToken = default)
+    {
+        if (amount <= 0)
+        {
+            throw new InvalidOperationException("Ödeme tutarı 0'dan büyük olmalıdır.");
+        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Id == customerId && c.IsActive, cancellationToken)
+            ?? throw new InvalidOperationException("Müşteri bulunamadı.");
+
+        var payment = new Payment
+        {
+            PaymentNumber = await GeneratePaymentNumberAsync("MOD", cancellationToken),
+            Type = PaymentType.Outgoing,
+            Method = method,
+            Amount = amount,
+            PaymentDate = paymentDate,
+            CustomerId = customerId,
+            Notes = notes?.Trim()
+        };
+
+        _context.Payments.Add(payment);
+        customer.Balance += amount;
+
+        await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return payment;
+    }
+
     public async Task<Payment> CreateOutgoingPaymentAsync(int supplierId, decimal amount, PaymentMethod method, DateTime paymentDate, string? notes, CancellationToken cancellationToken = default)
     {
         if (amount <= 0)
@@ -108,6 +146,44 @@ public class PaymentService : IPaymentService
         return payment;
     }
 
+    public async Task<Payment> CreateIncomingPaymentFromSupplierAsync(
+        int supplierId,
+        decimal amount,
+        PaymentMethod method,
+        DateTime paymentDate,
+        string? notes,
+        CancellationToken cancellationToken = default)
+    {
+        if (amount <= 0)
+        {
+            throw new InvalidOperationException("Tahsilat tutarı 0'dan büyük olmalıdır.");
+        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.Id == supplierId && s.IsActive, cancellationToken)
+            ?? throw new InvalidOperationException("Tedarikçi bulunamadı.");
+
+        var payment = new Payment
+        {
+            PaymentNumber = await GeneratePaymentNumberAsync("TTG", cancellationToken),
+            Type = PaymentType.Incoming,
+            Method = method,
+            Amount = amount,
+            PaymentDate = paymentDate,
+            SupplierId = supplierId,
+            Notes = notes?.Trim()
+        };
+
+        _context.Payments.Add(payment);
+        supplier.Balance -= amount;
+
+        await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return payment;
+    }
+
     public async Task<bool> DeactivateAsync(int id, CancellationToken cancellationToken = default)
     {
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
@@ -124,19 +200,28 @@ public class PaymentService : IPaymentService
 
         payment.IsActive = false;
 
-        // Fiş iptal edilirse, bakiye eski haline getirilir.
-        if (payment.Type == PaymentType.Incoming && payment.Customer is not null)
+        if (payment.Customer is not null)
         {
-            payment.Customer.Balance += payment.Amount;
+            payment.Customer.Balance += payment.Type == PaymentType.Incoming
+                ? payment.Amount
+                : -payment.Amount;
         }
-        else if (payment.Type == PaymentType.Outgoing && payment.Supplier is not null)
+        else if (payment.Supplier is not null)
         {
-            payment.Supplier.Balance += payment.Amount;
+            payment.Supplier.Balance += payment.Type == PaymentType.Outgoing
+                ? payment.Amount
+                : -payment.Amount;
         }
 
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         
         return true;
+    }
+
+    private async Task<string> GeneratePaymentNumberAsync(string prefix, CancellationToken cancellationToken)
+    {
+        var count = await _context.Payments.CountAsync(cancellationToken) + 1;
+        return $"{prefix}-{DateTime.UtcNow:yyyyMMdd}-{count:D4}";
     }
 }

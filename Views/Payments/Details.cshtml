@@ -1,8 +1,10 @@
 @model VRLCRM.Domain.Entities.Payment
 @using VRLCRM.Domain.Enums
+@using VRLCRM.Helpers
 @{
   ViewData["Title"] = "Fiş Detayı";
-  bool isIncoming = Model.Type == PaymentType.Incoming;
+  var typeLabel = PaymentDisplayHelper.GetPaymentTypeLabel(Model);
+  var isInflow = Model.Type == PaymentType.Incoming;
 
   string MethodLabel(PaymentMethod m) => m switch
   {
@@ -22,14 +24,9 @@
           <div>
             <h5 class="mb-1">@Model.PaymentNumber</h5>
             <small class="text-body-secondary">
-              @if (isIncoming)
-              {
-                <span class="badge bg-label-success me-1"><i class="ri-arrow-down-line me-1"></i>Tahsilat</span>
-              }
-              else
-              {
-                <span class="badge bg-label-danger me-1"><i class="ri-arrow-up-line me-1"></i>Ödeme</span>
-              }
+              <span class="badge @(isInflow ? "bg-label-success" : "bg-label-danger") me-1">
+                <i class="ri @(isInflow ? "ri-arrow-down-line" : "ri-arrow-up-line") me-1"></i>@typeLabel
+              </span>
               @Model.PaymentDate.ToString("dd.MM.yyyy")
             </small>
           </div>
@@ -58,17 +55,8 @@
       <div class="card-body">
         <div class="detail-info-strip">
           <div class="detail-info-item">
-            <div class="detail-info-label">@(isIncoming ? "Müşteri" : "Tedarikçi")</div>
-            <div class="detail-info-value">
-              @if (isIncoming)
-              {
-                @(Model.Customer?.FullName ?? "-")
-              }
-              else
-              {
-                @(Model.Supplier?.CompanyName ?? "-")
-              }
-            </div>
+            <div class="detail-info-label">Cari</div>
+            <div class="detail-info-value">@PaymentDisplayHelper.GetPartyName(Model)</div>
           </div>
           <div class="detail-info-item">
             <div class="detail-info-label">Tutar</div>
