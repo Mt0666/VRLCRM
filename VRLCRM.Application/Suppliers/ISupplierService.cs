@@ -15,6 +15,8 @@ public interface ISupplierService
 
     Task<IReadOnlyList<Invoice>> GetPurchaseInvoicesAsync(int supplierId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Payment>> GetPaymentsAsync(int supplierId, CancellationToken cancellationToken = default);
+
     Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
 
     Task<bool> RestoreAsync(int id, CancellationToken cancellationToken = default);

@@ -39,6 +39,7 @@ builder.Services.AddScoped<InvoiceDocumentService>();
 builder.Services.AddScoped<StockDocumentService>();
 builder.Services.AddScoped<PurchaseInvoiceImportService>();
 builder.Services.AddScoped<CustomerPaymentDocumentService>();
+builder.Services.AddScoped<SupplierPaymentDocumentService>();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();

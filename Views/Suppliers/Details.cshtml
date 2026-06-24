@@ -111,9 +111,10 @@
 
   </div>
 
-  @* Sağ: Alış Faturaları *@
+  @* Sağ: Alış Faturaları + Ödemeler *@
   <div class="col-xl-8 col-lg-7">
-    <div class="card">
+
+    <div class="card mb-6">
       <div class="card-header">
         <h6 class="mb-0"><i class="ri-file-list-3-line me-2 text-warning"></i>Alış Faturaları</h6>
       </div>
@@ -124,6 +125,19 @@
         </div>
       </div>
     </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0"><i class="ri-money-dollar-circle-line me-2 text-success"></i>Ödeme Hareketleri</h6>
+      </div>
+      <div id="payments-container">
+        <div class="d-flex justify-content-center align-items-center py-5">
+          <div class="spinner-border spinner-border-sm text-success me-2"></div>
+          <span class="text-body-secondary small">Yükleniyor…</span>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 </div>
@@ -131,19 +145,26 @@
 @section PageScripts {
   <script>
     (function () {
-      fetch('/Suppliers/InvoicesPartial/@Model.Id')
-        .then(function(r) { return r.ok ? r.text() : Promise.reject(r.status); })
-        .then(function(html) {
-          var container = document.getElementById('invoices-container');
-          container.innerHTML = html;
-          container.querySelectorAll('table.js-data-table').forEach(function(table) {
-            if (window._initTableFilter) window._initTableFilter(table);
+      const supplierId = @Model.Id;
+
+      function loadPartial(url, containerId) {
+        fetch(url)
+          .then(function(r) { return r.ok ? r.text() : Promise.reject(r.status); })
+          .then(function(html) {
+            var container = document.getElementById(containerId);
+            container.innerHTML = html;
+            container.querySelectorAll('table.js-data-table').forEach(function(table) {
+              if (window._initTableFilter) window._initTableFilter(table);
+            });
+          })
+          .catch(function() {
+            document.getElementById(containerId).innerHTML =
+              '<p class="text-danger text-center py-4 small">Yüklenemedi.</p>';
           });
-        })
-        .catch(function() {
-          document.getElementById('invoices-container').innerHTML =
-            '<p class="text-danger text-center py-4 small">Yüklenemedi.</p>';
-        });
+      }
+
+      loadPartial('/Suppliers/InvoicesPartial/' + supplierId, 'invoices-container');
+      loadPartial('/Suppliers/PaymentsPartial/' + supplierId, 'payments-container');
     })();
   </script>
   <script>
@@ -159,7 +180,8 @@
         { element: '.avatar-initial', popover: { title: 'Tedarikçi Profili', description: 'Tedarikçi firma adı, yetkili kişi ve durum bilgisi.', side: 'bottom' } },
         { element: 'a[href*="Edit"]', popover: { title: 'Düzenle', description: 'Tedarikçi bilgilerini güncellemek için tıklayın.', side: 'right' } },
         { element: '.detail-info-strip', popover: { title: 'Cari Bilgiler', description: 'Tedarikçiye olan borcunuz (cari hesap), vergi numarası ve limit bilgileri. Borç alış faturasında artar, ödeme yapınca düşer.', side: 'right' } },
-        { element: '#invoices-container', popover: { title: 'Alış Fatura Geçmişi', description: 'Bu tedarikçiden alınan tüm alış faturaları. Fatura numarasına tıklayarak detaya gidebilirsiniz.', side: 'top' } }
+        { element: '#invoices-container', popover: { title: 'Alış Fatura Geçmişi', description: 'Bu tedarikçiden alınan tüm alış faturaları. Fatura numarasına tıklayarak detaya gidebilirsiniz.', side: 'top' } },
+        { element: '#payments-container', popover: { title: 'Ödeme Geçmişi', description: 'Tedarikçiden alınan tahsilatlar ve tedarikçiye yapılan ödemeler burada listelenir. PDF olarak dışa aktarabilirsiniz.', side: 'top' } }
       ]
     });
     document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using VRLCRM.Application.Suppliers;
 using VRLCRM.Domain.Constants;
 using VRLCRM.Models.Suppliers;
+using VRLCRM.Services;
 
 namespace VRLCRM.Controllers;
 
@@ -10,10 +11,14 @@ namespace VRLCRM.Controllers;
 public class SuppliersController : Controller
 {
     private readonly ISupplierService _supplierService;
+    private readonly SupplierPaymentDocumentService _paymentDocumentService;
 
-    public SuppliersController(ISupplierService supplierService)
+    public SuppliersController(
+        ISupplierService supplierService,
+        SupplierPaymentDocumentService paymentDocumentService)
     {
         _supplierService = supplierService;
+        _paymentDocumentService = paymentDocumentService;
     }
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -37,6 +42,32 @@ public class SuppliersController : Controller
     {
         var invoices = await _supplierService.GetPurchaseInvoicesAsync(id, cancellationToken);
         return PartialView("_SupplierInvoicesPartial", invoices);
+    }
+
+    public async Task<IActionResult> PaymentsPartial(int id, CancellationToken cancellationToken)
+    {
+        var supplier = await _supplierService.GetByIdAsync(id, cancellationToken);
+        if (supplier is null)
+        {
+            return NotFound();
+        }
+
+        var payments = await _supplierService.GetPaymentsAsync(id, cancellationToken);
+        ViewData["SupplierId"] = id;
+        return PartialView("_PaymentsPartial", payments);
+    }
+
+    public async Task<IActionResult> ExportPaymentsPdf(int id, CancellationToken cancellationToken)
+    {
+        var supplier = await _supplierService.GetByIdAsync(id, cancellationToken);
+        if (supplier is null)
+        {
+            return NotFound();
+        }
+
+        var payments = await _supplierService.GetPaymentsAsync(id, cancellationToken);
+        var bytes = _paymentDocumentService.GeneratePdf(supplier, payments);
+        return File(bytes, "application/pdf", $"{supplier.CompanyName}-odemeler.pdf");
     }
 
     public IActionResult Create()

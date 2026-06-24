@@ -1,0 +1,75 @@
+@model IReadOnlyList<VRLCRM.Domain.Entities.Payment>
+@using VRLCRM.Domain.Enums
+@using VRLCRM.Helpers
+
+<div class="card-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3 px-4 pt-4 pb-2">
+  <div class="d-flex align-items-center gap-2">
+    <input type="text" class="form-control form-control-sm js-table-search" placeholder="Ara..." style="width:200px" />
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a asp-action="ExportPaymentsPdf" asp-route-id="@ViewData["SupplierId"]"
+       class="btn btn-sm btn-outline-danger">
+      <i class="ri-file-pdf-line me-1"></i>PDF
+    </a>
+    <label class="text-body-secondary small mb-0">Göster:</label>
+    <select class="form-select form-select-sm js-table-page-size" style="width:75px">
+      <option value="10">10</option>
+      <option value="25" selected>25</option>
+      <option value="50">50</option>
+    </select>
+  </div>
+</div>
+
+<div class="table-responsive text-nowrap">
+  <table class="table table-hover js-data-table mb-0">
+    <thead>
+      <tr>
+        <th>Fiş No</th>
+        <th>Tür</th>
+        <th>Tarih</th>
+        <th>Tutar</th>
+        <th>Yöntem</th>
+        <th>Not</th>
+      </tr>
+    </thead>
+    <tbody class="table-border-bottom-0">
+      @if (!Model.Any())
+      {
+        <tr>
+          <td colspan="6" class="text-center py-5 text-body-secondary">Kayıtlı ödeme bulunamadı.</td>
+        </tr>
+      }
+      else
+      {
+        @foreach (var payment in Model)
+        {
+          <tr>
+            <td>@payment.PaymentNumber</td>
+            <td>
+              @{
+                var typeLabel = PaymentDisplayHelper.GetPaymentTypeLabel(payment);
+                var isInflow = payment.Type == PaymentType.Incoming;
+              }
+              <span class="badge @(isInflow ? "bg-label-success" : "bg-label-danger")">@typeLabel</span>
+            </td>
+            <td>@payment.PaymentDate.ToLocalTime().ToString("dd.MM.yyyy")</td>
+            <td class="fw-semibold">@payment.Amount.ToString("N2") ₺</td>
+            <td>@GetMethodLabel(payment.Method)</td>
+            <td class="small text-body-secondary">@(payment.Notes ?? "-")</td>
+          </tr>
+        }
+      }
+    </tbody>
+  </table>
+</div>
+
+@functions {
+  string GetMethodLabel(PaymentMethod method) => method switch
+  {
+    PaymentMethod.Cash => "Nakit",
+    PaymentMethod.BankTransfer => "Havale/EFT",
+    PaymentMethod.CreditCard => "Kredi Kartı",
+    PaymentMethod.Check => "Çek",
+    _ => method.ToString()
+  };
+}

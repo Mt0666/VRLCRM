@@ -37,6 +37,15 @@ public class SupplierService : ISupplierService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Payment>> GetPaymentsAsync(int supplierId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Payments
+            .AsNoTracking()
+            .Where(p => p.SupplierId == supplierId && p.IsActive)
+            .OrderByDescending(p => p.PaymentDate)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Supplier> CreateAsync(Supplier supplier, CancellationToken cancellationToken = default)
     {
         supplier.IsActive = true;
