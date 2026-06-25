@@ -19,14 +19,35 @@
         <form asp-action="CreateSales" method="post" id="invoiceForm">
           <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-          @* Müşteri + Tarih *@
+          @* Cari + Tarih *@
           <div class="row g-3 mb-3">
-            <div class="col-md-6">
+            <div class="col-md-12">
+              <label class="form-label">Cari Türü</label>
+              <div class="d-flex gap-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="SalesPartyType" id="partyCustomer" value="customer" checked="@(Model.SalesPartyType != "supplier")" />
+                  <label class="form-check-label" for="partyCustomer">Müşteri</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="SalesPartyType" id="partySupplier" value="supplier" checked="@(Model.SalesPartyType == "supplier")" />
+                  <label class="form-check-label" for="partySupplier">Tedarikçi</label>
+                </div>
+              </div>
+              <small class="text-body-secondary">Tedarikçiye satış faturası kestiğinizde tedarikçiye olan borcunuz azalır.</small>
+            </div>
+            <div class="col-md-6" id="customerSelectWrap">
               <label asp-for="CustomerId" class="form-label"></label>
               <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select select2">
                 <option value="">Müşteri seçin</option>
               </select>
               <span asp-validation-for="CustomerId" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6" id="supplierSelectWrap" style="display:none;">
+              <label asp-for="SupplierId" class="form-label">Tedarikçi</label>
+              <select asp-for="SupplierId" asp-items="Model.Suppliers" class="form-select select2">
+                <option value="">Tedarikçi seçin</option>
+              </select>
+              <span asp-validation-for="SupplierId" class="text-danger small"></span>
             </div>
             <div class="col-md-6">
               <label asp-for="InvoiceDate" class="form-label"></label>
@@ -88,6 +109,7 @@
               <thead class="table-light">
                 <tr>
                   <th>Ürün</th>
+                  <th>Açıklama</th>
                   <th class="text-center" style="width:80px">Adet</th>
                   <th class="text-end" style="width:130px">Birim Fiyat</th>
                   <th class="text-center" style="width:80px">KDV %</th>
@@ -99,7 +121,7 @@
               </thead>
               <tbody id="linesBody">
                 <tr id="emptyRow">
-                  <td colspan="8" class="text-center text-body-secondary py-4">
+                  <td colspan="9" class="text-center text-body-secondary py-4">
                     <i class="ri-inbox-line me-1"></i>Henüz ürün eklenmedi.
                   </td>
                 </tr>
@@ -190,7 +212,24 @@
       updateTotals();
     }
 
-    FormDraftStorage.bindFormFields(DRAFT_KEY, '#invoiceForm', ['CustomerId', 'InvoiceDate', 'Notes']);
+    FormDraftStorage.bindFormFields(DRAFT_KEY, '#invoiceForm', ['CustomerId', 'SupplierId', 'InvoiceDate', 'Notes']);
+
+    function toggleSalesParty() {
+      var isSupplier = document.getElementById('partySupplier').checked;
+      document.getElementById('customerSelectWrap').style.display = isSupplier ? 'none' : '';
+      document.getElementById('supplierSelectWrap').style.display = isSupplier ? '' : 'none';
+      if (isSupplier) {
+        var customerSelect = document.getElementById('CustomerId');
+        if (customerSelect) customerSelect.value = '';
+      } else {
+        var supplierSelect = document.getElementById('SupplierId');
+        if (supplierSelect) supplierSelect.value = '';
+      }
+    }
+    document.getElementById('partyCustomer').addEventListener('change', toggleSalesParty);
+    document.getElementById('partySupplier').addEventListener('change', toggleSalesParty);
+    toggleSalesParty();
+
     document.getElementById('invoiceDiscountRate').addEventListener('input', updateTotals);
 
     // ── Toplamlar ───────────────────────────────────────────────────────
@@ -241,6 +280,7 @@
         row.dataset.stockId = stockId;
         row.innerHTML =
           '<td data-label="Ürün">' + item.name + '</td>' +
+          '<td data-label="Açıklama"><input type="text" class="form-control form-control-sm line-notes" value="' + (item.notes || '').replace(/"/g, '&quot;') + '" placeholder="Ürün açıklaması" /></td>' +
           '<td data-label="Adet" class="text-center">' + item.qty + '</td>' +
           '<td data-label="Birim Fiyat" class="text-end">' + fmt(item.price) + '</td>' +
           '<td data-label="KDV %" class="text-center">%' + item.vatRate + '</td>' +
@@ -250,6 +290,11 @@
           '<td data-label="" class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-line py-0 px-1"><i class="ri-delete-bin-6-line"></i></button></td>';
         tbody.appendChild(row);
 
+        row.querySelector('.line-notes').addEventListener('input', function() {
+          item.notes = this.value;
+          rebuildHiddenInputs();
+          persistDraft();
+        });
         row.querySelector('.remove-line').addEventListener('click', function() {
           lines.delete(stockId);
           renderLines();
@@ -271,7 +316,8 @@
           '<input type="hidden" name="Lines[' + lineIndex + '].StockName" value="' + item.name + '" />' +
           '<input type="hidden" name="Lines[' + lineIndex + '].Quantity" value="' + item.qty + '" />' +
           '<input type="hidden" name="Lines[' + lineIndex + '].UnitPrice" value="' + item.price + '" />' +
-          '<input type="hidden" name="Lines[' + lineIndex + '].VatRate" value="' + item.vatRate + '" />');
+          '<input type="hidden" name="Lines[' + lineIndex + '].VatRate" value="' + item.vatRate + '" />' +
+          '<input type="hidden" name="Lines[' + lineIndex + '].Notes" value="' + (item.notes || '').replace(/"/g, '&quot;') + '" />');
         lineIndex++;
       });
       persistDraft();
@@ -295,7 +341,13 @@
       var vatRate = product ? product.vatRate : (stockVatRates[stockId] || 0);
 
       var existing = lines.get(stockId);
-      lines.set(stockId, { name: name, qty: (existing ? existing.qty : 0) + qty, price: price, vatRate: vatRate });
+      lines.set(stockId, {
+        name: name,
+        qty: (existing ? existing.qty : 0) + qty,
+        price: price,
+        vatRate: vatRate,
+        notes: existing ? existing.notes : ''
+      });
 
       renderLines();
       rebuildHiddenInputs();

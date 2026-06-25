@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using VRLCRM.Application.Balances;
 using VRLCRM.Application.Payments;
 using VRLCRM.Domain.Entities;
 using VRLCRM.Domain.Enums;
@@ -9,10 +10,14 @@ namespace VRLCRM.Infrastructure.Payments;
 public class PaymentService : IPaymentService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IBalanceRecalculationService _balanceRecalculation;
 
-    public PaymentService(ApplicationDbContext context)
+    public PaymentService(
+        ApplicationDbContext context,
+        IBalanceRecalculationService balanceRecalculation)
     {
         _context = context;
+        _balanceRecalculation = balanceRecalculation;
     }
 
     public async Task<IReadOnlyList<Payment>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -43,7 +48,7 @@ public class PaymentService : IPaymentService
 
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
-        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Id == customerId && c.IsActive, cancellationToken) 
+        _ = await _context.Customers.FirstOrDefaultAsync(c => c.Id == customerId && c.IsActive, cancellationToken)
             ?? throw new InvalidOperationException("Müşteri bulunamadı.");
 
         var count = await _context.Payments.CountAsync(cancellationToken) + 1;
@@ -61,10 +66,8 @@ public class PaymentService : IPaymentService
         };
 
         _context.Payments.Add(payment);
-
-        // Tahsilat yapıldığında müşterinin borcu (bakiyesi) düşer
-        customer.Balance -= amount;
-
+        await _context.SaveChangesAsync(cancellationToken);
+        await _balanceRecalculation.RecalculateCustomerBalanceAsync(customerId, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -86,7 +89,7 @@ public class PaymentService : IPaymentService
 
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
-        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Id == customerId && c.IsActive, cancellationToken)
+        _ = await _context.Customers.FirstOrDefaultAsync(c => c.Id == customerId && c.IsActive, cancellationToken)
             ?? throw new InvalidOperationException("Müşteri bulunamadı.");
 
         var payment = new Payment
@@ -101,8 +104,8 @@ public class PaymentService : IPaymentService
         };
 
         _context.Payments.Add(payment);
-        customer.Balance += amount;
-
+        await _context.SaveChangesAsync(cancellationToken);
+        await _balanceRecalculation.RecalculateCustomerBalanceAsync(customerId, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -118,7 +121,7 @@ public class PaymentService : IPaymentService
 
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
-        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.Id == supplierId && s.IsActive, cancellationToken) 
+        _ = await _context.Suppliers.FirstOrDefaultAsync(s => s.Id == supplierId && s.IsActive, cancellationToken)
             ?? throw new InvalidOperationException("Tedarikçi bulunamadı.");
 
         var count = await _context.Payments.CountAsync(cancellationToken) + 1;
@@ -136,10 +139,8 @@ public class PaymentService : IPaymentService
         };
 
         _context.Payments.Add(payment);
-
-        // Ödeme yapıldığında tedarikçiye olan borç (bakiyesi) düşer
-        supplier.Balance -= amount;
-
+        await _context.SaveChangesAsync(cancellationToken);
+        await _balanceRecalculation.RecalculateSupplierBalanceAsync(supplierId, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -161,7 +162,7 @@ public class PaymentService : IPaymentService
 
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
-        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.Id == supplierId && s.IsActive, cancellationToken)
+        _ = await _context.Suppliers.FirstOrDefaultAsync(s => s.Id == supplierId && s.IsActive, cancellationToken)
             ?? throw new InvalidOperationException("Tedarikçi bulunamadı.");
 
         var payment = new Payment
@@ -176,8 +177,8 @@ public class PaymentService : IPaymentService
         };
 
         _context.Payments.Add(payment);
-        supplier.Balance -= amount;
-
+        await _context.SaveChangesAsync(cancellationToken);
+        await _balanceRecalculation.RecalculateSupplierBalanceAsync(supplierId, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -187,35 +188,30 @@ public class PaymentService : IPaymentService
     public async Task<bool> DeactivateAsync(int id, CancellationToken cancellationToken = default)
     {
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-        
+
         var payment = await _context.Payments
-            .Include(p => p.Customer)
-            .Include(p => p.Supplier)
             .FirstOrDefaultAsync(p => p.Id == id && p.IsActive, cancellationToken);
-            
+
         if (payment is null)
         {
             return false;
         }
 
         payment.IsActive = false;
+        await _context.SaveChangesAsync(cancellationToken);
 
-        if (payment.Customer is not null)
+        if (payment.CustomerId.HasValue)
         {
-            payment.Customer.Balance += payment.Type == PaymentType.Incoming
-                ? payment.Amount
-                : -payment.Amount;
+            await _balanceRecalculation.RecalculateCustomerBalanceAsync(payment.CustomerId.Value, cancellationToken);
         }
-        else if (payment.Supplier is not null)
+        else if (payment.SupplierId.HasValue)
         {
-            payment.Supplier.Balance += payment.Type == PaymentType.Outgoing
-                ? payment.Amount
-                : -payment.Amount;
+            await _balanceRecalculation.RecalculateSupplierBalanceAsync(payment.SupplierId.Value, cancellationToken);
         }
 
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        
+
         return true;
     }
 

@@ -17,14 +17,10 @@
             <small class="text-body-secondary">@typeText</small>
           </div>
           <div class="d-flex flex-wrap gap-2 align-items-center">
-            <div class="btn-group btn-group-sm">
-              <a asp-action="ExportPdf" asp-route-id="@Model.Id" class="btn btn-outline-danger">
-                <i class="ri-file-pdf-line me-1"></i>PDF
-              </a>
-              <a asp-action="ExportExcel" asp-route-id="@Model.Id" class="btn btn-outline-success">
-                <i class="ri-file-excel-2-line me-1"></i>Excel
-              </a>
-            </div>
+            <partial name="_DocumentExportButtons" view-data='@(new ViewDataDictionary(ViewData) {
+              ["PdfExportUrl"] = Url.Action("ExportPdf", new { id = Model.Id }),
+              ["ExcelExportUrl"] = Url.Action("ExportExcel", new { id = Model.Id })
+            })' />
             <button id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
               <i class="ri-question-line"></i>
             </button>
@@ -148,6 +144,7 @@
             <thead class="table-light">
               <tr>
                 <th>Ürün</th>
+                <th>Açıklama</th>
                 <th class="text-center" style="width:80px">Adet</th>
                 <th class="text-end" style="width:130px">Birim Fiyat</th>
                 <th class="text-center" style="width:80px">KDV %</th>
@@ -160,6 +157,7 @@
               {
                 <tr>
                   <td data-label="Ürün">@line.StockItem.Name</td>
+                  <td data-label="Açıklama" class="small text-body-secondary">@(string.IsNullOrWhiteSpace(line.Notes) ? "-" : line.Notes)</td>
                   <td data-label="Adet" class="text-center">@line.Quantity</td>
                   <td data-label="Birim Fiyat" class="text-end">@line.UnitPrice.ToString("N2") ₺</td>
                   <td data-label="KDV %" class="text-center">%@line.VatRate.ToString("N0")</td>

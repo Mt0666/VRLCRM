@@ -106,61 +106,38 @@
 
   </div>
 
-  @* Sağ: Siparişler + Faturalar *@
+  @* Sağ: Cari hareketler *@
   <div class="col-xl-8 col-lg-7">
-
-    @* Siparişler + Satış Faturaları *@
-    <div class="card mb-6">
+    <div class="card">
       <div class="card-header">
-        <h6 class="mb-0"><i class="ri-shopping-bag-line me-2 text-primary"></i>Siparişler &amp; Satış Faturaları</h6>
+        <h6 class="mb-0"><i class="ri-exchange-line me-2 text-primary"></i>Cari Hareketler</h6>
       </div>
-      <div id="orders-container">
+      <div id="transactions-container">
         <div class="d-flex justify-content-center align-items-center py-5">
           <div class="spinner-border spinner-border-sm text-primary me-2"></div>
           <span class="text-body-secondary small">Yükleniyor…</span>
         </div>
       </div>
     </div>
-
-    @* Ödemeler *@
-    <div class="card">
-      <div class="card-header">
-        <h6 class="mb-0"><i class="ri-money-dollar-circle-line me-2 text-success"></i>Ödeme Hareketleri</h6>
-      </div>
-      <div id="payments-container">
-        <div class="d-flex justify-content-center align-items-center py-5">
-          <div class="spinner-border spinner-border-sm text-success me-2"></div>
-          <span class="text-body-secondary small">Yükleniyor…</span>
-        </div>
-      </div>
-    </div>
-
   </div>
 </div>
 
 @section PageScripts {
   <script>
     (function () {
-      const customerId = @Model.Id;
-
-      function loadPartial(url, containerId) {
-        fetch(url)
-          .then(function(r) { return r.ok ? r.text() : Promise.reject(r.status); })
-          .then(function(html) {
-            var container = document.getElementById(containerId);
-            container.innerHTML = html;
-            container.querySelectorAll('table.js-data-table').forEach(function(table) {
-              if (window._initTableFilter) window._initTableFilter(table);
-            });
-          })
-          .catch(function() {
-            document.getElementById(containerId).innerHTML =
-              '<p class="text-danger text-center py-4 small">Yüklenemedi.</p>';
+      fetch('/Customers/TransactionsPartial/@Model.Id')
+        .then(function(r) { return r.ok ? r.text() : Promise.reject(r.status); })
+        .then(function(html) {
+          var container = document.getElementById('transactions-container');
+          container.innerHTML = html;
+          container.querySelectorAll('table.js-data-table').forEach(function(table) {
+            if (window._initTableFilter) window._initTableFilter(table);
           });
-      }
-
-      loadPartial('/Customers/OrdersPartial/' + customerId, 'orders-container');
-      loadPartial('/Customers/PaymentsPartial/' + customerId, 'payments-container');
+        })
+        .catch(function() {
+          document.getElementById('transactions-container').innerHTML =
+            '<p class="text-danger text-center py-4 small">Yüklenemedi.</p>';
+        });
     })();
   </script>
   <script>
@@ -173,12 +150,9 @@
       nextBtnText: 'İleri →', prevBtnText: '← Geri', doneBtnText: 'Tamam',
       showProgress: true, progressText: '{{current}} / {{total}}',
       steps: [
-        { element: '.avatar-initial', popover: { title: 'Müşteri Profili', description: 'Müşteri adı, firma ve durum bilgisi. Aktif müşteriler satış faturasında seçilebilir.', side: 'bottom' } },
-        { element: 'a[href*="Edit"]', popover: { title: 'Düzenle', description: 'Müşteri bilgilerini güncellemek için tıklayın.', side: 'right' } },
-        { element: '.btn-outline-danger, .btn-success', popover: { title: 'Pasife Al / Aktif Yap', description: '"Pasife Al" müşteriyi devre dışı bırakır — yeni fatura oluşturulamaz ama mevcut kayıtlar korunur. "Aktif Yap" ile geri döndürebilirsiniz.', side: 'right' } },
-        { element: '.detail-info-strip', popover: { title: 'Cari Bilgiler', description: 'Müşterinin mevcut borcu burada görünür. Borç fatura kesince artar, ödeme alınınca düşer.', side: 'right' } },
-        { element: '#orders-container', popover: { title: 'Sipariş Geçmişi', description: 'Bu müşteriye ait tüm siparişler. Sipariş numarasına tıklayarak detaya gidebilirsiniz.', side: 'top' } },
-        { element: '#payments-container', popover: { title: 'Ödeme Geçmişi', description: 'Bu müşteriden alınan tahsilatlar burada listelenir. PDF olarak dışa aktarabilirsiniz.', side: 'top' } }
+        { element: '.avatar-initial', popover: { title: 'Müşteri Profili', description: 'Müşteri adı, firma ve durum bilgisi.', side: 'bottom' } },
+        { element: '.detail-info-strip', popover: { title: 'Cari Borç', description: 'Satış faturası ve müşteriye ödeme borcu artırır; tahsilat borcu azaltır.', side: 'right' } },
+        { element: '#transactions-container', popover: { title: 'Cari Hareketler', description: 'Siparişler, faturalar ve ödemeler tek tabloda listelenir.', side: 'top' } }
       ]
     });
     document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());

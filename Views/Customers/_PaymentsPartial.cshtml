@@ -7,10 +7,12 @@
     <input type="text" class="form-control form-control-sm js-table-search" placeholder="Ara..." style="width:200px" />
   </div>
   <div class="d-flex align-items-center gap-2">
-    <a asp-action="ExportPaymentsPdf" asp-route-id="@ViewData["CustomerId"]"
-       class="btn btn-sm btn-outline-danger">
-      <i class="ri-file-pdf-line me-1"></i>PDF
-    </a>
+    @{
+      var pdfUrl = Url.Action("ExportPaymentsPdf", new { id = ViewData["CustomerId"] });
+    }
+    <partial name="_DocumentExportButtons" view-data='@(new ViewDataDictionary(ViewData) {
+      ["PdfExportUrl"] = pdfUrl
+    })' />
     <label class="text-body-secondary small mb-0">Göster:</label>
     <select class="form-select form-select-sm js-table-page-size" style="width:75px">
       <option value="10">10</option>

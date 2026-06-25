@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using VRLCRM.Application.Balances;
 using VRLCRM.Application.Invoices;
 using VRLCRM.Domain.Entities;
 using VRLCRM.Domain.Enums;
@@ -9,10 +10,14 @@ namespace VRLCRM.Infrastructure.Invoices;
 public class InvoiceService : IInvoiceService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IBalanceRecalculationService _balanceRecalculation;
 
-    public InvoiceService(ApplicationDbContext context)
+    public InvoiceService(
+        ApplicationDbContext context,
+        IBalanceRecalculationService balanceRecalculation)
     {
         _context = context;
+        _balanceRecalculation = balanceRecalculation;
     }
 
     public async Task<IReadOnlyList<Invoice>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -70,9 +75,14 @@ public class InvoiceService : IInvoiceService
             throw new InvalidOperationException("Faturada en az bir kalem olmalıdır.");
         }
 
-        if (invoiceType == InvoiceType.Sales && !customerId.HasValue)
+        if (invoiceType == InvoiceType.Sales && !customerId.HasValue && !supplierId.HasValue)
         {
-            throw new InvalidOperationException("Satış faturası için müşteri seçilmelidir.");
+            throw new InvalidOperationException("Satış faturası için müşteri veya tedarikçi seçilmelidir.");
+        }
+
+        if (invoiceType == InvoiceType.Sales && customerId.HasValue && supplierId.HasValue)
+        {
+            throw new InvalidOperationException("Satış faturasında yalnızca müşteri veya tedarikçi seçilebilir.");
         }
 
         if (invoiceType == InvoiceType.Purchase && !supplierId.HasValue)
@@ -132,7 +142,8 @@ public class InvoiceService : IInvoiceService
                 UnitPrice = line.UnitPrice,
                 VatRate = vatRate,
                 VatAmount = lineVatAmount,
-                LineTotal = lineTotal
+                LineTotal = lineTotal,
+                Notes = string.IsNullOrWhiteSpace(line.Notes) ? null : line.Notes.Trim()
             });
             invoiceLineSalePrices.Add(line.SalePrice);
         }
@@ -199,14 +210,14 @@ public class InvoiceService : IInvoiceService
             });
         }
 
-        if (invoiceType == InvoiceType.Sales && customer is not null)
+        if (customerId.HasValue)
         {
-            customer.Balance += totalAmount;
+            await _balanceRecalculation.RecalculateCustomerBalanceAsync(customerId.Value, cancellationToken);
         }
 
-        if (invoiceType == InvoiceType.Purchase && supplier is not null)
+        if (supplierId.HasValue)
         {
-            supplier.Balance += totalAmount;
+            await _balanceRecalculation.RecalculateSupplierBalanceAsync(supplierId.Value, cancellationToken);
         }
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -221,10 +232,16 @@ public class InvoiceService : IInvoiceService
     {
         var order = await _context.Orders
             .Include(o => o.Customer)
+            .Include(o => o.Supplier)
             .Include(o => o.Lines)
             .ThenInclude(l => l.StockItem)
             .FirstOrDefaultAsync(o => o.Id == orderId && o.IsActive, cancellationToken)
             ?? throw new InvalidOperationException("Sipariş bulunamadı.");
+
+        if (!order.CustomerId.HasValue && !order.SupplierId.HasValue)
+        {
+            throw new InvalidOperationException("Siparişin bağlı olduğu cari bulunamadı.");
+        }
 
         if (order.Status != OrderStatus.Approved)
         {
@@ -253,13 +270,17 @@ public class InvoiceService : IInvoiceService
                 UnitPrice = line.UnitPrice,
                 VatRate = line.VatRate,
                 VatAmount = line.VatAmount,
-                LineTotal = line.LineTotal
+                LineTotal = line.LineTotal,
+                Notes = string.IsNullOrWhiteSpace(line.Notes) ? null : line.Notes.Trim()
             });
         }
 
-        if (!order.Customer.HasSufficientCredit(order.TotalAmount))
+        if (order.CustomerId.HasValue)
         {
-            throw new InvalidOperationException($"Kredi limiti aşıldı! Mevcut bakiye: {order.Customer.Balance:N2} ₺, Fatura Tutarı: {order.TotalAmount:N2} ₺, Limit: {order.Customer.CreditLimit:N2} ₺");
+            if (!order.Customer!.HasSufficientCredit(order.TotalAmount))
+            {
+                throw new InvalidOperationException($"Kredi limiti aşıldı! Mevcut bakiye: {order.Customer.Balance:N2} ₺, Fatura Tutarı: {order.TotalAmount:N2} ₺, Limit: {order.Customer.CreditLimit:N2} ₺");
+            }
         }
 
         var invoice = new Invoice
@@ -267,6 +288,7 @@ public class InvoiceService : IInvoiceService
             InvoiceType = InvoiceType.Sales,
             InvoiceDate = DateTime.UtcNow,
             CustomerId = order.CustomerId,
+            SupplierId = order.SupplierId,
             Notes = $"Sipariş: {order.OrderNumber}" + (string.IsNullOrWhiteSpace(order.Notes) ? "" : $" | {order.Notes}"),
             SubTotal = order.SubTotal,
             VatTotal = order.VatTotal,
@@ -297,9 +319,18 @@ public class InvoiceService : IInvoiceService
             });
         }
 
-        order.Customer.Balance += invoice.TotalAmount;
         order.SalesInvoiceId = invoice.Id;
-        
+
+        if (order.CustomerId.HasValue)
+        {
+            await _balanceRecalculation.RecalculateCustomerBalanceAsync(order.CustomerId.Value, cancellationToken);
+        }
+
+        if (order.SupplierId.HasValue)
+        {
+            await _balanceRecalculation.RecalculateSupplierBalanceAsync(order.SupplierId.Value, cancellationToken);
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -334,9 +365,25 @@ public class InvoiceService : IInvoiceService
 
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
-        var customer = await _context.Customers
-            .FirstOrDefaultAsync(c => c.Id == invoice.CustomerId && c.IsActive, cancellationToken)
-            ?? throw new InvalidOperationException("Müşteri bulunamadı.");
+        Customer? customer = null;
+        Supplier? supplier = null;
+
+        if (invoice.CustomerId.HasValue)
+        {
+            customer = await _context.Customers
+                .FirstOrDefaultAsync(c => c.Id == invoice.CustomerId && c.IsActive, cancellationToken)
+                ?? throw new InvalidOperationException("Müşteri bulunamadı.");
+        }
+        else if (invoice.SupplierId.HasValue)
+        {
+            supplier = await _context.Suppliers
+                .FirstOrDefaultAsync(s => s.Id == invoice.SupplierId && s.IsActive, cancellationToken)
+                ?? throw new InvalidOperationException("Tedarikçi bulunamadı.");
+        }
+        else
+        {
+            throw new InvalidOperationException("Satış faturasının cari bilgisi bulunamadı.");
+        }
 
         var oldTotal = invoice.TotalAmount;
         var now = DateTime.UtcNow;
@@ -365,13 +412,11 @@ public class InvoiceService : IInvoiceService
         var newTotal = grossTotal - discountAmount;
 
         var balanceDelta = newTotal - oldTotal;
-        if (balanceDelta > 0 && !customer.HasSufficientCredit(balanceDelta))
+        if (customer is not null && balanceDelta > 0 && !customer.HasSufficientCredit(balanceDelta))
         {
             throw new InvalidOperationException(
                 $"Kredi limiti aşıldı! Mevcut bakiye: {customer.Balance:N2} ₺, Artış: {balanceDelta:N2} ₺, Limit: {customer.EffectiveCreditLimit:N2} ₺");
         }
-
-        customer.Balance -= oldTotal;
 
         ApplyNetInvoiceEditStockMovements(
             InvoiceType.Sales,
@@ -391,7 +436,16 @@ public class InvoiceService : IInvoiceService
         invoice.TotalAmount = newTotal;
         invoice.Lines = newLines;
 
-        customer.Balance += newTotal;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        if (customer is not null)
+        {
+            await _balanceRecalculation.RecalculateCustomerBalanceAsync(customer.Id, cancellationToken);
+        }
+        else if (supplier is not null)
+        {
+            await _balanceRecalculation.RecalculateSupplierBalanceAsync(supplier.Id, cancellationToken);
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
@@ -459,8 +513,6 @@ public class InvoiceService : IInvoiceService
         var discountAmount = Math.Round(grossTotal * clampedRate / 100m, 2);
         var newTotal = grossTotal - discountAmount;
 
-        supplier.Balance -= oldTotal;
-
         ApplyNetInvoiceEditStockMovements(
             InvoiceType.Purchase,
             invoice.Id,
@@ -480,8 +532,8 @@ public class InvoiceService : IInvoiceService
         invoice.TotalAmount = newTotal;
         invoice.Lines = newLines;
 
-        supplier.Balance += newTotal;
-
+        await _context.SaveChangesAsync(cancellationToken);
+        await _balanceRecalculation.RecalculateSupplierBalanceAsync(supplier.Id, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return true;
@@ -534,20 +586,17 @@ public class InvoiceService : IInvoiceService
             }
         }
 
-        // Bakiyeleri geri al
-        if (invoice.InvoiceType == InvoiceType.Sales && invoice.CustomerId.HasValue)
+        await _context.SaveChangesAsync(cancellationToken);
+
+        // Bakiyeleri kaynak veriden yeniden hesapla
+        if (invoice.CustomerId.HasValue)
         {
-            var customer = await _context.Customers
-                .FirstOrDefaultAsync(c => c.Id == invoice.CustomerId, cancellationToken);
-            if (customer is not null)
-                customer.Balance -= invoice.TotalAmount;
+            await _balanceRecalculation.RecalculateCustomerBalanceAsync(invoice.CustomerId.Value, cancellationToken);
         }
-        else if (invoice.InvoiceType == InvoiceType.Purchase && invoice.SupplierId.HasValue)
+
+        if (invoice.SupplierId.HasValue)
         {
-            var supplier = await _context.Suppliers
-                .FirstOrDefaultAsync(s => s.Id == invoice.SupplierId, cancellationToken);
-            if (supplier is not null)
-                supplier.Balance -= invoice.TotalAmount;
+            await _balanceRecalculation.RecalculateSupplierBalanceAsync(invoice.SupplierId.Value, cancellationToken);
         }
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -714,7 +763,8 @@ public class InvoiceService : IInvoiceService
                 UnitPrice = line.UnitPrice,
                 VatRate = line.VatRate,
                 VatAmount = lineVatAmount,
-                LineTotal = lineTotal
+                LineTotal = lineTotal,
+                Notes = string.IsNullOrWhiteSpace(line.Notes) ? null : line.Notes.Trim()
             });
         }
 

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using VRLCRM.Application.Categories;
 using VRLCRM.Application.Stocks;
 using VRLCRM.Domain.Constants;
+using VRLCRM.Helpers;
 using VRLCRM.Models.Stocks;
 using VRLCRM.Services;
 
@@ -43,12 +44,17 @@ public class StocksController : Controller
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
     }
 
-    public async Task<IActionResult> ExportPdf(CancellationToken cancellationToken)
+    public async Task<IActionResult> ExportPdf(bool inline = false, CancellationToken cancellationToken = default)
     {
         var stocks = await _stockService.GetAllAsync(cancellationToken);
         var bytes = _documentService.GeneratePdf(stocks);
+        if (inline)
+        {
+            return PdfFileResults.AsInline(bytes);
+        }
+
         var fileName = $"urunler-{DateTime.Now:yyyyMMdd-HHmm}.pdf";
-        return File(bytes, "application/pdf", fileName);
+        return PdfFileResults.AsDownload(bytes, fileName);
     }
 
     public async Task<IActionResult> Details(int id, CancellationToken cancellationToken)

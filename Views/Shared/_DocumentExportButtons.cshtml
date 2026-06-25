@@ -1,0 +1,25 @@
+@{
+  var pdfUrl = ViewData["PdfExportUrl"] as string;
+  var excelUrl = ViewData["ExcelExportUrl"] as string;
+  var btnSize = (ViewData["ExportButtonSize"] as string) ?? "sm";
+  var btnClass = string.IsNullOrEmpty(btnSize) ? "" : $"btn-{btnSize}";
+  var groupClass = string.IsNullOrEmpty(btnSize) ? "btn-group" : $"btn-group btn-group-{btnSize}";
+}
+
+@if (!string.IsNullOrEmpty(pdfUrl))
+{
+  <div class="@groupClass">
+    @if (!string.IsNullOrEmpty(excelUrl))
+    {
+      <a href="@excelUrl" class="btn btn-outline-success @btnClass" title="Excel İndir">
+        <i class="ri-file-excel-2-line me-1"></i>Excel
+      </a>
+    }
+    <a href="@pdfUrl" class="btn btn-outline-danger @btnClass" title="PDF İndir">
+      <i class="ri-file-pdf-line me-1"></i>PDF
+    </a>
+    <button type="button" class="btn btn-outline-secondary @btnClass js-print-pdf" data-pdf-url="@pdfUrl" title="PDF çıktısını yazdır">
+      <i class="ri-printer-line me-1"></i>Yazdır
+    </button>
+  </div>
+}

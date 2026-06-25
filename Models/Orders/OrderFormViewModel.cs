@@ -26,9 +26,14 @@ public class OrderFormViewModel
 {
     public int Id { get; set; }
 
-    [Required(ErrorMessage = "Müşteri seçilmelidir.")]
+    [Display(Name = "Cari Türü")]
+    public string PartyType { get; set; } = "customer";
+
     [Display(Name = "Müşteri")]
-    public int CustomerId { get; set; }
+    public int? CustomerId { get; set; }
+
+    [Display(Name = "Tedarikçi")]
+    public int? SupplierId { get; set; }
 
     [Display(Name = "Notlar")]
     [StringLength(2000)]
@@ -41,4 +46,6 @@ public class OrderFormViewModel
     public List<OrderLineFormItem> Lines { get; set; } = [];
 
     public IEnumerable<SelectListItem> Customers { get; set; } = [];
+
+    public IEnumerable<SelectListItem> Suppliers { get; set; } = [];
 }

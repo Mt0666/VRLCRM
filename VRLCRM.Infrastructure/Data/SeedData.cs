@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using VRLCRM.Application.Balances;
 using VRLCRM.Domain.Entities;
 using VRLCRM.Infrastructure.Options;
 
@@ -81,34 +82,38 @@ public static class SeedData
             string.IsNullOrWhiteSpace(seedOptions.AdminPassword))
         {
             logger.LogWarning("Seed admin user skipped. Configure SeedData:AdminEmail and SeedData:AdminPassword.");
-            return;
+        }
+        else
+        {
+            var adminUser = await userManager.FindByEmailAsync(seedOptions.AdminEmail);
+            if (adminUser is null)
+            {
+                adminUser = new ApplicationUser
+                {
+                    UserName = seedOptions.AdminEmail,
+                    Email = seedOptions.AdminEmail,
+                    EmailConfirmed = true,
+                    FullName = "System Administrator"
+                };
+
+                var createResult = await userManager.CreateAsync(adminUser, seedOptions.AdminPassword);
+                if (!createResult.Succeeded)
+                {
+                    logger.LogError("Admin user could not be created.");
+                }
+                else
+                {
+                    var adminRoleResult = await userManager.AddToRoleAsync(adminUser, "Admin");
+                    if (!adminRoleResult.Succeeded)
+                    {
+                        logger.LogError("Admin user could not be assigned to Admin role.");
+                    }
+                }
+            }
         }
 
-        var adminUser = await userManager.FindByEmailAsync(seedOptions.AdminEmail);
-        if (adminUser is not null)
-        {
-            return;
-        }
-
-        adminUser = new ApplicationUser
-        {
-            UserName = seedOptions.AdminEmail,
-            Email = seedOptions.AdminEmail,
-            EmailConfirmed = true,
-            FullName = "System Administrator"
-        };
-
-        var createResult = await userManager.CreateAsync(adminUser, seedOptions.AdminPassword);
-        if (!createResult.Succeeded)
-        {
-            logger.LogError("Admin user could not be created.");
-            return;
-        }
-
-        var adminRoleResult = await userManager.AddToRoleAsync(adminUser, "Admin");
-        if (!adminRoleResult.Succeeded)
-        {
-            logger.LogError("Admin user could not be assigned to Admin role.");
-        }
+        var balanceRecalculation = serviceProvider.GetRequiredService<IBalanceRecalculationService>();
+        await balanceRecalculation.RecalculateAllAsync();
+        logger.LogInformation("Cari bakiyeleri faturalar ve ödemeler üzerinden yeniden hesaplandı.");
     }
 }

@@ -20,6 +20,7 @@ public class OrderService : IOrderService
         return await _context.Orders
             .AsNoTracking()
             .Include(o => o.Customer)
+            .Include(o => o.Supplier)
             .Include(o => o.Lines)
             .ThenInclude(l => l.StockItem)
             .OrderByDescending(o => o.IsActive)
@@ -31,7 +32,8 @@ public class OrderService : IOrderService
     {
         return await _context.Orders
             .Include(o => o.Customer!)
-                .ThenInclude(c => c.Address)
+                .ThenInclude(c => c!.Address)
+            .Include(o => o.Supplier)
             .Include(o => o.Lines)
             .ThenInclude(l => l.StockItem)
             .Include(o => o.SalesInvoice)
@@ -53,7 +55,8 @@ public class OrderService : IOrderService
     }
 
     public async Task<Order> CreateAndApproveAsync(
-        int customerId,
+        int? customerId,
+        int? supplierId,
         string? notes,
         decimal discountRate,
         IReadOnlyList<OrderLineInput> lines,
@@ -64,17 +67,34 @@ public class OrderService : IOrderService
             throw new InvalidOperationException("Siparişte en az bir ürün olmalıdır.");
         }
 
+        if (customerId.HasValue == supplierId.HasValue)
+        {
+            throw new InvalidOperationException("Sipariş için müşteri veya tedarikçi seçilmelidir.");
+        }
+
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
-        var customer = await _context.Customers
-            .FirstOrDefaultAsync(c => c.Id == customerId && c.IsActive, cancellationToken)
-            ?? throw new InvalidOperationException("Müşteri bulunamadı.");
+        Customer? customer = null;
+        if (customerId.HasValue)
+        {
+            customer = await _context.Customers
+                .FirstOrDefaultAsync(c => c.Id == customerId && c.IsActive, cancellationToken)
+                ?? throw new InvalidOperationException("Müşteri bulunamadı.");
+        }
+
+        Supplier? supplier = null;
+        if (supplierId.HasValue)
+        {
+            supplier = await _context.Suppliers
+                .FirstOrDefaultAsync(s => s.Id == supplierId && s.IsActive, cancellationToken)
+                ?? throw new InvalidOperationException("Tedarikçi bulunamadı.");
+        }
 
         var orderLines = await BuildOrderLinesAsync(lines, cancellationToken);
         var normalizedRate = NormalizeDiscountRate(discountRate);
         var (subTotal, vatTotal, totalAmount) = CalculateTotals(orderLines, normalizedRate);
 
-        if (!customer.IsUnlimitedCredit && !customer.HasSufficientCredit(totalAmount))
+        if (customer is not null && !customer.IsUnlimitedCredit && !customer.HasSufficientCredit(totalAmount))
         {
             throw new InvalidOperationException(
                 $"Cari limitiniz yetersiz. Mevcut borç: {customer.Balance:N2} ₺, Sipariş tutarı: {totalAmount:N2} ₺, Limit: {customer.EffectiveCreditLimit:N2} ₺");
@@ -82,7 +102,8 @@ public class OrderService : IOrderService
 
         var order = new Order
         {
-            CustomerId = customer.Id,
+            CustomerId = customerId,
+            SupplierId = supplierId,
             OrderDate = DateTime.UtcNow,
             Status = OrderStatus.Approved,
             SubTotal = subTotal,

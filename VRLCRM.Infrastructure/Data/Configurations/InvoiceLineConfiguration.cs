@@ -16,6 +16,9 @@ public class InvoiceLineConfiguration : IEntityTypeConfiguration<InvoiceLine>
         builder.Property(l => l.LineTotal)
             .HasPrecision(18, 2);
 
+        builder.Property(l => l.Notes)
+            .HasMaxLength(500);
+
         builder.Property(l => l.IsActive)
             .HasDefaultValue(true);
 

@@ -35,6 +35,9 @@ public class InvoiceLineFormItem
 
     [Range(0, 100)]
     public decimal VatRate { get; set; }
+
+    [StringLength(500)]
+    public string? Notes { get; set; }
 }
 
 public class InvoiceStockOption
@@ -66,6 +69,9 @@ public class InvoiceCategoryOption
 public class InvoiceFormViewModel
 {
     public InvoiceType InvoiceType { get; set; }
+
+    [Display(Name = "Cari Türü")]
+    public string SalesPartyType { get; set; } = "customer";
 
     [Display(Name = "Müşteri")]
     public int? CustomerId { get; set; }

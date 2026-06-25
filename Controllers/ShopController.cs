@@ -256,7 +256,7 @@ public class ShopController : Controller
                 Notes = i.Notes
             }).ToList();
 
-            var order = await _orderService.CreateAndApproveAsync(customer.Id, notes, 0, lines, cancellationToken);
+            var order = await _orderService.CreateAndApproveAsync(customer.Id, null, notes, 0, lines, cancellationToken);
             _cartService.Clear(customer.Id);
 
             return RedirectToAction(nameof(OrderConfirmation), new { orderNumber = order.OrderNumber, total = order.SubTotal });

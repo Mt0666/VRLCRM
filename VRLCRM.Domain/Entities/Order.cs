@@ -7,9 +7,13 @@ public class Order : BaseEntity
 {
     public string OrderNumber { get; set; } = string.Empty;
 
-    public int CustomerId { get; set; }
+    public int? CustomerId { get; set; }
 
-    public Customer Customer { get; set; } = null!;
+    public Customer? Customer { get; set; }
+
+    public int? SupplierId { get; set; }
+
+    public Supplier? Supplier { get; set; }
 
     public DateTime OrderDate { get; set; }
 

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using VRLCRM.Application.Balances;
 using VRLCRM.Application.Categories;
 using VRLCRM.Application.Customers;
 using VRLCRM.Application.Invoices;
@@ -12,6 +13,7 @@ using VRLCRM.Application.Stocks;
 using VRLCRM.Application.Suppliers;
 using VRLCRM.Application.Users;
 using VRLCRM.Domain.Entities;
+using VRLCRM.Infrastructure.Balances;
 using VRLCRM.Infrastructure.Categories;
 using VRLCRM.Infrastructure.Customers;
 using VRLCRM.Infrastructure.Invoices;
@@ -51,6 +53,7 @@ public static class DependencyInjection
         services.AddScoped<IStockMovementService, StockMovementService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<IBalanceRecalculationService, BalanceRecalculationService>();
         services.AddScoped<IUserService, UserService>();
 
         services

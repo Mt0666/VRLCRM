@@ -39,7 +39,7 @@
           {
             <tr class="@(invoice.IsActive ? "" : "table-secondary")">
               <td><strong>@invoice.InvoiceNumber</strong></td>
-              <td>@(invoice.Customer?.FullName ?? "-")</td>
+              <td>@(invoice.Customer?.FullName ?? invoice.Supplier?.CompanyName ?? "-")</td>
               <td>@invoice.InvoiceDate.ToLocalTime().ToString("dd.MM.yyyy")</td>
               <td>@invoice.TotalAmount.ToString("N2") ₺</td>
               <td><partial name="_StatusBadge" model="invoice.IsActive" /></td>

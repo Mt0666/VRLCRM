@@ -5,7 +5,9 @@ using VRLCRM.Application.Customers;
 using VRLCRM.Application.Invoices;
 using VRLCRM.Application.Orders;
 using VRLCRM.Application.Stocks;
+using VRLCRM.Application.Suppliers;
 using VRLCRM.Domain.Constants;
+using VRLCRM.Helpers;
 using VRLCRM.Models.Orders;
 using VRLCRM.Services;
 
@@ -16,6 +18,7 @@ public class OrdersController : Controller
 {
     private readonly IOrderService _orderService;
     private readonly ICustomerService _customerService;
+    private readonly ISupplierService _supplierService;
     private readonly IInvoiceService _invoiceService;
     private readonly IStockService _stockService;
     private readonly OrderDocumentService _documentService;
@@ -23,12 +26,14 @@ public class OrdersController : Controller
     public OrdersController(
         IOrderService orderService,
         ICustomerService customerService,
+        ISupplierService supplierService,
         IInvoiceService invoiceService,
         IStockService stockService,
         OrderDocumentService documentService)
     {
         _orderService = orderService;
         _customerService = customerService;
+        _supplierService = supplierService;
         _invoiceService = invoiceService;
         _stockService = stockService;
         _documentService = documentService;
@@ -54,7 +59,7 @@ public class OrdersController : Controller
     public async Task<IActionResult> Create(CancellationToken cancellationToken)
     {
         var model = new OrderFormViewModel();
-        await PopulateCustomersAsync(model, cancellationToken);
+        await PopulateSelectListsAsync(model, cancellationToken);
         return View(model);
     }
 
@@ -62,7 +67,24 @@ public class OrdersController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(OrderFormViewModel model, CancellationToken cancellationToken)
     {
-        await PopulateCustomersAsync(model, cancellationToken);
+        await PopulateSelectListsAsync(model, cancellationToken);
+
+        if (model.PartyType == "supplier")
+        {
+            model.CustomerId = null;
+            if (!model.SupplierId.HasValue)
+            {
+                ModelState.AddModelError(nameof(model.SupplierId), "Tedarikçi seçilmelidir.");
+            }
+        }
+        else
+        {
+            model.SupplierId = null;
+            if (!model.CustomerId.HasValue)
+            {
+                ModelState.AddModelError(nameof(model.CustomerId), "Müşteri seçilmelidir.");
+            }
+        }
 
         if (model.Lines.Count == 0)
         {
@@ -79,6 +101,7 @@ public class OrdersController : Controller
             var lines = MapLines(model.Lines);
             var order = await _orderService.CreateAndApproveAsync(
                 model.CustomerId,
+                model.SupplierId,
                 model.Notes,
                 model.DiscountRate,
                 lines,
@@ -168,7 +191,7 @@ public class OrdersController : Controller
         });
     }
 
-    public async Task<IActionResult> ExportPdf(int id, CancellationToken cancellationToken)
+    public async Task<IActionResult> ExportPdf(int id, bool inline = false, CancellationToken cancellationToken = default)
     {
         var order = await _orderService.GetByIdAsync(id, cancellationToken);
         if (order is null)
@@ -177,7 +200,12 @@ public class OrdersController : Controller
         }
 
         var bytes = _documentService.GeneratePdf(order);
-        return File(bytes, "application/pdf", $"{order.OrderNumber}.pdf");
+        if (inline)
+        {
+            return PdfFileResults.AsInline(bytes);
+        }
+
+        return PdfFileResults.AsDownload(bytes, $"{order.OrderNumber}.pdf");
     }
 
     public async Task<IActionResult> ExportExcel(int id, CancellationToken cancellationToken)
@@ -241,7 +269,7 @@ public class OrdersController : Controller
             Notes = l.Notes
         }).ToList();
 
-    private async Task PopulateCustomersAsync(OrderFormViewModel model, CancellationToken cancellationToken)
+    private async Task PopulateSelectListsAsync(OrderFormViewModel model, CancellationToken cancellationToken)
     {
         var customers = await _customerService.GetAllAsync(cancellationToken);
         model.Customers = customers
@@ -251,6 +279,16 @@ public class OrdersController : Controller
                 Value = c.Id.ToString(),
                 Text = $"{c.FullName} (Borç: {c.Balance:N2} ₺)",
                 Selected = c.Id == model.CustomerId
+            });
+
+        var suppliers = await _supplierService.GetAllAsync(cancellationToken);
+        model.Suppliers = suppliers
+            .Where(s => s.IsActive)
+            .Select(s => new SelectListItem
+            {
+                Value = s.Id.ToString(),
+                Text = $"{s.CompanyName} (Borç: {s.Balance:N2} ₺)",
+                Selected = s.Id == model.SupplierId
             });
     }
 }

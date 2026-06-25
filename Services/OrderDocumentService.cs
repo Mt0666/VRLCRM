@@ -37,26 +37,27 @@ public class OrderDocumentService
                 line.VatRate,
                 line.VatAmount,
                 line.LineTotal,
-                line.Notes))
+                LineNotes: line.Notes,
+                StockCode: line.StockItem.StockCode,
+                Barcode: line.StockItem.Barcode,
+                ProductDescription: line.StockItem.Description))
             .ToList();
 
-        return BuildPdf(
-            _company,
-            _logoPath,
-            "Sipariş Formu",
+        var partyLabel = order.CustomerId.HasValue ? "Müşteri" : "Tedarikçi";
+        var partyName = order.Customer?.FullName ?? order.Supplier?.CompanyName ?? "-";
+        var partyCompany = order.Customer?.CompanyName ?? order.Supplier?.ContactName;
+        var partyPhone = order.Customer?.PhoneNumber ?? order.Supplier?.PhoneNumber ?? string.Empty;
+
+        return BuildSimplifiedDocumentPdf(
             order.OrderNumber,
             order.StatusLabel,
             order.OrderDate,
-            "Sipariş Tarihi",
-            "Müşteri",
-            order.Customer.FullName,
-            order.Customer.CompanyName,
-            order.Customer.PhoneNumber,
+            partyLabel,
+            partyName,
+            partyCompany,
+            partyPhone,
             lines,
-            new DocumentTotals(order.SubTotal, order.VatTotal, order.TotalAmount),
-            order.Notes,
-            order.DiscountRate,
-            order.DiscountAmount);
+            new DocumentTotals(order.SubTotal, order.VatTotal, order.TotalAmount));
     }
 
     public byte[] GenerateExcel(Order order)
@@ -78,8 +79,8 @@ public class OrderDocumentService
 
         sheet.Cell(3, 1).Value = "Sipariş No";
         sheet.Cell(3, 2).Value = order.OrderNumber;
-        sheet.Cell(4, 1).Value = "Müşteri";
-        sheet.Cell(4, 2).Value = order.Customer.FullName;
+        sheet.Cell(4, 1).Value = order.CustomerId.HasValue ? "Müşteri" : "Tedarikçi";
+        sheet.Cell(4, 2).Value = order.Customer?.FullName ?? order.Supplier?.CompanyName ?? "-";
         sheet.Cell(5, 1).Value = "Tarih";
         sheet.Cell(5, 2).Value = order.OrderDate.ToLocalTime();
         sheet.Cell(5, 2).Style.DateFormat.SetFormat("dd.mm.yyyy hh:mm");

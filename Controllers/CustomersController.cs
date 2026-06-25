@@ -6,6 +6,7 @@ using VRLCRM.Application.Customers;
 using VRLCRM.Domain.Constants;
 using VRLCRM.Domain.Entities;
 using VRLCRM.Domain.Enums;
+using VRLCRM.Helpers;
 using VRLCRM.Models.Customers;
 using VRLCRM.Services;
 
@@ -16,16 +17,16 @@ public class CustomersController : Controller
 {
     private readonly ICustomerService _customerService;
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly CustomerPaymentDocumentService _paymentDocumentService;
+    private readonly AccountStatementDocumentService _statementDocumentService;
 
     public CustomersController(
         ICustomerService customerService,
         UserManager<ApplicationUser> userManager,
-        CustomerPaymentDocumentService paymentDocumentService)
+        AccountStatementDocumentService statementDocumentService)
     {
         _customerService = customerService;
         _userManager = userManager;
-        _paymentDocumentService = paymentDocumentService;
+        _statementDocumentService = statementDocumentService;
     }
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -45,55 +46,28 @@ public class CustomersController : Controller
         return View(customer);
     }
 
-    public async Task<IActionResult> OrdersPartial(int id, CancellationToken cancellationToken)
+    public async Task<IActionResult> TransactionsPartial(int id, CancellationToken cancellationToken)
     {
+        var customer = await _customerService.GetByIdAsync(id, cancellationToken);
+        if (customer is null)
+        {
+            return NotFound();
+        }
+
         var orders = await _customerService.GetOrdersAsync(id, cancellationToken);
         var invoices = await _customerService.GetSalesInvoicesAsync(id, cancellationToken);
+        var payments = await _customerService.GetPaymentsAsync(id, cancellationToken);
+        var rows = AccountTransactionBuilder.FromCustomerData(orders, invoices, payments).ToList();
 
-        // Siparişlere bağlı fatura ID'leri — direkt faturalar bunların dışında kalanlar
-        var linkedInvoiceIds = orders
-            .Where(o => o.SalesInvoiceId.HasValue)
-            .Select(o => o.SalesInvoiceId!.Value)
-            .ToHashSet();
+        ViewData["ExportPdfController"] = "Customers";
+        ViewData["ExportPdfAction"] = "ExportPaymentsPdf";
+        ViewData["PartyId"] = id;
 
-        var rows = new List<CustomerTransactionRow>();
-
-        foreach (var o in orders)
-        {
-            rows.Add(new CustomerTransactionRow
-            {
-                Id = o.Id,
-                Number = o.OrderNumber,
-                Date = o.OrderDate,
-                IsDirectInvoice = false,
-                StatusLabel = o.StatusLabel,
-                StatusColor = o.Status switch
-                {
-                    OrderStatus.Approved => "success",
-                    OrderStatus.Cancelled => "danger",
-                    _ => "secondary"
-                },
-                TotalAmount = o.TotalAmount
-            });
-        }
-
-        foreach (var inv in invoices.Where(i => !linkedInvoiceIds.Contains(i.Id) && i.IsActive))
-        {
-            rows.Add(new CustomerTransactionRow
-            {
-                Id = inv.Id,
-                Number = inv.InvoiceNumber,
-                Date = inv.InvoiceDate,
-                IsDirectInvoice = true,
-                StatusLabel = "Faturalandırıldı",
-                StatusColor = "warning",
-                TotalAmount = inv.TotalAmount
-            });
-        }
-
-        rows = [.. rows.OrderByDescending(r => r.Date)];
-        return PartialView("_OrdersPartial", rows);
+        return PartialView("_AccountTransactionsPartial", rows);
     }
+
+    public async Task<IActionResult> OrdersPartial(int id, CancellationToken cancellationToken)
+        => await TransactionsPartial(id, cancellationToken);
 
     public async Task<IActionResult> InvoicesPartial(int id, CancellationToken cancellationToken)
     {
@@ -102,6 +76,9 @@ public class CustomersController : Controller
     }
 
     public async Task<IActionResult> PaymentsPartial(int id, CancellationToken cancellationToken)
+        => await TransactionsPartial(id, cancellationToken);
+
+    public async Task<IActionResult> ExportPaymentsPdf(int id, bool inline = false, CancellationToken cancellationToken = default)
     {
         var customer = await _customerService.GetByIdAsync(id, cancellationToken);
         if (customer is null)
@@ -109,22 +86,17 @@ public class CustomersController : Controller
             return NotFound();
         }
 
+        var orders = await _customerService.GetOrdersAsync(id, cancellationToken);
+        var invoices = await _customerService.GetSalesInvoicesAsync(id, cancellationToken);
         var payments = await _customerService.GetPaymentsAsync(id, cancellationToken);
-        ViewData["CustomerId"] = id;
-        return PartialView("_PaymentsPartial", payments);
-    }
-
-    public async Task<IActionResult> ExportPaymentsPdf(int id, CancellationToken cancellationToken)
-    {
-        var customer = await _customerService.GetByIdAsync(id, cancellationToken);
-        if (customer is null)
+        var rows = AccountTransactionBuilder.FromCustomerData(orders, invoices, payments).ToList();
+        var bytes = _statementDocumentService.GeneratePdf("Müşteri", customer.FullName, rows);
+        if (inline)
         {
-            return NotFound();
+            return PdfFileResults.AsInline(bytes);
         }
 
-        var payments = await _customerService.GetPaymentsAsync(id, cancellationToken);
-        var bytes = _paymentDocumentService.GeneratePdf(customer, payments);
-        return File(bytes, "application/pdf", $"{customer.FullName}-odemeler.pdf");
+        return PdfFileResults.AsDownload(bytes, $"{customer.FullName}-cari-hareketler.pdf");
     }
 
     public IActionResult Create()

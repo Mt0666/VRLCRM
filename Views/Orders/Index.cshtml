@@ -41,7 +41,7 @@
           {
             <tr class="@(order.IsActive ? "" : "table-secondary")">
               <td><strong>@order.OrderNumber</strong></td>
-              <td>@order.Customer.FullName</td>
+              <td>@(order.Customer?.FullName ?? order.Supplier?.CompanyName ?? "-")</td>
               <td>@order.OrderDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
               <td>
                 <partial name="_OrderStatusBadge" model="order" />

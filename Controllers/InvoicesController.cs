@@ -9,6 +9,7 @@ using VRLCRM.Application.Stocks;
 using VRLCRM.Application.Suppliers;
 using VRLCRM.Domain.Constants;
 using VRLCRM.Domain.Enums;
+using VRLCRM.Helpers;
 using VRLCRM.Models.Invoices;
 using VRLCRM.Services;
 
@@ -77,7 +78,7 @@ public class InvoicesController : Controller
         return View(invoice);
     }
 
-    public async Task<IActionResult> ExportPdf(int id, CancellationToken cancellationToken)
+    public async Task<IActionResult> ExportPdf(int id, bool inline = false, CancellationToken cancellationToken = default)
     {
         var invoice = await _invoiceService.GetByIdAsync(id, cancellationToken);
         if (invoice is null)
@@ -91,7 +92,12 @@ public class InvoicesController : Controller
         }
 
         var bytes = _documentService.GeneratePdf(invoice);
-        return File(bytes, "application/pdf", $"{invoice.InvoiceNumber}.pdf");
+        if (inline)
+        {
+            return PdfFileResults.AsInline(bytes);
+        }
+
+        return PdfFileResults.AsDownload(bytes, $"{invoice.InvoiceNumber}.pdf");
     }
 
     public async Task<IActionResult> ExportExcel(int id, CancellationToken cancellationToken)
@@ -245,7 +251,8 @@ public class InvoicesController : Controller
                 StockItemId = l.StockItemId,
                 Quantity = l.Quantity,
                 UnitPrice = l.UnitPrice,
-                VatRate = l.VatRate
+                VatRate = l.VatRate,
+                Notes = l.Notes
             }).ToList();
 
             var updated = await _invoiceService.UpdateSalesInvoiceAsync(id, model.DiscountRate, lines, cancellationToken);
@@ -282,7 +289,8 @@ public class InvoicesController : Controller
                 StockItemId = l.StockItemId,
                 Quantity = l.Quantity,
                 UnitPrice = l.UnitPrice,
-                VatRate = l.VatRate
+                VatRate = l.VatRate,
+                Notes = l.Notes
             }).ToList();
 
             var updated = await _invoiceService.UpdatePurchaseInvoiceAsync(id, model.DiscountRate, lines, cancellationToken);
@@ -334,9 +342,26 @@ public class InvoicesController : Controller
             ModelState.AddModelError(string.Empty, "En az bir fatura kalemi ekleyin.");
         }
 
-        if (model.InvoiceType == InvoiceType.Sales && !model.CustomerId.HasValue)
+        if (model.InvoiceType == InvoiceType.Sales)
         {
-            ModelState.AddModelError(nameof(model.CustomerId), "Satış faturası için müşteri seçilmelidir.");
+            if (model.SalesPartyType == "supplier")
+            {
+                model.CustomerId = null;
+            }
+            else
+            {
+                model.SupplierId = null;
+            }
+        }
+
+        if (model.InvoiceType == InvoiceType.Sales && !model.CustomerId.HasValue && !model.SupplierId.HasValue)
+        {
+            ModelState.AddModelError(string.Empty, "Satış faturası için müşteri veya tedarikçi seçilmelidir.");
+        }
+
+        if (model.InvoiceType == InvoiceType.Sales && model.CustomerId.HasValue && model.SupplierId.HasValue)
+        {
+            ModelState.AddModelError(string.Empty, "Satış faturasında yalnızca müşteri veya tedarikçi seçilebilir.");
         }
 
         if (model.InvoiceType == InvoiceType.Purchase && !model.SupplierId.HasValue)
@@ -403,7 +428,8 @@ public class InvoicesController : Controller
             StockItemId = line.StockItemId,
             Quantity = line.Quantity,
             UnitPrice = line.UnitPrice,
-            SalePrice = line.SalePrice
+            SalePrice = line.SalePrice,
+            Notes = line.Notes
         };
     }
 
@@ -417,6 +443,16 @@ public class InvoicesController : Controller
                 Value = c.Id.ToString(),
                 Text = c.FullName,
                 Selected = c.Id == model.CustomerId
+            });
+
+        var suppliers = await _supplierService.GetAllAsync(cancellationToken);
+        model.Suppliers = suppliers
+            .Where(s => s.IsActive)
+            .Select(s => new SelectListItem
+            {
+                Value = s.Id.ToString(),
+                Text = $"{s.CompanyName} (Borç: {s.Balance:N2} ₺)",
+                Selected = s.Id == model.SupplierId
             });
 
         var stocks = await _stockService.GetAllAsync(cancellationToken);

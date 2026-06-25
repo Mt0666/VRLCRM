@@ -47,8 +47,27 @@ public class InvoiceDocumentService
                 line.UnitPrice,
                 line.VatRate,
                 line.VatAmount,
-                line.LineTotal))
+                line.LineTotal,
+                LineNotes: line.Notes,
+                StockCode: line.StockItem.StockCode,
+                Barcode: line.StockItem.Barcode,
+                ProductDescription: line.StockItem.Description))
             .ToList();
+
+        if (isSales)
+        {
+            var salesPartyLabel = invoice.CustomerId.HasValue ? "Müşteri" : "Tedarikçi";
+            return BuildSimplifiedDocumentPdf(
+                invoice.InvoiceNumber,
+                invoice.IsActive ? "Aktif" : "Pasif",
+                invoice.InvoiceDate,
+                salesPartyLabel,
+                partyName,
+                partyCompany,
+                partyPhone,
+                lines,
+                new DocumentTotals(invoice.SubTotal, invoice.VatTotal, invoice.TotalAmount));
+        }
 
         return BuildPdf(
             _company,

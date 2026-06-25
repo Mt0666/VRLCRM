@@ -311,7 +311,7 @@
                   <a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id" class="fw-semibold text-body text-decoration-none d-block">
                     @order.OrderNumber
                   </a>
-                  <small class="text-body-secondary">@order.Customer.FullName</small>
+                  <small class="text-body-secondary">@(order.Customer?.FullName ?? order.Supplier?.CompanyName ?? "-")</small>
                 </div>
                 <div class="text-end">
                   <div class="fw-semibold small">@order.TotalAmount.ToString("N0") ₺</div>

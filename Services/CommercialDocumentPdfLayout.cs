@@ -21,7 +21,10 @@ public static class CommercialDocumentPdfLayout
         decimal VatRate,
         decimal VatAmount,
         decimal LineTotal,
-        string? LineNotes = null);
+        string? LineNotes = null,
+        string? StockCode = null,
+        string? Barcode = null,
+        string? ProductDescription = null);
 
     public record DocumentTotals(
         decimal SubTotal,
@@ -217,6 +220,169 @@ public static class CommercialDocumentPdfLayout
         });
 
         return document.GeneratePdf();
+    }
+
+    public static byte[] BuildSimplifiedDocumentPdf(
+        string documentNumber,
+        string? statusLabel,
+        DateTime documentDate,
+        string partyLabel,
+        string partyName,
+        string? partyCompany,
+        string partyPhone,
+        IReadOnlyList<DocumentLine> lines,
+        DocumentTotals totals)
+    {
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(36);
+                page.DefaultTextStyle(x => x.FontSize(10));
+
+                page.Content().Column(column =>
+                {
+                    column.Spacing(12);
+
+                    column.Item().Background(Colors.Grey.Lighten4).Padding(12).Row(infoRow =>
+                    {
+                        infoRow.RelativeItem().Column(c =>
+                        {
+                            c.Item().Text(partyLabel).SemiBold();
+                            c.Item().Text(partyName);
+                            if (!string.IsNullOrWhiteSpace(partyCompany))
+                            {
+                                c.Item().Text(partyCompany).FontColor(MutedColor);
+                            }
+                        });
+                        infoRow.RelativeItem().Column(c =>
+                        {
+                            c.Item().Text("Tarih").SemiBold();
+                            c.Item().Text(documentDate.ToLocalTime().ToString("dd.MM.yyyy", TurkishCulture));
+                        });
+                        infoRow.RelativeItem().Column(c =>
+                        {
+                            c.Item().Text("Telefon").SemiBold();
+                            c.Item().Text(string.IsNullOrWhiteSpace(partyPhone) ? "-" : partyPhone);
+                        });
+                        infoRow.RelativeItem().Column(c =>
+                        {
+                            c.Item().Text("Belge No").SemiBold();
+                            c.Item().Text(documentNumber);
+                            if (!string.IsNullOrWhiteSpace(statusLabel))
+                            {
+                                c.Item().Text(statusLabel).FontSize(8).FontColor(MutedColor);
+                            }
+                        });
+                    });
+
+                    column.Item().Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.ConstantColumn(22);
+                            columns.RelativeColumn(3.2f);
+                            columns.RelativeColumn(0.8f);
+                            columns.RelativeColumn(1.2f);
+                            columns.RelativeColumn(1.2f);
+                        });
+
+                        table.Header(header =>
+                        {
+                            header.Cell().Background(BrandColor).Padding(6).Text("#").FontColor(Colors.White).SemiBold();
+                            header.Cell().Background(BrandColor).Padding(6).Text("Ürün").FontColor(Colors.White).SemiBold();
+                            header.Cell().Background(BrandColor).Padding(6).AlignCenter().Text("Adet").FontColor(Colors.White).SemiBold();
+                            header.Cell().Background(BrandColor).Padding(6).AlignRight().Text("Birim Fiyat").FontColor(Colors.White).SemiBold();
+                            header.Cell().Background(BrandColor).Padding(6).AlignRight().Text("Toplam").FontColor(Colors.White).SemiBold();
+                        });
+
+                        var index = 1;
+                        foreach (var line in lines)
+                        {
+                            var bg = index % 2 == 0 ? Colors.Grey.Lighten5 : Colors.White;
+                            var hasDetail = HasProductDetail(line);
+                            var mainPadding = hasDetail
+                                ? new { H = 6f, Top = 6f, Bottom = 1f }
+                                : new { H = 6f, Top = 6f, Bottom = 6f };
+
+                            table.Cell().Background(bg).PaddingHorizontal(mainPadding.H).PaddingTop(mainPadding.Top).PaddingBottom(mainPadding.Bottom).Text(index.ToString());
+                            table.Cell().Background(bg).PaddingHorizontal(mainPadding.H).PaddingTop(mainPadding.Top).PaddingBottom(mainPadding.Bottom).Text(line.ProductName);
+                            table.Cell().Background(bg).PaddingHorizontal(mainPadding.H).PaddingTop(mainPadding.Top).PaddingBottom(mainPadding.Bottom).AlignCenter().Text(line.Quantity.ToString());
+                            table.Cell().Background(bg).PaddingHorizontal(mainPadding.H).PaddingTop(mainPadding.Top).PaddingBottom(mainPadding.Bottom).AlignRight().Text(FormatMoney(line.UnitPrice));
+                            table.Cell().Background(bg).PaddingHorizontal(mainPadding.H).PaddingTop(mainPadding.Top).PaddingBottom(mainPadding.Bottom).AlignRight().Text(FormatMoney(line.LineTotal));
+
+                            if (hasDetail)
+                            {
+                                table.Cell().Background(bg).PaddingHorizontal(6).PaddingTop(0).PaddingBottom(6).Text(string.Empty);
+                                table.Cell().ColumnSpan(4).Background(bg).PaddingHorizontal(6).PaddingTop(0).PaddingBottom(6).Text(text =>
+                                {
+                                    RenderProductDetailText(text, line);
+                                });
+                            }
+
+                            index++;
+                        }
+                    });
+
+                    column.Item().Row(totalRow =>
+                    {
+                        totalRow.RelativeItem();
+                        totalRow.ConstantItem(280).Background(Colors.Grey.Lighten4).Padding(12).Row(r =>
+                        {
+                            r.RelativeItem().Text("Ödenecek Tutar").SemiBold();
+                            r.ConstantItem(90).AlignRight().Text(FormatMoney(totals.TotalAmount)).SemiBold();
+                        });
+                    });
+                });
+
+                page.Footer().AlignCenter().Text(text =>
+                {
+                    text.Span(DateTime.Now.ToString("dd.MM.yyyy", TurkishCulture)).FontSize(8).FontColor(MutedColor);
+                });
+            });
+        });
+
+        return document.GeneratePdf();
+    }
+
+    private static bool HasProductDetail(DocumentLine line) =>
+        !string.IsNullOrWhiteSpace(line.StockCode)
+        || !string.IsNullOrWhiteSpace(line.Barcode)
+        || !string.IsNullOrWhiteSpace(line.LineNotes)
+        || !string.IsNullOrWhiteSpace(line.ProductDescription);
+
+    private static void RenderProductDetailText(TextDescriptor text, DocumentLine line)
+    {
+        text.DefaultTextStyle(x => x.FontSize(8).FontColor(MutedColor).Italic());
+
+        var hasStockCode = !string.IsNullOrWhiteSpace(line.StockCode);
+        var hasBarcode = !string.IsNullOrWhiteSpace(line.Barcode);
+        var description = !string.IsNullOrWhiteSpace(line.LineNotes)
+            ? line.LineNotes
+            : line.ProductDescription;
+        var hasDescription = !string.IsNullOrWhiteSpace(description);
+
+        if (hasStockCode)
+        {
+            text.Span($"Stok Kodu: {line.StockCode}");
+        }
+
+        if (hasBarcode)
+        {
+            if (hasStockCode)
+            {
+                text.Span("  |  ");
+            }
+
+            text.Span($"Barkod: {line.Barcode}");
+        }
+
+        if (hasDescription)
+        {
+            text.Span("     ");
+            text.Span($"Açıklama: {description}");
+        }
     }
 
     public static string FormatMoney(decimal amount) =>

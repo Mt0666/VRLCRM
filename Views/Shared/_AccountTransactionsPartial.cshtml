@@ -1,0 +1,69 @@
+@model IReadOnlyList<VRLCRM.Models.Accounts.AccountTransactionRow>
+
+<div class="card-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3 px-4 pt-4 pb-2">
+  <div class="d-flex align-items-center gap-2">
+    <input type="text" class="form-control form-control-sm js-table-search" placeholder="Ara..." style="width:200px" />
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    @if (ViewData["ExportPdfAction"] is string exportAction && ViewData["PartyId"] is int partyId)
+    {
+      var pdfUrl = Url.Action(exportAction, ViewData["ExportPdfController"]?.ToString(), new { id = partyId });
+      <partial name="_DocumentExportButtons" view-data='@(new ViewDataDictionary(ViewData) {
+        ["PdfExportUrl"] = pdfUrl
+      })' />
+    }
+    <label class="text-body-secondary small mb-0">Göster:</label>
+    <select class="form-select form-select-sm js-table-page-size" style="width:75px">
+      <option value="10">10</option>
+      <option value="25" selected>25</option>
+      <option value="50">50</option>
+    </select>
+  </div>
+</div>
+
+<div class="table-responsive text-nowrap">
+  <table class="table table-hover js-data-table mb-0">
+    <thead>
+      <tr>
+        <th>No</th>
+        <th>Tarih</th>
+        <th>Tür</th>
+        <th>Tutar</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody class="table-border-bottom-0">
+      @if (!Model.Any())
+      {
+        <tr>
+          <td colspan="5" class="text-center py-5 text-body-secondary">Kayıt bulunamadı.</td>
+        </tr>
+      }
+      else
+      {
+        @foreach (var row in Model)
+        {
+          <tr>
+            <td class="fw-semibold">@row.Number</td>
+            <td>@row.Date.ToLocalTime().ToString("dd.MM.yyyy")</td>
+            <td>
+              <span class="badge bg-label-@row.TypeBadgeColor">@row.TypeLabel</span>
+            </td>
+            <td class="fw-semibold">@row.Amount.ToString("N2") ₺</td>
+            <td>
+              @if (!string.IsNullOrWhiteSpace(row.DetailController))
+              {
+                <a asp-controller="@row.DetailController"
+                   asp-action="@row.DetailAction"
+                   asp-route-id="@row.Id"
+                   class="btn btn-sm btn-outline-primary">
+                  <i class="ri-eye-line me-1"></i>Detay
+                </a>
+              }
+            </td>
+          </tr>
+        }
+      }
+    </tbody>
+  </table>
+</div>

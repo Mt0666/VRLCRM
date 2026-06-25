@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VRLCRM.Application.Suppliers;
 using VRLCRM.Domain.Constants;
+using VRLCRM.Helpers;
 using VRLCRM.Models.Suppliers;
 using VRLCRM.Services;
 
@@ -11,14 +12,14 @@ namespace VRLCRM.Controllers;
 public class SuppliersController : Controller
 {
     private readonly ISupplierService _supplierService;
-    private readonly SupplierPaymentDocumentService _paymentDocumentService;
+    private readonly AccountStatementDocumentService _statementDocumentService;
 
     public SuppliersController(
         ISupplierService supplierService,
-        SupplierPaymentDocumentService paymentDocumentService)
+        AccountStatementDocumentService statementDocumentService)
     {
         _supplierService = supplierService;
-        _paymentDocumentService = paymentDocumentService;
+        _statementDocumentService = statementDocumentService;
     }
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -38,13 +39,34 @@ public class SuppliersController : Controller
         return View(supplier);
     }
 
-    public async Task<IActionResult> InvoicesPartial(int id, CancellationToken cancellationToken)
+    public async Task<IActionResult> TransactionsPartial(int id, CancellationToken cancellationToken)
     {
-        var invoices = await _supplierService.GetPurchaseInvoicesAsync(id, cancellationToken);
-        return PartialView("_SupplierInvoicesPartial", invoices);
+        var supplier = await _supplierService.GetByIdAsync(id, cancellationToken);
+        if (supplier is null)
+        {
+            return NotFound();
+        }
+
+        var orders = await _supplierService.GetOrdersAsync(id, cancellationToken);
+        var purchaseInvoices = await _supplierService.GetPurchaseInvoicesAsync(id, cancellationToken);
+        var salesInvoices = await _supplierService.GetSalesInvoicesAsync(id, cancellationToken);
+        var payments = await _supplierService.GetPaymentsAsync(id, cancellationToken);
+        var rows = AccountTransactionBuilder.FromSupplierData(orders, purchaseInvoices, salesInvoices, payments).ToList();
+
+        ViewData["ExportPdfController"] = "Suppliers";
+        ViewData["ExportPdfAction"] = "ExportPaymentsPdf";
+        ViewData["PartyId"] = id;
+
+        return PartialView("_AccountTransactionsPartial", rows);
     }
+
+    public async Task<IActionResult> InvoicesPartial(int id, CancellationToken cancellationToken)
+        => await TransactionsPartial(id, cancellationToken);
 
     public async Task<IActionResult> PaymentsPartial(int id, CancellationToken cancellationToken)
+        => await TransactionsPartial(id, cancellationToken);
+
+    public async Task<IActionResult> ExportPaymentsPdf(int id, bool inline = false, CancellationToken cancellationToken = default)
     {
         var supplier = await _supplierService.GetByIdAsync(id, cancellationToken);
         if (supplier is null)
@@ -52,22 +74,18 @@ public class SuppliersController : Controller
             return NotFound();
         }
 
+        var orders = await _supplierService.GetOrdersAsync(id, cancellationToken);
+        var purchaseInvoices = await _supplierService.GetPurchaseInvoicesAsync(id, cancellationToken);
+        var salesInvoices = await _supplierService.GetSalesInvoicesAsync(id, cancellationToken);
         var payments = await _supplierService.GetPaymentsAsync(id, cancellationToken);
-        ViewData["SupplierId"] = id;
-        return PartialView("_PaymentsPartial", payments);
-    }
-
-    public async Task<IActionResult> ExportPaymentsPdf(int id, CancellationToken cancellationToken)
-    {
-        var supplier = await _supplierService.GetByIdAsync(id, cancellationToken);
-        if (supplier is null)
+        var rows = AccountTransactionBuilder.FromSupplierData(orders, purchaseInvoices, salesInvoices, payments).ToList();
+        var bytes = _statementDocumentService.GeneratePdf("Tedarikçi", supplier.CompanyName, rows);
+        if (inline)
         {
-            return NotFound();
+            return PdfFileResults.AsInline(bytes);
         }
 
-        var payments = await _supplierService.GetPaymentsAsync(id, cancellationToken);
-        var bytes = _paymentDocumentService.GeneratePdf(supplier, payments);
-        return File(bytes, "application/pdf", $"{supplier.CompanyName}-odemeler.pdf");
+        return PdfFileResults.AsDownload(bytes, $"{supplier.CompanyName}-cari-hareketler.pdf");
     }
 
     public IActionResult Create()

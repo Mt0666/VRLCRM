@@ -24,7 +24,8 @@ public interface IOrderService
     Task<StockItem?> FindByBarcodeAsync(string barcode, CancellationToken cancellationToken = default);
 
     Task<Order> CreateAndApproveAsync(
-        int customerId,
+        int? customerId,
+        int? supplierId,
         string? notes,
         decimal discountRate,
         IReadOnlyList<OrderLineInput> lines,
