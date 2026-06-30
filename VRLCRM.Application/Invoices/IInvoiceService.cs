@@ -9,7 +9,7 @@ public class NewPurchaseProductInput
 
     public string Name { get; set; } = string.Empty;
 
-    public int CategoryId { get; set; }
+    public int? CategoryId { get; set; }
 
     public string? NewCategoryName { get; set; }
 
@@ -71,6 +71,8 @@ public interface IInvoiceService
 
     Task<bool> UpdateSalesInvoiceAsync(
         int id,
+        int? customerId,
+        int? supplierId,
         decimal discountRate,
         IReadOnlyList<InvoiceLineUpdateInput> lines,
         CancellationToken cancellationToken = default);

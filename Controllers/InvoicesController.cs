@@ -8,6 +8,7 @@ using VRLCRM.Application.Invoices;
 using VRLCRM.Application.Stocks;
 using VRLCRM.Application.Suppliers;
 using VRLCRM.Domain.Constants;
+using VRLCRM.Domain.Entities;
 using VRLCRM.Domain.Enums;
 using VRLCRM.Helpers;
 using VRLCRM.Models.Invoices;
@@ -73,6 +74,11 @@ public class InvoicesController : Controller
         if (!User.IsInRole(AppRoles.Admin) && invoice.InvoiceType != InvoiceType.Sales)
         {
             return Forbid();
+        }
+
+        if (User.IsInRole(AppRoles.Admin) && invoice.IsActive && invoice.InvoiceType == InvoiceType.Sales)
+        {
+            await PopulateEditPartyViewBagAsync(invoice, cancellationToken);
         }
 
         return View(invoice);
@@ -238,6 +244,25 @@ public class InvoicesController : Controller
     [Authorize(Roles = AppRoles.Admin)]
     public async Task<IActionResult> UpdateSales(int id, InvoiceFormViewModel model, CancellationToken cancellationToken)
     {
+        if (model.SalesPartyType == "supplier")
+        {
+            model.CustomerId = null;
+            if (!model.SupplierId.HasValue)
+            {
+                TempData["ErrorMessage"] = "Tedarikçi seçilmelidir.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+        }
+        else
+        {
+            model.SupplierId = null;
+            if (!model.CustomerId.HasValue)
+            {
+                TempData["ErrorMessage"] = "Müşteri seçilmelidir.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+        }
+
         if (model.Lines.Count == 0)
         {
             TempData["ErrorMessage"] = "Faturada en az bir kalem olmalıdır.";
@@ -255,7 +280,13 @@ public class InvoicesController : Controller
                 Notes = l.Notes
             }).ToList();
 
-            var updated = await _invoiceService.UpdateSalesInvoiceAsync(id, model.DiscountRate, lines, cancellationToken);
+            var updated = await _invoiceService.UpdateSalesInvoiceAsync(
+                id,
+                model.CustomerId,
+                model.SupplierId,
+                model.DiscountRate,
+                lines,
+                cancellationToken);
             if (!updated)
             {
                 return NotFound();
@@ -326,7 +357,7 @@ public class InvoicesController : Controller
             return NotFound();
         }
 
-        TempData["SuccessMessage"] = "Fatura pasif duruma alındı.";
+        TempData["SuccessMessage"] = "Satış faturası silindi. Stok ve cari bakiyeler güncellendi.";
         return RedirectToAction(string.IsNullOrWhiteSpace(returnAction)
             ? (invoice.InvoiceType == InvoiceType.Sales ? nameof(Sales) : nameof(Purchase))
             : returnAction);
@@ -414,7 +445,7 @@ public class InvoicesController : Controller
                 {
                     StockCode = line.NewStockCode?.Trim() ?? string.Empty,
                     Name = line.NewProductName?.Trim() ?? string.Empty,
-                    CategoryId = line.NewCategoryId ?? 0,
+                    CategoryId = line.NewCategoryId,
                     NewCategoryName = line.NewCategoryName?.Trim(),
                     Barcode = line.NewBarcode?.Trim(),
                     VatRate = line.VatRate,
@@ -470,7 +501,8 @@ public class InvoicesController : Controller
             Barcode = s.Barcode,
             PurchasePrice = s.PurchasePrice,
             Price = s.Price,
-            VatRate = s.VatRate
+            VatRate = s.VatRate,
+            StockQuantity = s.StockQuantity
         }).ToList();
     }
 
@@ -501,7 +533,8 @@ public class InvoicesController : Controller
             Barcode = s.Barcode,
             PurchasePrice = s.PurchasePrice,
             Price = s.Price,
-            VatRate = s.VatRate
+            VatRate = s.VatRate,
+            StockQuantity = s.StockQuantity
         }).ToList();
 
         var categories = await _categoryService.GetAllAsync(cancellationToken);
@@ -516,5 +549,19 @@ public class InvoicesController : Controller
             Id = c.Id,
             Name = c.Name
         }).ToList();
+    }
+
+    private async Task PopulateEditPartyViewBagAsync(Invoice invoice, CancellationToken cancellationToken)
+    {
+        var model = new InvoiceFormViewModel
+        {
+            CustomerId = invoice.CustomerId,
+            SupplierId = invoice.SupplierId,
+            SalesPartyType = invoice.SupplierId.HasValue ? "supplier" : "customer"
+        };
+        await PopulateSalesSelectListsAsync(model, cancellationToken);
+        ViewBag.Customers = model.Customers;
+        ViewBag.Suppliers = model.Suppliers;
+        ViewBag.SalesPartyType = model.SalesPartyType;
     }
 }

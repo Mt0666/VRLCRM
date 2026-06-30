@@ -233,25 +233,24 @@ public class PurchaseInvoiceImportService
                 continue;
             }
 
-            if (string.IsNullOrWhiteSpace(categoryName))
+            int? categoryId = null;
+            if (!string.IsNullOrWhiteSpace(categoryName))
             {
-                result.Errors.Add($"Satır {row}: \"{stockCode}\" yeni ürün — Kategori zorunludur.");
-                continue;
+                var category = await ResolveImportCategoryAsync(
+                    categoryName,
+                    categoryByName,
+                    createdCategoryKeys,
+                    result,
+                    cancellationToken);
+                categoryId = category.Id;
             }
-
-            var category = await ResolveImportCategoryAsync(
-                categoryName,
-                categoryByName,
-                createdCategoryKeys,
-                result,
-                cancellationToken);
 
             MergeLine(merged, new PurchaseImportLineResult
             {
                 IsNew = true,
                 Name = productName,
                 Code = stockCode,
-                CategoryId = category.Id,
+                CategoryId = categoryId,
                 Barcode = string.IsNullOrWhiteSpace(barcode) ? null : barcode,
                 CriticalStockLevel = criticalLevel,
                 Qty = qty,

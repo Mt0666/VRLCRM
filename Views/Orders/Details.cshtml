@@ -36,10 +36,10 @@
                 <i class="ri-file-text-line me-1"></i>Satış Faturasına Dönüştür
               </button>
             </form>
-            <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Sipariş iptal edilecek. Stok ve cari hesap geri alınacak. Devam edilsin mi?');">
+            <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Sipariş silinecek. Devam edilsin mi?');">
               @Html.AntiForgeryToken()
               <button type="submit" class="btn btn-outline-danger btn-sm">
-                <i class="ri-close-circle-line me-1"></i>İptal Et
+                <i class="ri-delete-bin-6-line me-1"></i>Sil
               </button>
             </form>
           </div>
@@ -78,8 +78,88 @@
 
         @if (canEdit)
         {
+          var partyType = ViewBag.PartyType as string ?? (Model.SupplierId.HasValue ? "supplier" : "customer");
+          var customers = ViewBag.Customers as IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? [];
+          var suppliers = ViewBag.Suppliers as IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? [];
           <form asp-action="Update" asp-route-id="@Model.Id" method="post" id="orderEditForm">
             @Html.AntiForgeryToken()
+
+            <div class="card border mb-4">
+              <div class="card-header py-2">
+                <span class="fw-semibold small"><i class="ri-user-line me-1"></i>Cari Hesap</span>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-12">
+                    <label class="form-label">Cari Türü</label>
+                    <div class="d-flex gap-3">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="PartyType" id="partyCustomer" value="customer" checked="@(partyType != "supplier")" />
+                        <label class="form-check-label" for="partyCustomer">Müşteri</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="PartyType" id="partySupplier" value="supplier" checked="@(partyType == "supplier")" />
+                        <label class="form-check-label" for="partySupplier">Tedarikçi</label>
+                      </div>
+                    </div>
+                    <small class="text-body-secondary">Yanlış cariye kestiyseniz buradan değiştirebilirsiniz.</small>
+                  </div>
+                  <div class="col-md-6" id="customerSelectWrap">
+                    <label class="form-label">Müşteri</label>
+                    <select name="CustomerId" id="CustomerId" class="form-select select2">
+                      <option value="">Müşteri seçin</option>
+                      @foreach (var item in customers)
+                      {
+                        <option value="@item.Value" selected="@item.Selected">@item.Text</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="col-md-6" id="supplierSelectWrap" style="display:none;">
+                    <label class="form-label">Tedarikçi</label>
+                    <select name="SupplierId" id="SupplierId" class="form-select select2">
+                      <option value="">Tedarikçi seçin</option>
+                      @foreach (var item in suppliers)
+                      {
+                        <option value="@item.Value" selected="@item.Selected">@item.Text</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card border mb-4">
+              <div class="card-header py-2">
+                <span class="fw-semibold small"><i class="ri-add-circle-line me-1"></i>Ürün Ekle</span>
+              </div>
+              <div class="card-body">
+                <div class="row g-3 align-items-center">
+                  <div class="col-md-5">
+                    <select id="productSelect" style="width:100%">
+                      <option value=""></option>
+                    </select>
+                    <div id="productMessage" class="form-text text-danger mt-1"></div>
+                    <div id="productPreview" class="form-text mt-1" style="display:none;">
+                      <span id="previewStock"></span>
+                      <span class="mx-2 text-body-secondary">|</span>
+                      <span id="previewPrice"></span>
+                    </div>
+                  </div>
+                  <div class="col-md-2">
+                    <input type="number" id="scanQty" class="form-control" value="1" min="1" placeholder="Adet" />
+                  </div>
+                  <div class="col-md-2">
+                    <input type="number" id="lineUnitPrice" class="form-control" step="0.01" min="0" placeholder="Satış Fiyatı" />
+                  </div>
+                  <div class="col-md-3">
+                    <button type="button" id="addProductBtn" class="btn btn-primary w-100">
+                      <i class="ri-add-line me-1"></i>Ekle
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="d-none d-md-block table-responsive mb-0">
               <table class="table table-bordered table-sm align-middle js-lines-table" id="linesTable">
                 <thead class="table-light">
@@ -259,6 +339,50 @@
 {
 <script>
 (function () {
+  function toggleOrderParty() {
+    var isSupplier = document.getElementById('partySupplier').checked;
+    document.getElementById('customerSelectWrap').style.display = isSupplier ? 'none' : '';
+    document.getElementById('supplierSelectWrap').style.display = isSupplier ? '' : 'none';
+    if (isSupplier) {
+      var customerSelect = document.getElementById('CustomerId');
+      if (customerSelect) customerSelect.value = '';
+    } else {
+      var supplierSelect = document.getElementById('SupplierId');
+      if (supplierSelect) supplierSelect.value = '';
+    }
+  }
+  document.getElementById('partyCustomer').addEventListener('change', toggleOrderParty);
+  document.getElementById('partySupplier').addEventListener('change', toggleOrderParty);
+  toggleOrderParty();
+
+  const productCache = new Map();
+
+  function fmtMoney(v) {
+    return parseFloat(v).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+  }
+
+  function updateProductPreview(product) {
+    var preview = document.getElementById('productPreview');
+    if (!preview) return;
+    if (!product) {
+      preview.style.display = 'none';
+      return;
+    }
+    preview.style.display = '';
+    var qty = product.stockQuantity != null ? product.stockQuantity : 0;
+    document.getElementById('previewStock').innerHTML =
+      'Stok: <strong>' + qty + '</strong> adet';
+    document.getElementById('previewPrice').innerHTML =
+      'Birim fiyat: <strong>' + fmtMoney(product.price) + '</strong>';
+  }
+
+  function formatProductOption(item) {
+    var qty = item.stockQuantity != null ? item.stockQuantity : 0;
+    return item.name +
+      (item.stockCode ? ' (' + item.stockCode + ')' : '') +
+      ' · Stok: ' + qty + ' · ' + fmtMoney(item.price);
+  }
+
   const initialLines = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Lines.Select(l => new {
     stockId = l.StockItemId.ToString(),
     name = l.StockItem.Name,
@@ -449,6 +573,114 @@
   }
 
   document.getElementById('orderDiscountRate').addEventListener('input', updateTotals);
+
+  var tsProduct = new TomSelect('#productSelect', {
+    valueField: 'id',
+    labelField: 'text',
+    searchField: ['text', 'barcode'],
+    create: false,
+    loadThrottle: 300,
+    shouldLoad: function(query) { return query.length > 0; },
+    openOnFocus: false,
+    placeholder: 'Ürün adı, kodu veya barkod ile arayın…',
+    load: function(query, callback) {
+      fetch('@Url.Action("SearchProduct", "Orders")' + '?term=' + encodeURIComponent(query))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          data.forEach(function(item) {
+            productCache.set(String(item.id), item);
+          });
+          callback(data.map(function(item) {
+            return {
+              id: String(item.id),
+              text: formatProductOption(item),
+              barcode: item.barcode || ''
+            };
+          }));
+        })
+        .catch(function() { callback(); });
+    },
+    onChange: function(value) {
+      var priceInput = document.getElementById('lineUnitPrice');
+      if (value) {
+        var product = productCache.get(String(value));
+        if (product) {
+          if (product.price != null) priceInput.value = parseFloat(product.price).toFixed(2);
+          updateProductPreview(product);
+        }
+      } else {
+        priceInput.value = '';
+        updateProductPreview(null);
+      }
+    },
+    onItemAdd: function() {
+      setTimeout(function() {
+        var qty = document.getElementById('scanQty');
+        if (qty) { qty.focus(); qty.select(); }
+      }, 50);
+    }
+  });
+
+  // ── Donanım barkod okuyucu (klavye) — hızlı tarama + Enter'da tam barkod araması ──
+  VRLBarcode.attachKeyboardWedge(tsProduct.control_input, {
+    onScan: function (code) {
+      var msg = document.getElementById('productMessage');
+      if (msg) msg.textContent = '';
+      VRLBarcode.lookup('@Url.Action("LookupBarcode", "Orders")', code).then(function (product) {
+        if (!product) {
+          tsProduct.setTextboxValue('');
+          tsProduct.close();
+          if (msg) msg.textContent = 'Barkod bulunamadı: ' + code;
+          return;
+        }
+        var key = String(product.id);
+        productCache.set(key, product);
+        if (!tsProduct.options[key]) {
+          tsProduct.addOption({
+            id: key,
+            text: product.name + (product.stockCode ? ' (' + product.stockCode + ')' : ''),
+            barcode: product.barcode || ''
+          });
+        }
+        tsProduct.setValue(key);
+      });
+    }
+  });
+
+  function addSelectedProduct() {
+    var stockId = tsProduct.getValue();
+    var qty = parseInt(document.getElementById('scanQty').value, 10) || 1;
+    var customPrice = parseFloat(document.getElementById('lineUnitPrice').value);
+    var msg = document.getElementById('productMessage');
+    msg.textContent = '';
+    if (!stockId) { msg.textContent = 'Lütfen ürün seçin.'; return; }
+    var product = productCache.get(stockId);
+    if (!product) { msg.textContent = 'Ürün bilgisi bulunamadı.'; return; }
+    var finalPrice = (!isNaN(customPrice) && customPrice >= 0) ? customPrice : product.price;
+    var existing = lines.get(stockId);
+    lines.set(stockId, {
+      name: product.name,
+      qty: (existing ? existing.qty : 0) + qty,
+      price: finalPrice,
+      vatRate: product.vatRate,
+      notes: existing ? existing.notes : ''
+    });
+    renderLines();
+    rebuildHiddenInputs();
+    updateTotals();
+    tsProduct.clear();
+    tsProduct.clearOptions();
+    document.getElementById('scanQty').value = 1;
+    document.getElementById('lineUnitPrice').value = '';
+    updateProductPreview(null);
+    setTimeout(function() { tsProduct.focus(); }, 80);
+  }
+
+  document.getElementById('addProductBtn').addEventListener('click', addSelectedProduct);
+  document.getElementById('lineUnitPrice').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); addSelectedProduct(); }
+  });
+
   renderLines();
   rebuildHiddenInputs();
   updateTotals();

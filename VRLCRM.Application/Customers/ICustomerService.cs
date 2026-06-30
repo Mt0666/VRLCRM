@@ -21,6 +21,8 @@ public interface ICustomerService
 
     Task<bool> UpdateAsync(Customer customer, Address address, string? loginPhone = null, string? password = null, CancellationToken cancellationToken = default);
 
+    Task<string?> GetB2bLoginPhoneAsync(int customerId, CancellationToken cancellationToken = default);
+
     Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
 
     Task<bool> RestoreAsync(int id, CancellationToken cancellationToken = default);

@@ -82,6 +82,11 @@
                     <option value=""></option>
                   </select>
                   <div id="productMessage" class="form-text text-danger mt-1"></div>
+                  <div id="productPreview" class="form-text mt-1" style="display:none;">
+                    <span id="previewStock"></span>
+                    <span class="mx-2 text-body-secondary">|</span>
+                    <span id="previewPrice"></span>
+                  </div>
                 </div>
                 <div class="col-md-2">
                   <input type="number" id="scanQty" class="form-control" value="1" min="1" placeholder="Adet" />
@@ -176,6 +181,32 @@
     const productCache = new Map();
     let scannedProduct = false;
     let orderScanner = null;
+
+    function fmtMoney(v) {
+      return parseFloat(v).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+    }
+
+    function updateProductPreview(product) {
+      var preview = document.getElementById('productPreview');
+      if (!preview) return;
+      if (!product) {
+        preview.style.display = 'none';
+        return;
+      }
+    preview.style.display = '';
+    var qty = product.stockQuantity != null ? product.stockQuantity : 0;
+    document.getElementById('previewStock').innerHTML =
+      'Stok: <strong>' + qty + '</strong> adet';
+      document.getElementById('previewPrice').innerHTML =
+        'Birim fiyat: <strong>' + fmtMoney(product.price) + '</strong>';
+    }
+
+    function formatProductOption(item) {
+      var qty = item.stockQuantity != null ? item.stockQuantity : 0;
+      return item.name +
+        (item.stockCode ? ' (' + item.stockCode + ')' : '') +
+        ' · Stok: ' + qty + ' · ' + fmtMoney(item.price);
+    }
 
     function persistDraft() {
       FormDraftStorage.save(DRAFT_KEY, {
@@ -350,6 +381,7 @@
       tsProduct.clearOptions();
       document.getElementById('scanQty').value = 1;
       document.getElementById('lineUnitPrice').value = '';
+      updateProductPreview(null);
 
       if (scannedProduct) {
         scannedProduct = false;
@@ -438,7 +470,7 @@
       labelField: 'text',
       searchField: ['text', 'barcode'],
       create: false,
-      loadThrottle: 2000,
+      loadThrottle: 300,
       shouldLoad: function(query) { return query.length > 0; },
       openOnFocus: false,
       selectOnTab: false,
@@ -455,7 +487,7 @@
               productCache.set(String(item.id), item);
               return {
                 id: String(item.id),
-                text: item.name + (item.stockCode ? ' (' + item.stockCode + ')' : ''),
+                text: formatProductOption(item),
                 barcode: item.barcode || ''
               };
             });
@@ -470,9 +502,11 @@
           var product = productCache.get(String(value));
           if (product && product.price != null) {
             priceInput.value = parseFloat(product.price).toFixed(2);
+            updateProductPreview(product);
           }
         } else {
           priceInput.value = '';
+          updateProductPreview(null);
         }
       },
       onItemAdd: function() {
@@ -524,9 +558,55 @@
       onDetected: async function (decodedText, scanner) {
         var msg = document.getElementById('productMessage');
         msg.textContent = '';
-        tsProduct.setTextboxValue(decodedText);
-        await selectFromSearch(decodedText);
+
+        var r = await fetch('@Url.Action("LookupBarcode", "Orders")' + '?barcode=' + encodeURIComponent(decodedText));
+        if (!r.ok) {
+          // Tanımsız barkod → uyar, arama kutusunu temizle, taramaya devam et
+          tsProduct.setTextboxValue('');
+          tsProduct.close();
+          msg.textContent = 'Barkod bulunamadı: ' + decodedText;
+          setTimeout(function () { if (scanner) scanner.start(); }, 2500);
+          return;
+        }
+
+        var product = await r.json();
+        var key = String(product.id);
+        productCache.set(key, product);
+        if (!tsProduct.options[key]) {
+          tsProduct.addOption({
+            id: key,
+            text: product.name + (product.stockCode ? ' (' + product.stockCode + ')' : ''),
+            barcode: product.barcode || ''
+          });
+        }
+        tsProduct.setValue(key);
         scannedProduct = true;
+      }
+    });
+
+    // ── Donanım barkod okuyucu (klavye) — hızlı tarama + Enter'da tam barkod araması ──
+    VRLBarcode.attachKeyboardWedge(tsProduct.control_input, {
+      onScan: function (code) {
+        var msg = document.getElementById('productMessage');
+        if (msg) msg.textContent = '';
+        VRLBarcode.lookup('@Url.Action("LookupBarcode", "Orders")', code).then(function (product) {
+          if (!product) {
+            tsProduct.setTextboxValue('');
+            tsProduct.close();
+            if (msg) msg.textContent = 'Barkod bulunamadı: ' + code;
+            return;
+          }
+          var key = String(product.id);
+          productCache.set(key, product);
+          if (!tsProduct.options[key]) {
+            tsProduct.addOption({
+              id: key,
+              text: product.name + (product.stockCode ? ' (' + product.stockCode + ')' : ''),
+              barcode: product.barcode || ''
+            });
+          }
+          tsProduct.setValue(key);
+        });
       }
     });
   </script>

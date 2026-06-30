@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using VRLCRM.Application.Common;
 using VRLCRM.Application.Customers;
 using VRLCRM.Domain.Constants;
-using VRLCRM.Domain.Entities;
 using VRLCRM.Domain.Enums;
 using VRLCRM.Helpers;
 using VRLCRM.Models.Customers;
@@ -16,16 +14,13 @@ namespace VRLCRM.Controllers;
 public class CustomersController : Controller
 {
     private readonly ICustomerService _customerService;
-    private readonly UserManager<ApplicationUser> _userManager;
     private readonly AccountStatementDocumentService _statementDocumentService;
 
     public CustomersController(
         ICustomerService customerService,
-        UserManager<ApplicationUser> userManager,
         AccountStatementDocumentService statementDocumentService)
     {
         _customerService = customerService;
-        _userManager = userManager;
         _statementDocumentService = statementDocumentService;
     }
 
@@ -118,8 +113,8 @@ public class CustomersController : Controller
             await _customerService.CreateAsync(
                 CustomerViewModelMapper.ToCustomer(model),
                 CustomerViewModelMapper.ToAddress(model),
-                model.B2bLoginPhone,
-                model.Password,
+                ResolveB2bLoginPhone(model),
+                string.IsNullOrWhiteSpace(model.Password) ? null : model.Password,
                 cancellationToken);
 
             TempData["SuccessMessage"] = "Müşteri başarıyla oluşturuldu.";
@@ -138,9 +133,9 @@ public class CustomersController : Controller
         if (customer is null)
             return NotFound();
 
-        var linkedUser = await _userManager.Users.FirstOrDefaultAsync(u => u.CustomerId == id, cancellationToken);
         var vm = CustomerViewModelMapper.ToFormViewModel(customer);
-        vm.B2bLoginPhone = linkedUser?.PhoneNumber;
+        var b2bPhone = await _customerService.GetB2bLoginPhoneAsync(id, cancellationToken);
+        vm.B2bLoginPhone = b2bPhone ?? PhoneNormalizer.Normalize(customer.PhoneNumber);
         return View(vm);
     }
 
@@ -163,8 +158,8 @@ public class CustomersController : Controller
             var updated = await _customerService.UpdateAsync(
                 CustomerViewModelMapper.ToCustomer(model),
                 CustomerViewModelMapper.ToAddress(model),
-                model.B2bLoginPhone,
-                model.Password,
+                ResolveB2bLoginPhone(model),
+                string.IsNullOrWhiteSpace(model.Password) ? null : model.Password,
                 cancellationToken);
 
             if (!updated)
@@ -216,4 +211,7 @@ public class CustomersController : Controller
         TempData["SuccessMessage"] = "Müşteri tekrar aktif edildi.";
         return RedirectToAction(nameof(Details), new { id });
     }
+
+    private static string ResolveB2bLoginPhone(CustomerFormViewModel model) =>
+        string.IsNullOrWhiteSpace(model.B2bLoginPhone) ? model.PhoneNumber : model.B2bLoginPhone;
 }

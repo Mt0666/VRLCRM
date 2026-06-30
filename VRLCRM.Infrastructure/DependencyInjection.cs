@@ -23,6 +23,8 @@ using VRLCRM.Infrastructure.StockMovements;
 using VRLCRM.Infrastructure.Stocks;
 using VRLCRM.Infrastructure.Suppliers;
 using VRLCRM.Infrastructure.Users;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using VRLCRM.Infrastructure.Identity;
 using VRLCRM.Infrastructure.Data;
 using VRLCRM.Infrastructure.Options;
 
@@ -69,6 +71,9 @@ public static class DependencyInjection
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
+
+        services.RemoveAll<IUserValidator<ApplicationUser>>();
+        services.TryAddScoped<IUserValidator<ApplicationUser>, B2bFriendlyUserValidator>();
 
         services.ConfigureApplicationCookie(options =>
         {

@@ -2,14 +2,15 @@
 @{
   string? currentPage = ViewContext.HttpContext.Request.Path;
   var isAdmin = User.IsInRole(AppRoles.Admin);
-  var homeController = isAdmin ? "Dashboards" : "Orders";
+  var homeController = isAdmin ? "Dashboards" : "Invoices";
+  var homeAction = isAdmin ? "Index" : "Sales";
 }
 
 <!-- Menu -->
 <aside id="layout-menu" class="layout-menu menu-vertical menu">
 
   <div class='app-brand demo @((@ViewData["navbarFull"] != null && Convert.ToBoolean(@ViewData["navbarFull"])) ? "d-xl-none" : "")'>
-    <a asp-controller="@homeController" asp-action="Index" class="app-brand-link gap-xl-0 gap-2">
+    <a asp-controller="@homeController" asp-action="@homeAction" class="app-brand-link gap-xl-0 gap-2">
       <span class="app-brand-logo demo me-1">
         @await Html.PartialAsync("../_Partials/_Macros")
       </span>
@@ -56,19 +57,23 @@
       </li>
     }
 
-    <!-- Siparişler -->
-    @if (!isAdmin)
+    <!-- Siparişler (yalnızca admin) -->
+    @if (isAdmin)
     {
-      <li class="menu-header mt-7" id="menu-section-operasyon">
-        <span class="menu-header-text">Operasyon</span>
-      </li>
-    }
     <li class='menu-item@(currentPage.StartsWith("/Orders") ? " active" : "")'>
       <a asp-controller="Orders" asp-action="Index" class="menu-link">
         <i class="menu-icon icon-base ri ri-shopping-bag-3-line"></i>
         <div>Siparişler</div>
       </a>
     </li>
+    }
+
+    @if (!isAdmin)
+    {
+      <li class="menu-header mt-7" id="menu-section-operasyon">
+        <span class="menu-header-text">Operasyon</span>
+      </li>
+    }
 
     <li class='menu-item@(currentPage.StartsWith("/Invoices/Sales") || currentPage == "/Invoices/CreateSales" ? " active" : "")'>
       <a asp-controller="Invoices" asp-action="Sales" class="menu-link">

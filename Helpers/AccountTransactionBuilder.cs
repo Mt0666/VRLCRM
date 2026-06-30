@@ -18,7 +18,7 @@ public static class AccountTransactionBuilder
 
         var rows = new List<AccountTransactionRow>();
 
-        foreach (var order in orders)
+        foreach (var order in orders.Where(o => o.IsActive && o.Status != OrderStatus.Cancelled))
         {
             rows.Add(new AccountTransactionRow
             {
@@ -97,7 +97,7 @@ public static class AccountTransactionBuilder
 
         var rows = new List<AccountTransactionRow>();
 
-        foreach (var order in orders)
+        foreach (var order in orders.Where(o => o.IsActive && o.Status != OrderStatus.Cancelled))
         {
             rows.Add(new AccountTransactionRow
             {

@@ -31,6 +31,82 @@ public class StockService : IStockService
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
     }
 
+    public async Task<StockMovementHistory> GetMovementHistoryAsync(
+        int stockItemId,
+        CancellationToken cancellationToken = default)
+    {
+        var purchaseRows = await _context.InvoiceLines
+            .AsNoTracking()
+            .Where(l => l.StockItemId == stockItemId
+                        && l.IsActive
+                        && l.Invoice.IsActive
+                        && l.Invoice.InvoiceType == InvoiceType.Purchase)
+            .OrderByDescending(l => l.Invoice.InvoiceDate)
+            .Select(l => new
+            {
+                l.Invoice.InvoiceDate,
+                l.Invoice.InvoiceNumber,
+                SupplierCompany = l.Invoice.Supplier != null ? l.Invoice.Supplier.CompanyName : null,
+                l.Quantity,
+                l.UnitPrice,
+                l.LineTotal
+            })
+            .ToListAsync(cancellationToken);
+
+        var salesRows = await _context.InvoiceLines
+            .AsNoTracking()
+            .Where(l => l.StockItemId == stockItemId
+                        && l.IsActive
+                        && l.Invoice.IsActive
+                        && l.Invoice.InvoiceType == InvoiceType.Sales)
+            .OrderByDescending(l => l.Invoice.InvoiceDate)
+            .Select(l => new
+            {
+                l.Invoice.InvoiceDate,
+                l.Invoice.InvoiceNumber,
+                CustomerCompany = l.Invoice.Customer != null ? l.Invoice.Customer.CompanyName : null,
+                CustomerFirstName = l.Invoice.Customer != null ? l.Invoice.Customer.FirstName : null,
+                CustomerLastName = l.Invoice.Customer != null ? l.Invoice.Customer.LastName : null,
+                l.Quantity,
+                l.UnitPrice,
+                l.LineTotal
+            })
+            .ToListAsync(cancellationToken);
+
+        var purchases = purchaseRows
+            .Select(r => new StockMovementRow
+            {
+                Date = r.InvoiceDate,
+                DocumentNumber = r.InvoiceNumber,
+                PartyName = string.IsNullOrWhiteSpace(r.SupplierCompany) ? "-" : r.SupplierCompany,
+                Quantity = r.Quantity,
+                UnitPrice = r.UnitPrice,
+                LineTotal = r.LineTotal
+            })
+            .ToList();
+
+        var sales = salesRows
+            .Select(r =>
+            {
+                var fullName = $"{r.CustomerFirstName} {r.CustomerLastName}".Trim();
+                var party = !string.IsNullOrWhiteSpace(r.CustomerCompany)
+                    ? r.CustomerCompany
+                    : (string.IsNullOrWhiteSpace(fullName) ? "-" : fullName);
+                return new StockMovementRow
+                {
+                    Date = r.InvoiceDate,
+                    DocumentNumber = r.InvoiceNumber,
+                    PartyName = party,
+                    Quantity = r.Quantity,
+                    UnitPrice = r.UnitPrice,
+                    LineTotal = r.LineTotal
+                };
+            })
+            .ToList();
+
+        return new StockMovementHistory { Purchases = purchases, Sales = sales };
+    }
+
     public async Task<bool> StockCodeExistsAsync(
         string stockCode,
         int? excludeId = null,

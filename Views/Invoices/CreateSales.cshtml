@@ -87,6 +87,11 @@
                     <option value=""></option>
                   </select>
                   <div id="productMessage" class="form-text text-danger mt-1"></div>
+                  <div id="productPreview" class="form-text mt-1" style="display:none;">
+                    <span id="previewStock"></span>
+                    <span class="mx-2 text-body-secondary">|</span>
+                    <span id="previewPrice"></span>
+                  </div>
                 </div>
                 <div class="col-md-2">
                   <input type="number" id="lineQty" class="form-control" value="1" min="1" placeholder="Adet" />
@@ -184,6 +189,32 @@
     const stockVatRates = Object.fromEntries(stockOptions.map(function(s) { return [String(s.id), s.vatRate]; }));
     const productCache = new Map();
     stockOptions.forEach(function(s) { productCache.set(String(s.id), s); });
+
+    function fmtMoney(v) {
+      return parseFloat(v).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+    }
+
+    function updateProductPreview(product) {
+      var preview = document.getElementById('productPreview');
+      if (!preview) return;
+      if (!product) {
+        preview.style.display = 'none';
+        return;
+      }
+      preview.style.display = '';
+      var qty = product.stockQuantity != null ? product.stockQuantity : 0;
+      document.getElementById('previewStock').innerHTML =
+        'Stok: <strong>' + qty + '</strong> adet';
+      document.getElementById('previewPrice').innerHTML =
+        'Birim fiyat: <strong>' + fmtMoney(product.price) + '</strong>';
+    }
+
+    function formatProductOption(item) {
+      var qty = item.stockQuantity != null ? item.stockQuantity : 0;
+      return item.name +
+        (item.stockCode ? ' (' + item.stockCode + ')' : '') +
+        ' · Stok: ' + qty + ' · ' + fmtMoney(item.price);
+    }
 
     let lineIndex = 0;
     const lines = new Map();
@@ -356,6 +387,7 @@
       tsStock.clear();
       document.getElementById('lineQty').value = 1;
       document.getElementById('linePrice').value = '';
+      updateProductPreview(null);
 
       if (scannedProduct) {
         scannedProduct = false;
@@ -391,7 +423,7 @@
       labelField: 'text',
       searchField: ['text', 'barcode'],
       create: false,
-      loadThrottle: 2000,
+      loadThrottle: 300,
       shouldLoad: function(query) { return query.length > 0; },
       openOnFocus: false,
       selectOnTab: false,
@@ -408,7 +440,7 @@
               productCache.set(String(item.id), item);
               return {
                 id: String(item.id),
-                text: item.name + (item.stockCode ? ' (' + item.stockCode + ')' : ''),
+                text: formatProductOption(item),
                 barcode: item.barcode || ''
               };
             });
@@ -420,8 +452,16 @@
         no_results: function() { return '<div class="no-results">Ürün bulunamadı.</div>'; }
       },
       onChange: function(value) {
-        if (value && stockPrices[value] !== undefined) {
-          document.getElementById('linePrice').value = stockPrices[value];
+        var priceInput = document.getElementById('linePrice');
+        if (value) {
+          var product = productCache.get(String(value));
+          if (product) {
+            if (product.price != null) priceInput.value = parseFloat(product.price).toFixed(2);
+            updateProductPreview(product);
+          }
+        } else {
+          priceInput.value = '';
+          updateProductPreview(null);
         }
       },
       onItemAdd: function() {
@@ -502,6 +542,32 @@
         qtyInput.value = 1;
         qtyInput.select();
         qtyInput.focus();
+      }
+    });
+
+    // ── Donanım barkod okuyucu (klavye) — hızlı tarama + Enter'da tam barkod araması ──
+    VRLBarcode.attachKeyboardWedge(tsStock.control_input, {
+      onScan: function (code) {
+        var msg = document.getElementById('productMessage');
+        if (msg) msg.textContent = '';
+        VRLBarcode.lookup('@Url.Action("LookupBarcode", "Orders")', code).then(function (product) {
+          if (!product) {
+            tsStock.setTextboxValue('');
+            tsStock.close();
+            if (msg) msg.textContent = 'Barkod bulunamadı: ' + code;
+            return;
+          }
+          var key = String(product.id);
+          productCache.set(key, product);
+          if (!tsStock.options[key]) {
+            tsStock.addOption({
+              id: key,
+              text: product.name + (product.stockCode ? ' (' + product.stockCode + ')' : ''),
+              barcode: product.barcode || ''
+            });
+          }
+          tsStock.setValue(key);
+        });
       }
     });
 

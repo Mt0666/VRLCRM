@@ -33,6 +33,8 @@ public interface IOrderService
 
     Task<bool> UpdateAsync(
         int id,
+        int? customerId,
+        int? supplierId,
         decimal discountRate,
         IReadOnlyList<OrderLineInput> lines,
         CancellationToken cancellationToken = default);

@@ -20,7 +20,7 @@
         </div>
 
         <ul class="list-unstyled mb-4">
-          <li class="mb-2"><strong>Kategori:</strong> @Model.Category.Name</li>
+          <li class="mb-2"><strong>Kategori:</strong> @(Model.Category?.Name ?? "-")</li>
           <li class="mb-2"><strong>Fiyat:</strong> @Model.Price.ToString("N2") ₺</li>
           <li><strong>Stok Adedi:</strong> @Model.StockQuantity</li>
         </ul>

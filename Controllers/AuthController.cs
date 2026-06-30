@@ -28,7 +28,7 @@ public class AuthController : Controller
             if (User.IsInRole(AppRoles.Customer))
                 return RedirectToAction("Index", "Shop");
             if (User.IsInRole(AppRoles.Personel))
-                return RedirectToAction("Index", "Orders");
+                return RedirectToAction("Sales", "Invoices");
             return RedirectToAction("Index", "Dashboards");
         }
 
@@ -63,7 +63,7 @@ public class AuthController : Controller
                 return Redirect(model.ReturnUrl);
 
             if (User.IsInRole(AppRoles.Personel))
-                return RedirectToAction("Index", "Orders");
+                return RedirectToAction("Sales", "Invoices");
 
             return RedirectToAction("Index", "Dashboards");
         }

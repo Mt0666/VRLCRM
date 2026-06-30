@@ -65,6 +65,7 @@ public class StocksController : Controller
             return NotFound();
         }
 
+        ViewData["History"] = await _stockService.GetMovementHistoryAsync(id, cancellationToken);
         return View(stock);
     }
 
@@ -87,7 +88,8 @@ public class StocksController : Controller
             ModelState.AddModelError(nameof(model.StockCode), "Bu stok kodu zaten kullanılıyor.");
         }
 
-        if (await _categoryService.GetByIdAsync(model.CategoryId, cancellationToken) is null)
+        if (model.CategoryId.HasValue &&
+            await _categoryService.GetByIdAsync(model.CategoryId.Value, cancellationToken) is null)
         {
             ModelState.AddModelError(nameof(model.CategoryId), "Geçerli bir kategori seçin.");
         }
@@ -142,7 +144,8 @@ public class StocksController : Controller
             ModelState.AddModelError(nameof(model.StockCode), "Bu stok kodu zaten kullanılıyor.");
         }
 
-        if (await _categoryService.GetByIdAsync(model.CategoryId, cancellationToken) is null)
+        if (model.CategoryId.HasValue &&
+            await _categoryService.GetByIdAsync(model.CategoryId.Value, cancellationToken) is null)
         {
             ModelState.AddModelError(nameof(model.CategoryId), "Geçerli bir kategori seçin.");
         }

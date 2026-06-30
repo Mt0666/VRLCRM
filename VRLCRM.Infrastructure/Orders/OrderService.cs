@@ -124,6 +124,8 @@ public class OrderService : IOrderService
 
     public async Task<bool> UpdateAsync(
         int id,
+        int? customerId,
+        int? supplierId,
         decimal discountRate,
         IReadOnlyList<OrderLineInput> lines,
         CancellationToken cancellationToken = default)
@@ -131,6 +133,11 @@ public class OrderService : IOrderService
         if (lines.Count == 0)
         {
             throw new InvalidOperationException("Siparişte en az bir ürün olmalıdır.");
+        }
+
+        if (customerId.HasValue == supplierId.HasValue)
+        {
+            throw new InvalidOperationException("Sipariş için müşteri veya tedarikçi seçilmelidir.");
         }
 
         var order = await _context.Orders
@@ -147,12 +154,52 @@ public class OrderService : IOrderService
             throw new InvalidOperationException("Faturalandırılmış veya iptal edilmiş sipariş düzenlenemez.");
         }
 
+        Customer? customer = null;
+        if (customerId.HasValue)
+        {
+            customer = await _context.Customers
+                .FirstOrDefaultAsync(c => c.Id == customerId && c.IsActive, cancellationToken)
+                ?? throw new InvalidOperationException("Müşteri bulunamadı.");
+        }
+
+        Supplier? supplier = null;
+        if (supplierId.HasValue)
+        {
+            supplier = await _context.Suppliers
+                .FirstOrDefaultAsync(s => s.Id == supplierId && s.IsActive, cancellationToken)
+                ?? throw new InvalidOperationException("Tedarikçi bulunamadı.");
+        }
+
         _context.OrderLines.RemoveRange(order.Lines);
 
         var orderLines = await BuildOrderLinesAsync(lines, cancellationToken);
         var normalizedRate = NormalizeDiscountRate(discountRate);
         var (subTotal, vatTotal, totalAmount) = CalculateTotals(orderLines, normalizedRate);
 
+        if (customer is not null)
+        {
+            var partyChanged = order.CustomerId != customerId;
+            if (partyChanged)
+            {
+                if (!customer.IsUnlimitedCredit && !customer.HasSufficientCredit(totalAmount))
+                {
+                    throw new InvalidOperationException(
+                        $"Cari limit yetersiz. Mevcut borç: {customer.Balance:N2} ₺, Sipariş: {totalAmount:N2} ₺, Limit: {customer.EffectiveCreditLimit:N2} ₺");
+                }
+            }
+            else if (totalAmount > order.TotalAmount)
+            {
+                var delta = totalAmount - order.TotalAmount;
+                if (!customer.IsUnlimitedCredit && !customer.HasSufficientCredit(delta))
+                {
+                    throw new InvalidOperationException(
+                        $"Cari limit yetersiz. Mevcut borç: {customer.Balance:N2} ₺, Artış: {delta:N2} ₺, Limit: {customer.EffectiveCreditLimit:N2} ₺");
+                }
+            }
+        }
+
+        order.CustomerId = customerId;
+        order.SupplierId = supplierId;
         order.SubTotal = subTotal;
         order.VatTotal = vatTotal;
         order.DiscountRate = normalizedRate;

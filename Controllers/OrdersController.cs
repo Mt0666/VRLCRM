@@ -7,6 +7,8 @@ using VRLCRM.Application.Orders;
 using VRLCRM.Application.Stocks;
 using VRLCRM.Application.Suppliers;
 using VRLCRM.Domain.Constants;
+using VRLCRM.Domain.Enums;
+using VRLCRM.Domain.Entities;
 using VRLCRM.Helpers;
 using VRLCRM.Models.Orders;
 using VRLCRM.Services;
@@ -51,6 +53,11 @@ public class OrdersController : Controller
         if (order is null)
         {
             return NotFound();
+        }
+
+        if (order.IsActive && order.Status == OrderStatus.Approved && !order.SalesInvoiceId.HasValue)
+        {
+            await PopulateEditPartyViewBagAsync(order.CustomerId, order.SupplierId, cancellationToken);
         }
 
         return View(order);
@@ -121,6 +128,25 @@ public class OrdersController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Update(int id, OrderFormViewModel model, CancellationToken cancellationToken)
     {
+        if (model.PartyType == "supplier")
+        {
+            model.CustomerId = null;
+            if (!model.SupplierId.HasValue)
+            {
+                TempData["ErrorMessage"] = "Tedarikçi seçilmelidir.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+        }
+        else
+        {
+            model.SupplierId = null;
+            if (!model.CustomerId.HasValue)
+            {
+                TempData["ErrorMessage"] = "Müşteri seçilmelidir.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+        }
+
         if (model.Lines.Count == 0)
         {
             TempData["ErrorMessage"] = "Siparişte en az bir ürün olmalıdır.";
@@ -129,7 +155,13 @@ public class OrdersController : Controller
 
         try
         {
-            var updated = await _orderService.UpdateAsync(id, model.DiscountRate, MapLines(model.Lines), cancellationToken);
+            var updated = await _orderService.UpdateAsync(
+                id,
+                model.CustomerId,
+                model.SupplierId,
+                model.DiscountRate,
+                MapLines(model.Lines),
+                cancellationToken);
             if (!updated)
             {
                 return NotFound();
@@ -232,7 +264,7 @@ public class OrdersController : Controller
                 return NotFound();
             }
 
-            TempData["SuccessMessage"] = "Sipariş başarıyla iptal edildi.";
+            TempData["SuccessMessage"] = "Sipariş silindi.";
             return RedirectToAction(nameof(Index));
         }
         catch (InvalidOperationException ex)
@@ -290,5 +322,19 @@ public class OrdersController : Controller
                 Text = $"{s.CompanyName} (Borç: {s.Balance:N2} ₺)",
                 Selected = s.Id == model.SupplierId
             });
+    }
+
+    private async Task PopulateEditPartyViewBagAsync(int? customerId, int? supplierId, CancellationToken cancellationToken)
+    {
+        var model = new OrderFormViewModel
+        {
+            CustomerId = customerId,
+            SupplierId = supplierId,
+            PartyType = supplierId.HasValue ? "supplier" : "customer"
+        };
+        await PopulateSelectListsAsync(model, cancellationToken);
+        ViewBag.Customers = model.Customers;
+        ViewBag.Suppliers = model.Suppliers;
+        ViewBag.PartyType = model.PartyType;
     }
 }

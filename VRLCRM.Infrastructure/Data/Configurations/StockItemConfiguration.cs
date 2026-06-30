@@ -51,6 +51,6 @@ public class StockItemConfiguration : IEntityTypeConfiguration<StockItem>
         builder.HasOne(s => s.Category)
             .WithMany(c => c.StockItems)
             .HasForeignKey(s => s.CategoryId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

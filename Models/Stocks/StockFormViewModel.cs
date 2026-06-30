@@ -12,9 +12,8 @@ public class StockFormViewModel
     [StringLength(50)]
     public string StockCode { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Kategori seçimi zorunludur.")]
     [Display(Name = "Kategori")]
-    public int CategoryId { get; set; }
+    public int? CategoryId { get; set; }
 
     public IEnumerable<SelectListItem> Categories { get; set; } = [];
 

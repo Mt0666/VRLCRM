@@ -56,6 +56,8 @@ public class InvoiceStockOption
     /// <summary>Satış fiyatı (= PurchasePrice × 1.30) — satış faturası ve sipariş formlarında pre-fill için kullanılır.</summary>
     public decimal Price { get; set; }
 
+    public int StockQuantity { get; set; }
+
     public decimal VatRate { get; set; }
 }
 

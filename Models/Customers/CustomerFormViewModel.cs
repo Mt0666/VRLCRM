@@ -49,13 +49,12 @@ public class CustomerFormViewModel
     [Range(0, double.MaxValue, ErrorMessage = "Limit 0 veya daha büyük olmalıdır.")]
     public decimal? CreditLimit { get; set; }
 
-    [Display(Name = "B2B Giriş Telefonu")]
+    [Display(Name = "B2B Giriş Kullanıcı Adı (Telefon)")]
     [StringLength(20)]
-    [Phone(ErrorMessage = "Geçerli bir telefon numarası girin.")]
     public string? B2bLoginPhone { get; set; }
 
     [Display(Name = "Şifre (B2B Girişi İçin)")]
     [DataType(DataType.Password)]
-    [StringLength(100, ErrorMessage = "{0} en az {2} ve en fazla {1} karakter uzunluğunda olmalıdır.", MinimumLength = 8)]
+    [StringLength(100, MinimumLength = 4, ErrorMessage = "Şifre en az 4 karakter olmalıdır.")]
     public string? Password { get; set; }
 }

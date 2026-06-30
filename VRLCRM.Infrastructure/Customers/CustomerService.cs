@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using VRLCRM.Application.Common;
 using VRLCRM.Application.Customers;
 using VRLCRM.Domain.Entities;
 using VRLCRM.Domain.Enums;
@@ -9,6 +10,8 @@ namespace VRLCRM.Infrastructure.Customers;
 
 public class CustomerService : ICustomerService
 {
+    private const string CustomerRole = "Customer";
+
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
 
@@ -61,27 +64,7 @@ public class CustomerService : ICustomerService
         var phone = !string.IsNullOrWhiteSpace(loginPhone) ? loginPhone : customer.PhoneNumber;
         if (!string.IsNullOrWhiteSpace(phone) && !string.IsNullOrWhiteSpace(password))
         {
-            var userName = NormalizePhone(phone);
-            var user = new ApplicationUser
-            {
-                UserName = userName,
-                Email = $"{userName}@b2b.local",
-                FullName = customer.FullName,
-                CustomerId = customer.Id,
-                EmailConfirmed = true,
-                PhoneNumber = customer.PhoneNumber
-            };
-
-            var result = await _userManager.CreateAsync(user, password);
-            if (result.Succeeded)
-            {
-                await _userManager.AddToRoleAsync(user, "Customer");
-            }
-            else
-            {
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new InvalidOperationException($"B2B Kullanıcısı oluşturulamadı: {errors}");
-            }
+            await CreateB2bUserAsync(customer, phone, password, cancellationToken);
         }
 
         await transaction.CommitAsync(cancellationToken);
@@ -92,7 +75,7 @@ public class CustomerService : ICustomerService
     {
         return await _context.Orders
             .AsNoTracking()
-            .Where(o => o.CustomerId == customerId)
+            .Where(o => o.CustomerId == customerId && o.IsActive && o.Status != OrderStatus.Cancelled)
             .OrderByDescending(o => o.OrderDate)
             .ToListAsync(cancellationToken);
     }
@@ -113,6 +96,15 @@ public class CustomerService : ICustomerService
             .Where(p => p.CustomerId == customerId && p.IsActive)
             .OrderByDescending(p => p.PaymentDate)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<string?> GetB2bLoginPhoneAsync(int customerId, CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.CustomerId == customerId, cancellationToken);
+
+        return user?.UserName;
     }
 
     public async Task<bool> UpdateAsync(
@@ -150,68 +142,7 @@ public class CustomerService : ICustomerService
         }
 
         var existingUser = await _userManager.Users.FirstOrDefaultAsync(u => u.CustomerId == customer.Id, cancellationToken);
-        if (!string.IsNullOrWhiteSpace(password) || existingUser is not null)
-        {
-            var phone = !string.IsNullOrWhiteSpace(loginPhone) ? loginPhone : existing.PhoneNumber;
-            var userName = NormalizePhone(phone);
-            if (string.IsNullOrWhiteSpace(userName))
-            {
-                throw new InvalidOperationException("B2B giriş telefonu geçerli bir numara olmalıdır.");
-            }
-
-            if (existingUser is null)
-            {
-                if (string.IsNullOrWhiteSpace(password))
-                {
-                    // B2B hesabı oluşturulmadı; yalnızca müşteri bilgileri güncellendi.
-                }
-                else
-                {
-                    var user = new ApplicationUser
-                    {
-                        UserName = userName,
-                        Email = $"{userName}@b2b.local",
-                        FullName = existing.FullName,
-                        CustomerId = existing.Id,
-                        EmailConfirmed = true,
-                        PhoneNumber = existing.PhoneNumber
-                    };
-
-                    var result = await _userManager.CreateAsync(user, password);
-                    if (!result.Succeeded)
-                    {
-                        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                        throw new InvalidOperationException($"B2B kullanıcısı oluşturulamadı: {errors}");
-                    }
-
-                    await _userManager.AddToRoleAsync(user, "Customer");
-                }
-            }
-            else
-            {
-                existingUser.UserName = userName;
-                existingUser.Email = $"{userName}@b2b.local";
-                existingUser.FullName = existing.FullName;
-                existingUser.PhoneNumber = existing.PhoneNumber;
-                var updateResult = await _userManager.UpdateAsync(existingUser);
-                if (!updateResult.Succeeded)
-                {
-                    var errors = string.Join(", ", updateResult.Errors.Select(e => e.Description));
-                    throw new InvalidOperationException($"B2B kullanıcısı güncellenemedi: {errors}");
-                }
-
-                if (!string.IsNullOrWhiteSpace(password))
-                {
-                    var token = await _userManager.GeneratePasswordResetTokenAsync(existingUser);
-                    var resetResult = await _userManager.ResetPasswordAsync(existingUser, token, password);
-                    if (!resetResult.Succeeded)
-                    {
-                        var errors = string.Join(", ", resetResult.Errors.Select(e => e.Description));
-                        throw new InvalidOperationException($"B2B şifresi güncellenemedi: {errors}");
-                    }
-                }
-            }
-        }
+        await SyncB2bUserAsync(existing, existingUser, loginPhone, password, cancellationToken);
 
         await _context.SaveChangesAsync(cancellationToken);
         return true;
@@ -243,6 +174,119 @@ public class CustomerService : ICustomerService
         return true;
     }
 
-    private static string NormalizePhone(string phone) =>
-        new string(phone.Where(char.IsDigit).ToArray());
+    private async Task CreateB2bUserAsync(
+        Customer customer,
+        string loginPhone,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        var userName = PhoneNormalizer.Normalize(loginPhone);
+        if (string.IsNullOrWhiteSpace(userName))
+        {
+            throw new InvalidOperationException("B2B giriş telefonu geçerli bir numara olmalıdır.");
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = userName,
+            Email = userName,
+            FullName = customer.FullName,
+            CustomerId = customer.Id,
+            EmailConfirmed = true,
+            PhoneNumber = userName
+        };
+
+        var result = await _userManager.CreateAsync(user, password);
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            throw new InvalidOperationException($"B2B kullanıcısı oluşturulamadı: {errors}");
+        }
+
+        await _userManager.AddToRoleAsync(user, CustomerRole);
+    }
+
+    private async Task SyncB2bUserAsync(
+        Customer existing,
+        ApplicationUser? existingUser,
+        string? loginPhone,
+        string? password,
+        CancellationToken cancellationToken)
+    {
+        var phone = !string.IsNullOrWhiteSpace(loginPhone) ? loginPhone : existing.PhoneNumber;
+        var userName = PhoneNormalizer.Normalize(phone);
+
+        if (string.IsNullOrWhiteSpace(userName))
+        {
+            if (!string.IsNullOrWhiteSpace(password))
+            {
+                throw new InvalidOperationException("B2B giriş telefonu geçerli bir numara olmalıdır.");
+            }
+
+            return;
+        }
+
+        if (existingUser is null)
+        {
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                return;
+            }
+
+            await CreateB2bUserAsync(existing, phone, password, cancellationToken);
+            return;
+        }
+
+        if (!string.Equals(existingUser.UserName, userName, StringComparison.Ordinal))
+        {
+            var nameResult = await _userManager.SetUserNameAsync(existingUser, userName);
+            if (!nameResult.Succeeded)
+            {
+                var errors = string.Join(", ", nameResult.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"B2B kullanıcı adı güncellenemedi: {errors}");
+            }
+        }
+
+        if (!string.Equals(existingUser.Email, userName, StringComparison.Ordinal))
+        {
+            var emailResult = await _userManager.SetEmailAsync(existingUser, userName);
+            if (!emailResult.Succeeded)
+            {
+                var errors = string.Join(", ", emailResult.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"B2B e-posta güncellenemedi: {errors}");
+            }
+        }
+
+        existingUser.FullName = existing.FullName;
+        existingUser.PhoneNumber = userName;
+        var updateResult = await _userManager.UpdateAsync(existingUser);
+        if (!updateResult.Succeeded)
+        {
+            var errors = string.Join(", ", updateResult.Errors.Select(e => e.Description));
+            throw new InvalidOperationException($"B2B kullanıcısı güncellenemedi: {errors}");
+        }
+
+        if (!await _userManager.IsInRoleAsync(existingUser, CustomerRole))
+        {
+            await _userManager.AddToRoleAsync(existingUser, CustomerRole);
+        }
+
+        if (!string.IsNullOrWhiteSpace(password))
+        {
+            var freshUser = await _userManager.FindByIdAsync(existingUser.Id)
+                ?? throw new InvalidOperationException("B2B kullanıcısı bulunamadı.");
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(freshUser);
+            var resetResult = await _userManager.ResetPasswordAsync(freshUser, token, password);
+            if (!resetResult.Succeeded)
+            {
+                var addResult = await _userManager.AddPasswordAsync(freshUser, password);
+                if (!addResult.Succeeded)
+                {
+                    var errors = string.Join(", ", resetResult.Errors.Concat(addResult.Errors).Select(e => e.Description).Distinct());
+                    throw new InvalidOperationException($"B2B şifresi güncellenemedi: {errors}");
+                }
+            }
+        }
+    }
 }

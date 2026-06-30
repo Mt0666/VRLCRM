@@ -1,6 +1,8 @@
+@using VRLCRM.Application.Stocks
 @model StockItem
 @{
   ViewData["Title"] = "Ürün Detayı";
+  var history = ViewData["History"] as StockMovementHistory ?? new StockMovementHistory();
 }
 
 <div class="row g-6">
@@ -68,7 +70,7 @@
               }
               <div class="detail-info-item">
                 <div class="detail-info-label">Kategori</div>
-                <div class="detail-info-value">@Model.Category.Name</div>
+                <div class="detail-info-value">@(Model.Category?.Name ?? "-")</div>
               </div>
               <div class="detail-info-item">
                 <div class="detail-info-label">Satış Fiyatı</div>
@@ -118,6 +120,116 @@
             <p class="text-body-secondary mb-0">@Model.Description</p>
           </div>
         }
+      </div>
+    </div>
+  </div>
+
+  @* ── Alış Geçmişi ───────────────────────────────────────────── *@
+  <div class="col-12" id="purchase-history">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h6 class="mb-0"><i class="ri-arrow-left-down-line text-success me-1"></i>Alış Geçmişi</h6>
+        <span class="badge bg-label-success">@history.Purchases.Count kayıt</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Tarih</th>
+              <th>Tedarikçi</th>
+              <th>Belge No</th>
+              <th class="text-end">Adet</th>
+              <th class="text-end">Birim Fiyat</th>
+              <th class="text-end">Tutar</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (history.Purchases.Count == 0)
+            {
+              <tr><td colspan="6" class="text-center text-body-secondary py-3">Bu ürün için alış kaydı yok.</td></tr>
+            }
+            else
+            {
+              foreach (var p in history.Purchases)
+              {
+                <tr>
+                  <td>@p.Date.ToString("dd.MM.yyyy")</td>
+                  <td>@p.PartyName</td>
+                  <td><span class="badge bg-label-secondary">@p.DocumentNumber</span></td>
+                  <td class="text-end">@p.Quantity</td>
+                  <td class="text-end">@p.UnitPrice.ToString("N2") ₺</td>
+                  <td class="text-end">@p.LineTotal.ToString("N2") ₺</td>
+                </tr>
+              }
+            }
+          </tbody>
+          @if (history.Purchases.Count > 0)
+          {
+            <tfoot>
+              <tr class="fw-semibold">
+                <td colspan="3">Toplam</td>
+                <td class="text-end">@history.Purchases.Sum(p => p.Quantity)</td>
+                <td></td>
+                <td class="text-end">@history.Purchases.Sum(p => p.LineTotal).ToString("N2") ₺</td>
+              </tr>
+            </tfoot>
+          }
+        </table>
+      </div>
+    </div>
+  </div>
+
+  @* ── Satış Geçmişi ──────────────────────────────────────────── *@
+  <div class="col-12" id="sales-history">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h6 class="mb-0"><i class="ri-arrow-right-up-line text-primary me-1"></i>Satış Geçmişi</h6>
+        <span class="badge bg-label-primary">@history.Sales.Count kayıt</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Tarih</th>
+              <th>Müşteri</th>
+              <th>Belge No</th>
+              <th class="text-end">Adet</th>
+              <th class="text-end">Birim Fiyat</th>
+              <th class="text-end">Tutar</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (history.Sales.Count == 0)
+            {
+              <tr><td colspan="6" class="text-center text-body-secondary py-3">Bu ürün için satış kaydı yok.</td></tr>
+            }
+            else
+            {
+              foreach (var s in history.Sales)
+              {
+                <tr>
+                  <td>@s.Date.ToString("dd.MM.yyyy")</td>
+                  <td>@s.PartyName</td>
+                  <td><span class="badge bg-label-secondary">@s.DocumentNumber</span></td>
+                  <td class="text-end">@s.Quantity</td>
+                  <td class="text-end">@s.UnitPrice.ToString("N2") ₺</td>
+                  <td class="text-end">@s.LineTotal.ToString("N2") ₺</td>
+                </tr>
+              }
+            }
+          </tbody>
+          @if (history.Sales.Count > 0)
+          {
+            <tfoot>
+              <tr class="fw-semibold">
+                <td colspan="3">Toplam</td>
+                <td class="text-end">@history.Sales.Sum(s => s.Quantity)</td>
+                <td></td>
+                <td class="text-end">@history.Sales.Sum(s => s.LineTotal).ToString("N2") ₺</td>
+              </tr>
+            </tfoot>
+          }
+        </table>
       </div>
     </div>
   </div>

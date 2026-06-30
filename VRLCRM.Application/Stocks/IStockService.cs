@@ -8,6 +8,8 @@ public interface IStockService
 
     Task<StockItem?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
 
+    Task<StockMovementHistory> GetMovementHistoryAsync(int stockItemId, CancellationToken cancellationToken = default);
+
     Task<bool> StockCodeExistsAsync(string stockCode, int? excludeId = null, CancellationToken cancellationToken = default);
 
     Task<StockItem> CreateAsync(StockItem stockItem, CancellationToken cancellationToken = default);

@@ -20,7 +20,7 @@ public class HomeController : Controller
     {
         if (User.IsInRole(AppRoles.Personel))
         {
-            return RedirectToAction("Index", "Orders");
+            return RedirectToAction("Sales", "Invoices");
         }
 
         if (User.IsInRole(AppRoles.Admin))

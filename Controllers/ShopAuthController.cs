@@ -1,20 +1,31 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using VRLCRM.Application.Common;
+using VRLCRM.Application.Customers;
 using VRLCRM.Domain.Entities;
+using VRLCRM.Infrastructure.Data;
 using VRLCRM.Models.Auth;
 
 namespace VRLCRM.Controllers;
 
 public class ShopAuthController : Controller
 {
+    private const string CustomerRole = "Customer";
+
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ApplicationDbContext _context;
 
-    public ShopAuthController(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager)
+    public ShopAuthController(
+        SignInManager<ApplicationUser> signInManager,
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context)
     {
         _signInManager = signInManager;
         _userManager = userManager;
+        _context = context;
     }
 
     [HttpGet]
@@ -23,7 +34,7 @@ public class ShopAuthController : Controller
     {
         if (_signInManager.IsSignedIn(User))
         {
-            if (User.IsInRole("Customer"))
+            if (User.IsInRole(CustomerRole))
                 return RedirectToAction("Index", "Shop");
 
             return RedirectToAction("Index", "Dashboards");
@@ -41,15 +52,26 @@ public class ShopAuthController : Controller
         if (!ModelState.IsValid)
             return View(model);
 
-        var userName = NormalizePhone(model.Phone);
-        var user = await _userManager.FindByNameAsync(userName);
-        if (user is null || !await _userManager.IsInRoleAsync(user, "Customer"))
+        var normalizedPhone = PhoneNormalizer.Normalize(model.Phone);
+        if (string.IsNullOrWhiteSpace(normalizedPhone))
         {
-            ModelState.AddModelError(string.Empty, "Bu hesap ile mağazaya giriş yapılamaz.");
+            ModelState.AddModelError(nameof(model.Phone), "Geçerli bir telefon numarası girin.");
             return View(model);
         }
 
-        var result = await _signInManager.PasswordSignInAsync(userName, model.Password, model.RememberMe, lockoutOnFailure: false);
+        var user = await FindB2bUserAsync(normalizedPhone);
+        if (user is null)
+        {
+            ModelState.AddModelError(string.Empty, "Bu telefon için B2B hesabı bulunamadı.");
+            return View(model);
+        }
+
+        if (!await _userManager.IsInRoleAsync(user, CustomerRole))
+        {
+            await _userManager.AddToRoleAsync(user, CustomerRole);
+        }
+
+        var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.RememberMe, lockoutOnFailure: false);
         if (result.Succeeded)
         {
             if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
@@ -64,13 +86,49 @@ public class ShopAuthController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = "Customer")]
+    [Authorize(Roles = CustomerRole)]
     public async Task<IActionResult> Logout()
     {
         await _signInManager.SignOutAsync();
         return RedirectToAction(nameof(Login));
     }
 
-    private static string NormalizePhone(string phone) =>
-        new string(phone.Where(char.IsDigit).ToArray());
+    private async Task<ApplicationUser?> FindB2bUserAsync(string normalizedPhone)
+    {
+        var user = await _userManager.FindByNameAsync(normalizedPhone);
+        if (user?.CustomerId != null)
+        {
+            return user;
+        }
+
+        var b2bUsers = await _userManager.Users
+            .Where(u => u.CustomerId != null)
+            .ToListAsync();
+
+        user = b2bUsers.FirstOrDefault(u =>
+            PhoneNormalizer.Normalize(u.UserName) == normalizedPhone ||
+            PhoneNormalizer.Normalize(u.PhoneNumber) == normalizedPhone);
+
+        if (user is not null)
+        {
+            return user;
+        }
+
+        var customers = await _context.Customers
+            .AsNoTracking()
+            .Where(c => c.IsActive)
+            .Select(c => new { c.Id, c.PhoneNumber })
+            .ToListAsync();
+
+        var customerId = customers
+            .FirstOrDefault(c => PhoneNormalizer.Normalize(c.PhoneNumber) == normalizedPhone)
+            ?.Id;
+
+        if (customerId is null)
+        {
+            return null;
+        }
+
+        return b2bUsers.FirstOrDefault(u => u.CustomerId == customerId);
+    }
 }

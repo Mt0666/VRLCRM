@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VRLCRM.Application.Balances;
+using VRLCRM.Application.Common;
 using VRLCRM.Domain.Entities;
 using VRLCRM.Infrastructure.Options;
 
@@ -112,8 +113,48 @@ public static class SeedData
             }
         }
 
+        await RepairB2bUserNamesAsync(userManager, logger);
+
         var balanceRecalculation = serviceProvider.GetRequiredService<IBalanceRecalculationService>();
         await balanceRecalculation.RecalculateAllAsync();
         logger.LogInformation("Cari bakiyeleri faturalar ve ödemeler üzerinden yeniden hesaplandı.");
+    }
+
+    private static async Task RepairB2bUserNamesAsync(UserManager<ApplicationUser> userManager, ILogger logger)
+    {
+        const string customerRole = "Customer";
+        var b2bUsers = await userManager.Users.Where(u => u.CustomerId != null).ToListAsync();
+
+        foreach (var user in b2bUsers)
+        {
+            var normalized = PhoneNormalizer.Normalize(user.UserName ?? user.PhoneNumber);
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                continue;
+            }
+
+            if (!string.Equals(user.UserName, normalized, StringComparison.Ordinal))
+            {
+                var result = await userManager.SetUserNameAsync(user, normalized);
+                if (!result.Succeeded)
+                {
+                    logger.LogWarning("B2B kullanıcı adı düzeltilemedi ({UserId})", user.Id);
+                    continue;
+                }
+            }
+
+            if (!string.Equals(user.Email, normalized, StringComparison.Ordinal))
+            {
+                await userManager.SetEmailAsync(user, normalized);
+            }
+
+            user.PhoneNumber = normalized;
+            await userManager.UpdateAsync(user);
+
+            if (!await userManager.IsInRoleAsync(user, customerRole))
+            {
+                await userManager.AddToRoleAsync(user, customerRole);
+            }
+        }
     }
 }

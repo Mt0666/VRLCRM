@@ -130,11 +130,6 @@ public class InvoiceService : IInvoiceService
             subTotal += lineSubTotal;
             vatTotal += lineVatAmount;
 
-            if (invoiceType == InvoiceType.Sales && stock.StockQuantity < line.Quantity)
-            {
-                throw new InvalidOperationException($"{stock.Name} için yeterli stok yok.");
-            }
-
             invoiceLines.Add(new InvoiceLine
             {
                 StockItemId = stock.Id,
@@ -258,11 +253,6 @@ public class InvoiceService : IInvoiceService
         var invoiceLines = new List<InvoiceLine>();
         foreach (var line in order.Lines)
         {
-            if (line.StockItem.StockQuantity < line.Quantity)
-            {
-                throw new InvalidOperationException($"{line.StockItem.Name} için yeterli stok yok.");
-            }
-
             invoiceLines.Add(new InvoiceLine
             {
                 StockItemId = line.StockItemId,
@@ -339,6 +329,8 @@ public class InvoiceService : IInvoiceService
 
     public async Task<bool> UpdateSalesInvoiceAsync(
         int id,
+        int? customerId,
+        int? supplierId,
         decimal discountRate,
         IReadOnlyList<InvoiceLineUpdateInput> lines,
         CancellationToken cancellationToken = default)
@@ -346,6 +338,11 @@ public class InvoiceService : IInvoiceService
         if (lines.Count == 0)
         {
             throw new InvalidOperationException("Faturada en az bir kalem olmalıdır.");
+        }
+
+        if (customerId.HasValue == supplierId.HasValue)
+        {
+            throw new InvalidOperationException("Satış faturası için müşteri veya tedarikçi seçilmelidir.");
         }
 
         var invoice = await _context.Invoices
@@ -365,24 +362,42 @@ public class InvoiceService : IInvoiceService
 
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
+        var oldCustomerId = invoice.CustomerId;
+        var oldSupplierId = invoice.SupplierId;
+
+        if (customerId.HasValue)
+        {
+            _ = await _context.Customers
+                .FirstOrDefaultAsync(c => c.Id == customerId && c.IsActive, cancellationToken)
+                ?? throw new InvalidOperationException("Müşteri bulunamadı.");
+            invoice.CustomerId = customerId;
+            invoice.SupplierId = null;
+        }
+        else
+        {
+            _ = await _context.Suppliers
+                .FirstOrDefaultAsync(s => s.Id == supplierId && s.IsActive, cancellationToken)
+                ?? throw new InvalidOperationException("Tedarikçi bulunamadı.");
+            invoice.SupplierId = supplierId;
+            invoice.CustomerId = null;
+        }
+
+        var partyChanged = oldCustomerId != invoice.CustomerId || oldSupplierId != invoice.SupplierId;
+
         Customer? customer = null;
         Supplier? supplier = null;
 
         if (invoice.CustomerId.HasValue)
         {
             customer = await _context.Customers
-                .FirstOrDefaultAsync(c => c.Id == invoice.CustomerId && c.IsActive, cancellationToken)
+                .FirstOrDefaultAsync(c => c.Id == invoice.CustomerId, cancellationToken)
                 ?? throw new InvalidOperationException("Müşteri bulunamadı.");
         }
         else if (invoice.SupplierId.HasValue)
         {
             supplier = await _context.Suppliers
-                .FirstOrDefaultAsync(s => s.Id == invoice.SupplierId && s.IsActive, cancellationToken)
+                .FirstOrDefaultAsync(s => s.Id == invoice.SupplierId, cancellationToken)
                 ?? throw new InvalidOperationException("Tedarikçi bulunamadı.");
-        }
-        else
-        {
-            throw new InvalidOperationException("Satış faturasının cari bilgisi bulunamadı.");
         }
 
         var oldTotal = invoice.TotalAmount;
@@ -412,10 +427,21 @@ public class InvoiceService : IInvoiceService
         var newTotal = grossTotal - discountAmount;
 
         var balanceDelta = newTotal - oldTotal;
-        if (customer is not null && balanceDelta > 0 && !customer.HasSufficientCredit(balanceDelta))
+        if (customer is not null)
         {
-            throw new InvalidOperationException(
-                $"Kredi limiti aşıldı! Mevcut bakiye: {customer.Balance:N2} ₺, Artış: {balanceDelta:N2} ₺, Limit: {customer.EffectiveCreditLimit:N2} ₺");
+            if (partyChanged)
+            {
+                if (!customer.IsUnlimitedCredit && !customer.HasSufficientCredit(newTotal))
+                {
+                    throw new InvalidOperationException(
+                        $"Kredi limiti aşıldı! Mevcut bakiye: {customer.Balance:N2} ₺, Fatura: {newTotal:N2} ₺, Limit: {customer.EffectiveCreditLimit:N2} ₺");
+                }
+            }
+            else if (balanceDelta > 0 && !customer.HasSufficientCredit(balanceDelta))
+            {
+                throw new InvalidOperationException(
+                    $"Kredi limiti aşıldı! Mevcut bakiye: {customer.Balance:N2} ₺, Artış: {balanceDelta:N2} ₺, Limit: {customer.EffectiveCreditLimit:N2} ₺");
+            }
         }
 
         ApplyNetInvoiceEditStockMovements(
@@ -436,15 +462,39 @@ public class InvoiceService : IInvoiceService
         invoice.TotalAmount = newTotal;
         invoice.Lines = newLines;
 
+        if (partyChanged)
+        {
+            var linkedOrders = await _context.Orders
+                .Where(o => o.SalesInvoiceId == invoice.Id)
+                .ToListAsync(cancellationToken);
+
+            foreach (var order in linkedOrders)
+            {
+                order.CustomerId = invoice.CustomerId;
+                order.SupplierId = invoice.SupplierId;
+            }
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
-        if (customer is not null)
+        if (oldCustomerId.HasValue)
         {
-            await _balanceRecalculation.RecalculateCustomerBalanceAsync(customer.Id, cancellationToken);
+            await _balanceRecalculation.RecalculateCustomerBalanceAsync(oldCustomerId.Value, cancellationToken);
         }
-        else if (supplier is not null)
+
+        if (invoice.CustomerId.HasValue)
         {
-            await _balanceRecalculation.RecalculateSupplierBalanceAsync(supplier.Id, cancellationToken);
+            await _balanceRecalculation.RecalculateCustomerBalanceAsync(invoice.CustomerId.Value, cancellationToken);
+        }
+
+        if (oldSupplierId.HasValue)
+        {
+            await _balanceRecalculation.RecalculateSupplierBalanceAsync(oldSupplierId.Value, cancellationToken);
+        }
+
+        if (invoice.SupplierId.HasValue)
+        {
+            await _balanceRecalculation.RecalculateSupplierBalanceAsync(invoice.SupplierId.Value, cancellationToken);
         }
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -552,6 +602,15 @@ public class InvoiceService : IInvoiceService
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
         invoice.IsActive = false;
+
+        var linkedOrders = await _context.Orders
+            .Where(o => o.SalesInvoiceId == invoice.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (var order in linkedOrders)
+        {
+            order.SalesInvoiceId = null;
+        }
 
         // Stok hareketlerini tersine çevir
         foreach (var line in invoice.Lines)
@@ -671,7 +730,7 @@ public class InvoiceService : IInvoiceService
             ?? throw new InvalidOperationException("Geçersiz veya pasif stok kalemi seçildi.");
     }
 
-    private async Task<int> ResolveCategoryIdForNewProductAsync(
+    private async Task<int?> ResolveCategoryIdForNewProductAsync(
         NewPurchaseProductInput input,
         CancellationToken cancellationToken)
     {
@@ -702,13 +761,13 @@ public class InvoiceService : IInvoiceService
             return category.Id;
         }
 
-        if (input.CategoryId > 0 &&
-            await _context.Categories.AnyAsync(c => c.Id == input.CategoryId && c.IsActive, cancellationToken))
+        if (input.CategoryId is int categoryId && categoryId > 0 &&
+            await _context.Categories.AnyAsync(c => c.Id == categoryId && c.IsActive, cancellationToken))
         {
-            return input.CategoryId;
+            return categoryId;
         }
 
-        throw new InvalidOperationException("Geçerli bir kategori seçin veya yeni kategori adı girin.");
+        return null;
     }
 
     private static Dictionary<int, int> AggregateQuantities(IEnumerable<(int StockItemId, int Quantity)> items)
@@ -802,12 +861,6 @@ public class InvoiceService : IInvoiceService
             if (stockDelta == 0)
             {
                 continue;
-            }
-
-            if (stockDelta < 0 && stock.StockQuantity < Math.Abs(stockDelta))
-            {
-                throw new InvalidOperationException(
-                    $"{stock.Name} için stok yetersiz. Fatura düzenlenemez; stoktan çıkış yapılmış olabilir.");
             }
 
             stock.StockQuantity += stockDelta;
