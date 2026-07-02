@@ -14,6 +14,9 @@ public class StockItem : BaseEntity
 
     public string? ImageUrl { get; set; }
 
+    /// <summary>Listelerde kullanılan küçük görsel. Boşsa ImageUrl'e düşülür.</summary>
+    public string? ThumbnailUrl { get; set; }
+
     public string Name { get; set; } = string.Empty;
 
     /// <summary>Son alış faturasından gelen maliyet fiyatı.</summary>

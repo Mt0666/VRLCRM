@@ -24,6 +24,7 @@ builder.Host.UseSerilog((context, services, configuration) =>
 
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddScoped<IStockImageStorage, StockImageStorage>();
+builder.Services.AddScoped<StockImageOptimizer>();
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {

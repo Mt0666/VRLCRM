@@ -143,6 +143,7 @@ public class StockService : IStockService
         existing.Barcode = stockItem.Barcode;
         existing.CategoryId = stockItem.CategoryId;
         existing.ImageUrl = stockItem.ImageUrl;
+        existing.ThumbnailUrl = stockItem.ThumbnailUrl;
         existing.Name = stockItem.Name;
         existing.Price = stockItem.Price;
         existing.VatRate = stockItem.VatRate;

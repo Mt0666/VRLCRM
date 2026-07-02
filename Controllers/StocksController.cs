@@ -36,6 +36,20 @@ public class StocksController : Controller
         return View(stocks);
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = AppRoles.Admin)]
+    public async Task<IActionResult> OptimizeImages(
+        [FromServices] StockImageOptimizer optimizer,
+        CancellationToken cancellationToken)
+    {
+        var summary = await optimizer.RunAsync(cancellationToken);
+        TempData["SuccessMessage"] =
+            $"Görsel optimizasyonu tamamlandı: {summary.Optimized} küçültüldü, " +
+            $"{summary.Skipped} atlandı, {summary.Failed} hata (işlenen {summary.Total}).";
+        return RedirectToAction(nameof(Index));
+    }
+
     public async Task<IActionResult> ExportExcel(CancellationToken cancellationToken)
     {
         var stocks = await _stockService.GetAllAsync(cancellationToken);
@@ -101,7 +115,9 @@ public class StocksController : Controller
 
         try
         {
-            model.ImageUrl = await _imageStorage.SaveAsync(model.ImageFile, cancellationToken);
+            var saved = await _imageStorage.SaveAsync(model.ImageFile, cancellationToken);
+            model.ImageUrl = saved?.ImageUrl;
+            model.ThumbnailUrl = saved?.ThumbnailUrl;
         }
         catch (InvalidOperationException ex)
         {
@@ -162,16 +178,18 @@ public class StocksController : Controller
         }
 
         model.ImageUrl = existing.ImageUrl;
+        model.ThumbnailUrl = existing.ThumbnailUrl;
 
         if (model.ImageFile is not null && model.ImageFile.Length > 0)
         {
             try
             {
-                var newImageUrl = await _imageStorage.SaveAsync(model.ImageFile, cancellationToken);
-                if (newImageUrl is not null)
+                var saved = await _imageStorage.SaveAsync(model.ImageFile, cancellationToken);
+                if (saved is not null)
                 {
                     _imageStorage.Delete(existing.ImageUrl);
-                    model.ImageUrl = newImageUrl;
+                    model.ImageUrl = saved.ImageUrl;
+                    model.ThumbnailUrl = saved.ThumbnailUrl;
                 }
             }
             catch (InvalidOperationException ex)

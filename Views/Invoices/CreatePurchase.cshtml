@@ -806,15 +806,29 @@
       try {
         var response = await fetch('@Url.Action("ImportPurchaseExcel", "Invoices")', {
           method: 'POST',
-          body: formData
+          body: formData,
+          credentials: 'same-origin'
         });
-        var payload = await response.json();
+
         if (!response.ok) {
-          var errors = (payload.errors || []).join(' ');
-          showExcelImportMessage(errors || 'Excel içe aktarılamadı.', 'danger');
+          // Proxy/sunucu JSON yerine HTML dönebilir; gerçek sebebi HTTP durumundan göster.
+          var msg;
+          if (response.status === 413) {
+            msg = 'Dosya boyutu sunucu/proxy yükleme sınırını aşıyor (413). Sunucu yöneticisinin limiti artırması gerekir.';
+          } else if (response.status === 400) {
+            msg = 'Güvenlik doğrulaması başarısız (400). Sayfayı yenileyip tekrar deneyin.';
+          } else if (response.status === 401 || response.status === 403) {
+            msg = 'Yetki yok veya oturum sonlanmış (' + response.status + '). Tekrar giriş yapın.';
+          } else {
+            var errPayload = await response.json().catch(function () { return null; });
+            msg = (errPayload && (errPayload.errors || []).join(' ')) ||
+                  ('Excel içe aktarılamadı (HTTP ' + response.status + ').');
+          }
+          showExcelImportMessage(msg, 'danger');
           return;
         }
 
+        var payload = await response.json();
         if (payload.token) {
           var tokenInput = document.querySelector('#purchaseForm input[name="__RequestVerificationToken"]');
           if (tokenInput) tokenInput.value = payload.token;
@@ -826,7 +840,7 @@
           warnings ? 'warning' : 'success'
         );
       } catch (err) {
-        showExcelImportMessage('Excel yüklenirken bir hata oluştu.', 'danger');
+        showExcelImportMessage('Excel yüklenirken bağlantı hatası oluştu (sunucuya ulaşılamadı). İnternet/sunucu bağlantısını kontrol edin.', 'danger');
       }
     });
 

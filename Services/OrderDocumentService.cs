@@ -57,7 +57,8 @@ public class OrderDocumentService
             partyCompany,
             partyPhone,
             lines,
-            new DocumentTotals(order.SubTotal, order.VatTotal, order.TotalAmount));
+            new DocumentTotals(order.SubTotal, order.VatTotal, order.TotalAmount),
+            partyBalance: order.Customer?.Balance ?? order.Supplier?.Balance);
     }
 
     public byte[] GenerateExcel(Order order)

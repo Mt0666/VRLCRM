@@ -20,6 +20,8 @@ public class StockFormViewModel
     [Display(Name = "Mevcut Görsel")]
     public string? ImageUrl { get; set; }
 
+    public string? ThumbnailUrl { get; set; }
+
     [Display(Name = "Ürün Görseli")]
     public IFormFile? ImageFile { get; set; }
 

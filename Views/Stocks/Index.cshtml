@@ -14,6 +14,17 @@
         ["PdfExportUrl"] = Url.Action("ExportPdf"),
         ["ExcelExportUrl"] = Url.Action("ExportExcel")
       })' />
+      @if (User.IsInRole(VRLCRM.Domain.Constants.AppRoles.Admin))
+      {
+        <form asp-action="OptimizeImages" method="post" class="d-inline"
+              onsubmit="var b=this.querySelector('button');b.disabled=true;b.innerHTML='<i class=\'ri-loader-4-line\'></i> İşleniyor…';">
+          @Html.AntiForgeryToken()
+          <button type="submit" class="btn btn-sm btn-outline-warning"
+                  title="Daha önce yüklenmiş büyük görselleri küçültür ve küçük önizleme üretir">
+            <i class="ri-image-edit-line me-1"></i>Görselleri Optimize Et
+          </button>
+        </form>
+      }
       <a asp-action="Create" class="btn btn-primary btn-sm">
         <i class="ri-add-line me-1"></i>Yeni Ürün
       </a>
@@ -50,7 +61,7 @@
                 <div class="d-flex align-items-center">
                   @if (!string.IsNullOrWhiteSpace(stock.ImageUrl))
                   {
-                    <img src="@stock.ImageUrl" alt="@stock.Name" class="rounded me-3" style="width:40px; height:40px; object-fit:cover;" />
+                    <img src="@(stock.ThumbnailUrl ?? stock.ImageUrl)" alt="@stock.Name" class="rounded me-3" width="40" height="40" loading="lazy" decoding="async" style="width:40px; height:40px; object-fit:cover;" />
                   }
                   else
                   {

@@ -47,7 +47,8 @@ public static class CommercialDocumentPdfLayout
         DocumentTotals totals,
         string? notes,
         decimal discountRate = 0,
-        decimal discountAmount = 0)
+        decimal discountAmount = 0,
+        decimal? partyBalance = null)
     {
         var document = Document.Create(container =>
         {
@@ -126,32 +127,29 @@ public static class CommercialDocumentPdfLayout
                     {
                         table.ColumnsDefinition(columns =>
                         {
-                            columns.ConstantColumn(22);
-                            columns.RelativeColumn(2.8f);
-                            columns.RelativeColumn(0.8f);
-                            columns.RelativeColumn(1.2f);
-                            columns.RelativeColumn(0.8f);
-                            columns.RelativeColumn(1.1f);
-                            columns.RelativeColumn(1.2f);
+                            columns.RelativeColumn(3.4f);   // Ürün
+                            columns.RelativeColumn(0.5f);   // Adet
+                            columns.RelativeColumn(0.9f);   // Birim Fiyat
+                            columns.RelativeColumn(0.7f);   // KDV %
+                            columns.RelativeColumn(1.0f);   // KDV Tutarı
+                            columns.RelativeColumn(0.9f);   // Toplam
                         });
 
                         table.Header(header =>
                         {
-                            header.Cell().Background(BrandColor).Padding(6).Text("#").FontColor(Colors.White).SemiBold();
-                            header.Cell().Background(BrandColor).Padding(6).Text("Ürün").FontColor(Colors.White).SemiBold();
-                            header.Cell().Background(BrandColor).Padding(6).AlignCenter().Text("Adet").FontColor(Colors.White).SemiBold();
-                            header.Cell().Background(BrandColor).Padding(6).AlignRight().Text("Birim Fiyat").FontColor(Colors.White).SemiBold();
-                            header.Cell().Background(BrandColor).Padding(6).AlignCenter().Text("KDV %").FontColor(Colors.White).SemiBold();
-                            header.Cell().Background(BrandColor).Padding(6).AlignRight().Text("KDV Tutarı").FontColor(Colors.White).SemiBold();
-                            header.Cell().Background(BrandColor).Padding(6).AlignRight().Text("Toplam").FontColor(Colors.White).SemiBold();
+                            header.Cell().Background(BrandColor).PaddingVertical(4).PaddingHorizontal(6).Text("Ürün").FontColor(Colors.White).SemiBold();
+                            header.Cell().Background(BrandColor).PaddingVertical(4).PaddingHorizontal(6).AlignCenter().Text("Adet").FontColor(Colors.White).SemiBold();
+                            header.Cell().Background(BrandColor).PaddingVertical(4).PaddingHorizontal(6).AlignRight().Text("Birim Fiyat").FontColor(Colors.White).SemiBold();
+                            header.Cell().Background(BrandColor).PaddingVertical(4).PaddingHorizontal(6).AlignCenter().Text("KDV %").FontColor(Colors.White).SemiBold();
+                            header.Cell().Background(BrandColor).PaddingVertical(4).PaddingHorizontal(6).AlignRight().Text("KDV Tutarı").FontColor(Colors.White).SemiBold();
+                            header.Cell().Background(BrandColor).PaddingVertical(4).PaddingHorizontal(6).AlignRight().Text("Toplam").FontColor(Colors.White).SemiBold();
                         });
 
                         var index = 1;
                         foreach (var line in lines)
                         {
                             var bg = index % 2 == 0 ? Colors.Grey.Lighten5 : Colors.White;
-                            table.Cell().Background(bg).Padding(6).Text(index.ToString());
-                            table.Cell().Background(bg).Padding(6).Column(productCol =>
+                            table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingVertical(3).PaddingHorizontal(6).Column(productCol =>
                             {
                                 productCol.Item().Text(line.ProductName);
                                 if (!string.IsNullOrWhiteSpace(line.LineNotes))
@@ -159,11 +157,11 @@ public static class CommercialDocumentPdfLayout
                                     productCol.Item().PaddingTop(2).Text(line.LineNotes).FontSize(8).FontColor(MutedColor).Italic();
                                 }
                             });
-                            table.Cell().Background(bg).Padding(6).AlignCenter().Text(line.Quantity.ToString());
-                            table.Cell().Background(bg).Padding(6).AlignRight().Text(FormatMoney(line.UnitPrice));
-                            table.Cell().Background(bg).Padding(6).AlignCenter().Text($"%{line.VatRate:N0}");
-                            table.Cell().Background(bg).Padding(6).AlignRight().Text(FormatMoney(line.VatAmount));
-                            table.Cell().Background(bg).Padding(6).AlignRight().Text(FormatMoney(line.LineTotal));
+                            table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingVertical(3).PaddingHorizontal(6).AlignCenter().Text(line.Quantity.ToString());
+                            table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingVertical(3).PaddingHorizontal(6).AlignRight().Text(FormatMoney(line.UnitPrice));
+                            table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingVertical(3).PaddingHorizontal(6).AlignCenter().Text($"%{line.VatRate:N0}");
+                            table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingVertical(3).PaddingHorizontal(6).AlignRight().Text(FormatMoney(line.VatAmount));
+                            table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingVertical(3).PaddingHorizontal(6).AlignRight().Text(FormatMoney(line.LineTotal));
                             index++;
                         }
                     });
@@ -211,10 +209,21 @@ public static class CommercialDocumentPdfLayout
                     }
                 });
 
-                page.Footer().AlignCenter().Text(text =>
+                page.Footer().Row(f =>
                 {
-                    text.Span("Oluşturulma: ").FontColor(MutedColor).FontSize(8);
-                    text.Span(DateTime.Now.ToString("dd.MM.yyyy HH:mm", TurkishCulture)).FontSize(8);
+                    f.RelativeItem().AlignLeft().Text(text =>
+                    {
+                        if (partyBalance.HasValue)
+                        {
+                            text.Span("Güncel Bakiye: ").FontColor(MutedColor).FontSize(9).SemiBold();
+                            text.Span(FormatMoney(partyBalance.Value)).FontSize(9).SemiBold();
+                        }
+                    });
+                    f.RelativeItem().AlignRight().Text(text =>
+                    {
+                        text.Span("Oluşturulma: ").FontColor(MutedColor).FontSize(8);
+                        text.Span(DateTime.Now.ToString("dd.MM.yyyy HH:mm", TurkishCulture)).FontSize(8);
+                    });
                 });
             });
         });
@@ -231,7 +240,8 @@ public static class CommercialDocumentPdfLayout
         string? partyCompany,
         string partyPhone,
         IReadOnlyList<DocumentLine> lines,
-        DocumentTotals totals)
+        DocumentTotals totals,
+        decimal? partyBalance = null)
     {
         var document = Document.Create(container =>
         {
@@ -281,20 +291,18 @@ public static class CommercialDocumentPdfLayout
                     {
                         table.ColumnsDefinition(columns =>
                         {
-                            columns.ConstantColumn(22);
-                            columns.RelativeColumn(3.2f);
-                            columns.RelativeColumn(0.8f);
-                            columns.RelativeColumn(1.2f);
-                            columns.RelativeColumn(1.2f);
+                            columns.RelativeColumn(4.2f);   // Ürün
+                            columns.RelativeColumn(0.5f);   // Adet
+                            columns.RelativeColumn(0.9f);   // Birim Fiyat
+                            columns.RelativeColumn(0.9f);   // Toplam
                         });
 
                         table.Header(header =>
                         {
-                            header.Cell().Background(BrandColor).Padding(6).Text("#").FontColor(Colors.White).SemiBold();
-                            header.Cell().Background(BrandColor).Padding(6).Text("Ürün").FontColor(Colors.White).SemiBold();
-                            header.Cell().Background(BrandColor).Padding(6).AlignCenter().Text("Adet").FontColor(Colors.White).SemiBold();
-                            header.Cell().Background(BrandColor).Padding(6).AlignRight().Text("Birim Fiyat").FontColor(Colors.White).SemiBold();
-                            header.Cell().Background(BrandColor).Padding(6).AlignRight().Text("Toplam").FontColor(Colors.White).SemiBold();
+                            header.Cell().Background(BrandColor).PaddingVertical(4).PaddingHorizontal(6).Text("Ürün").FontColor(Colors.White).SemiBold();
+                            header.Cell().Background(BrandColor).PaddingVertical(4).PaddingHorizontal(6).AlignCenter().Text("Adet").FontColor(Colors.White).SemiBold();
+                            header.Cell().Background(BrandColor).PaddingVertical(4).PaddingHorizontal(6).AlignRight().Text("Birim Fiyat").FontColor(Colors.White).SemiBold();
+                            header.Cell().Background(BrandColor).PaddingVertical(4).PaddingHorizontal(6).AlignRight().Text("Toplam").FontColor(Colors.White).SemiBold();
                         });
 
                         var index = 1;
@@ -302,20 +310,18 @@ public static class CommercialDocumentPdfLayout
                         {
                             var bg = index % 2 == 0 ? Colors.Grey.Lighten5 : Colors.White;
                             var hasDetail = HasProductDetail(line);
-                            var mainPadding = hasDetail
-                                ? new { H = 6f, Top = 6f, Bottom = 1f }
-                                : new { H = 6f, Top = 6f, Bottom = 6f };
+                            // Detay satırı varsa çizgi/alt boşluk detay satırına gider; yoksa ana satıra.
+                            var mainBottom = hasDetail ? 1f : 3f;
+                            var mainLine = hasDetail ? 0f : 0.5f;
 
-                            table.Cell().Background(bg).PaddingHorizontal(mainPadding.H).PaddingTop(mainPadding.Top).PaddingBottom(mainPadding.Bottom).Text(index.ToString());
-                            table.Cell().Background(bg).PaddingHorizontal(mainPadding.H).PaddingTop(mainPadding.Top).PaddingBottom(mainPadding.Bottom).Text(line.ProductName);
-                            table.Cell().Background(bg).PaddingHorizontal(mainPadding.H).PaddingTop(mainPadding.Top).PaddingBottom(mainPadding.Bottom).AlignCenter().Text(line.Quantity.ToString());
-                            table.Cell().Background(bg).PaddingHorizontal(mainPadding.H).PaddingTop(mainPadding.Top).PaddingBottom(mainPadding.Bottom).AlignRight().Text(FormatMoney(line.UnitPrice));
-                            table.Cell().Background(bg).PaddingHorizontal(mainPadding.H).PaddingTop(mainPadding.Top).PaddingBottom(mainPadding.Bottom).AlignRight().Text(FormatMoney(line.LineTotal));
+                            table.Cell().Background(bg).BorderBottom(mainLine).BorderColor(Colors.Grey.Lighten2).PaddingHorizontal(6).PaddingTop(3).PaddingBottom(mainBottom).Text(line.ProductName);
+                            table.Cell().Background(bg).BorderBottom(mainLine).BorderColor(Colors.Grey.Lighten2).PaddingHorizontal(6).PaddingTop(3).PaddingBottom(mainBottom).AlignCenter().Text(line.Quantity.ToString());
+                            table.Cell().Background(bg).BorderBottom(mainLine).BorderColor(Colors.Grey.Lighten2).PaddingHorizontal(6).PaddingTop(3).PaddingBottom(mainBottom).AlignRight().Text(FormatMoney(line.UnitPrice));
+                            table.Cell().Background(bg).BorderBottom(mainLine).BorderColor(Colors.Grey.Lighten2).PaddingHorizontal(6).PaddingTop(3).PaddingBottom(mainBottom).AlignRight().Text(FormatMoney(line.LineTotal));
 
                             if (hasDetail)
                             {
-                                table.Cell().Background(bg).PaddingHorizontal(6).PaddingTop(0).PaddingBottom(6).Text(string.Empty);
-                                table.Cell().ColumnSpan(4).Background(bg).PaddingHorizontal(6).PaddingTop(0).PaddingBottom(6).Text(text =>
+                                table.Cell().ColumnSpan(4).Background(bg).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingHorizontal(6).PaddingTop(0).PaddingBottom(3).Text(text =>
                                 {
                                     RenderProductDetailText(text, line);
                                 });
@@ -336,9 +342,20 @@ public static class CommercialDocumentPdfLayout
                     });
                 });
 
-                page.Footer().AlignCenter().Text(text =>
+                page.Footer().Row(f =>
                 {
-                    text.Span(DateTime.Now.ToString("dd.MM.yyyy", TurkishCulture)).FontSize(8).FontColor(MutedColor);
+                    f.RelativeItem().AlignLeft().Text(text =>
+                    {
+                        if (partyBalance.HasValue)
+                        {
+                            text.Span("Güncel Bakiye: ").FontSize(9).FontColor(MutedColor).SemiBold();
+                            text.Span(FormatMoney(partyBalance.Value)).FontSize(9).SemiBold();
+                        }
+                    });
+                    f.RelativeItem().AlignRight().Text(text =>
+                    {
+                        text.Span(DateTime.Now.ToString("dd.MM.yyyy", TurkishCulture)).FontSize(8).FontColor(MutedColor);
+                    });
                 });
             });
         });

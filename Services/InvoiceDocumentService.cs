@@ -66,7 +66,8 @@ public class InvoiceDocumentService
                 partyCompany,
                 partyPhone,
                 lines,
-                new DocumentTotals(invoice.SubTotal, invoice.VatTotal, invoice.TotalAmount));
+                new DocumentTotals(invoice.SubTotal, invoice.VatTotal, invoice.TotalAmount),
+                partyBalance: invoice.Customer?.Balance ?? invoice.Supplier?.Balance);
         }
 
         return BuildPdf(
@@ -83,7 +84,8 @@ public class InvoiceDocumentService
             partyPhone,
             lines,
             new DocumentTotals(invoice.SubTotal, invoice.VatTotal, invoice.TotalAmount),
-            invoice.Notes);
+            invoice.Notes,
+            partyBalance: invoice.Customer?.Balance ?? invoice.Supplier?.Balance);
     }
 
     public byte[] GenerateExcel(Invoice invoice)

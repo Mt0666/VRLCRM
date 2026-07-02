@@ -111,7 +111,7 @@ else
         <div class="card h-100 mv-product-card">
           @if (!string.IsNullOrWhiteSpace(stock.ImageUrl))
           {
-            <img src="@stock.ImageUrl" class="mv-product-img" alt="@stock.Name" />
+            <img src="@stock.ImageUrl" class="mv-product-img" alt="@stock.Name" loading="lazy" decoding="async" />
           }
           else
           {
