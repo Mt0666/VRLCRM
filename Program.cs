@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using VRLCRM.Handlers;
 using VRLCRM.Infrastructure;
@@ -93,6 +94,10 @@ app.MapControllerRoute(
 
 using (var scope = app.Services.CreateScope())
 {
+    // Bekleyen veritabanı migration'larını uygula (deploy'da elle dotnet ef gerektirmez).
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await db.Database.MigrateAsync();
+
     await SeedData.InitializeAsync(scope.ServiceProvider);
 }
 
