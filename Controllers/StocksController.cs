@@ -83,37 +83,6 @@ public class StocksController : Controller
         return View(stock);
     }
 
-    public async Task<IActionResult> Label(int id, CancellationToken cancellationToken)
-    {
-        var stock = await _stockService.GetByIdAsync(id, cancellationToken);
-        if (stock is null)
-        {
-            return NotFound();
-        }
-
-        // Barkod yoksa stok kodunu barkoda çevir (her ürün taranabilir olsun).
-        var barcodeText = string.IsNullOrWhiteSpace(stock.Barcode) ? stock.StockCode : stock.Barcode;
-        var barcodePng = BarcodeGenerator.ToCode128Png(barcodeText);
-        var pdf = StockLabelDocument.Build(stock.Name, stock.StockCode, barcodeText, barcodePng, stock.Price);
-
-        // Tam 4×6 inç PDF; tarayıcının PDF görüntüleyicisinde inline açılır (yeni sekme) → oradan yazdırılır.
-        return File(pdf, "application/pdf");
-    }
-
-    /// <summary>Ürünün PPLA etiket komutlarını döner; tarayıcı bunu yerel yazıcı köprüsüne iletir.</summary>
-    public async Task<IActionResult> LabelPpla(int id, CancellationToken cancellationToken)
-    {
-        var stock = await _stockService.GetByIdAsync(id, cancellationToken);
-        if (stock is null)
-        {
-            return NotFound();
-        }
-
-        var barcodeText = string.IsNullOrWhiteSpace(stock.Barcode) ? stock.StockCode : stock.Barcode;
-        var ppla = PplaLabelBuilder.Build(stock.Name, stock.StockCode, barcodeText, stock.Price);
-        return Content(ppla, "text/plain; charset=utf-8");
-    }
-
     public async Task<IActionResult> Create(CancellationToken cancellationToken)
     {
         var model = new StockFormViewModel();

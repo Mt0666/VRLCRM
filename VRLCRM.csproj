@@ -15,7 +15,6 @@
     <PackageReference Include="QuestPDF" Version="2024.12.3" />
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="2.1.13" />
-    <PackageReference Include="ZXing.Net" Version="0.16.11" />
   </ItemGroup>
 
   <ItemGroup>
