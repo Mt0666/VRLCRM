@@ -20,6 +20,14 @@
             <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary btn-sm">
               <i class="ri-pencil-line me-1"></i>Düzenle
             </a>
+            <button type="button" class="btn btn-dark btn-sm js-send-label"
+                    data-url="@Url.Action("LabelPpla", new { id = Model.Id })"
+                    title="Etiketi doğrudan ARGOX yazıcıya gönder">
+              <i class="ri-printer-line me-1"></i>Yazıcıya Gönder
+            </button>
+            <a asp-action="Label" asp-route-id="@Model.Id" target="_blank" class="btn btn-outline-dark btn-sm" title="Etiketi PDF olarak aç">
+              <i class="ri-price-tag-3-line me-1"></i>Etiket (PDF)
+            </a>
             <button id="page-tour-btn" class="btn btn-sm btn-outline-secondary" title="Sayfayı Tanı">
               <i class="ri-question-line"></i>
             </button>
@@ -252,6 +260,32 @@
     ]
   });
   document.getElementById('page-tour-btn').addEventListener('click', () => tour.drive());
+})();
+</script>
+<script>
+(function () {
+  // Yerel yazıcı köprüsü (print-bridge.ps1) bu adreste dinler.
+  var BRIDGE = 'http://localhost:9110/print';
+  document.querySelectorAll('.js-send-label').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var original = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ri-loader-4-line"></i> Gönderiliyor…';
+      try {
+        var r = await fetch(btn.dataset.url);
+        if (!r.ok) throw new Error('Etiket verisi alınamadı');
+        var ppla = await r.text();
+        var pr = await fetch(BRIDGE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: ppla });
+        if (!pr.ok) throw new Error('Köprü hata verdi (HTTP ' + pr.status + ')');
+        btn.innerHTML = '<i class="ri-check-line"></i> Gönderildi';
+        setTimeout(function () { btn.innerHTML = original; btn.disabled = false; }, 1500);
+      } catch (e) {
+        alert('Yazıcıya gönderilemedi.\n\nYazıcının bağlı olduğu bilgisayarda "print-bridge.ps1" çalışıyor mu?\nDetay: ' + e.message);
+        btn.innerHTML = original;
+        btn.disabled = false;
+      }
+    });
+  });
 })();
 </script>
 }
