@@ -412,7 +412,31 @@
       if (e.target.type === 'submit' || e.target.tagName === 'BUTTON') return;
       e.preventDefault();
     });
-    document.getElementById('orderForm').addEventListener('submit', function() {
+    // Parti (müşteri/tedarikçi) seçilmeden gönderimi engelle — liste sıfırlanmasın.
+    function validateOrderParty(e) {
+      var isSupplier = document.getElementById('partySupplier').checked;
+      var wrapId = isSupplier ? 'supplierSelectWrap' : 'customerSelectWrap';
+      var sel = document.getElementById(isSupplier ? 'SupplierId' : 'CustomerId');
+      var span = document.querySelector('#' + wrapId + ' .text-danger');
+      if (!sel || !sel.value) {
+        e.preventDefault();
+        if (span) span.textContent = isSupplier ? 'Tedarikçi seçimi zorunludur.' : 'Müşteri seçimi zorunludur.';
+        var wrap = document.getElementById(wrapId);
+        if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+      }
+      if (span) span.textContent = '';
+      return true;
+    }
+    ['CustomerId', 'SupplierId'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', function() {
+        var span = el.parentElement.querySelector('.text-danger');
+        if (span) span.textContent = '';
+      });
+    });
+    document.getElementById('orderForm').addEventListener('submit', function(e) {
+      if (!validateOrderParty(e)) return;
       FormDraftStorage.clear(DRAFT_KEY);
     });
 

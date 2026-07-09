@@ -1,5 +1,6 @@
-using System.Text.Json;
-using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using VRLCRM.Domain.Entities;
+using VRLCRM.Infrastructure.Data;
 
 namespace VRLCRM.Services;
 
@@ -18,64 +19,68 @@ public class CartItem
     public decimal LineTotal => UnitPrice * Quantity;
 }
 
+/// <summary>
+/// B2B müşteri sepeti — session yerine VERİTABANINDA saklanır; böylece müşteri
+/// günler sonra tekrar girdiğinde (ve uygulama yeniden başlasa bile) sepeti korunur.
+/// </summary>
 public class CustomerCartService
 {
-    private const string SessionPrefix = "cart_";
-    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ApplicationDbContext _context;
 
-    public CustomerCartService(IHttpContextAccessor httpContextAccessor)
+    public CustomerCartService(ApplicationDbContext context)
     {
-        _httpContextAccessor = httpContextAccessor;
+        _context = context;
     }
 
     public IReadOnlyList<CartItem> GetItems(int customerId)
     {
-        var session = _httpContextAccessor.HttpContext?.Session;
-        if (session is null)
-        {
-            return [];
-        }
-
-        var json = session.GetString(SessionKey(customerId));
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return [];
-        }
-
-        return JsonSerializer.Deserialize<List<CartItem>>(json) ?? [];
-    }
-
-    public void SaveItems(int customerId, List<CartItem> items)
-    {
-        var session = _httpContextAccessor.HttpContext?.Session;
-        if (session is null)
-        {
-            return;
-        }
-
-        session.SetString(SessionKey(customerId), JsonSerializer.Serialize(items));
+        return _context.CartItems
+            .AsNoTracking()
+            .Where(c => c.CustomerId == customerId)
+            .OrderBy(c => c.Id)
+            .Select(c => new CartItem
+            {
+                StockItemId = c.StockItemId,
+                Name = c.Name,
+                UnitPrice = c.UnitPrice,
+                Quantity = c.Quantity,
+                Notes = c.Notes
+            })
+            .ToList();
     }
 
     public void AddItem(int customerId, CartItem item)
     {
-        var items = GetItems(customerId).ToList();
-        var existing = items.FirstOrDefault(i => i.StockItemId == item.StockItemId);
+        var existing = _context.CartItems
+            .FirstOrDefault(c => c.CustomerId == customerId && c.StockItemId == item.StockItemId);
+
         if (existing is not null)
         {
             existing.Quantity += item.Quantity;
+            existing.UnitPrice = item.UnitPrice;
+            existing.Name = item.Name;
         }
         else
         {
-            items.Add(item);
+            _context.CartItems.Add(new CustomerCartItem
+            {
+                CustomerId = customerId,
+                StockItemId = item.StockItemId,
+                Name = item.Name,
+                UnitPrice = item.UnitPrice,
+                Quantity = item.Quantity,
+                Notes = item.Notes
+            });
         }
 
-        SaveItems(customerId, items);
+        _context.SaveChanges();
     }
 
     public void UpdateQuantity(int customerId, int stockItemId, int quantity)
     {
-        var items = GetItems(customerId).ToList();
-        var existing = items.FirstOrDefault(i => i.StockItemId == stockItemId);
+        var existing = _context.CartItems
+            .FirstOrDefault(c => c.CustomerId == customerId && c.StockItemId == stockItemId);
+
         if (existing is null)
         {
             return;
@@ -83,45 +88,50 @@ public class CustomerCartService
 
         if (quantity <= 0)
         {
-            items.Remove(existing);
+            _context.CartItems.Remove(existing);
         }
         else
         {
             existing.Quantity = quantity;
         }
 
-        SaveItems(customerId, items);
+        _context.SaveChanges();
     }
 
     public void UpdateNotes(int customerId, int stockItemId, string? notes)
     {
-        var items = GetItems(customerId).ToList();
-        var existing = items.FirstOrDefault(i => i.StockItemId == stockItemId);
+        var existing = _context.CartItems
+            .FirstOrDefault(c => c.CustomerId == customerId && c.StockItemId == stockItemId);
+
         if (existing is null)
         {
             return;
         }
 
         existing.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
-        SaveItems(customerId, items);
+        _context.SaveChanges();
     }
 
     public void RemoveItem(int customerId, int stockItemId)
     {
-        var items = GetItems(customerId).ToList();
-        items.RemoveAll(i => i.StockItemId == stockItemId);
-        SaveItems(customerId, items);
+        var items = _context.CartItems
+            .Where(c => c.CustomerId == customerId && c.StockItemId == stockItemId);
+
+        _context.CartItems.RemoveRange(items);
+        _context.SaveChanges();
     }
 
     public void Clear(int customerId)
     {
-        SaveItems(customerId, []);
+        var items = _context.CartItems.Where(c => c.CustomerId == customerId);
+        _context.CartItems.RemoveRange(items);
+        _context.SaveChanges();
     }
 
     public decimal GetTotal(int customerId)
     {
-        return GetItems(customerId).Sum(i => i.LineTotal);
+        return _context.CartItems
+            .Where(c => c.CustomerId == customerId)
+            .Sum(c => (decimal?)(c.UnitPrice * c.Quantity)) ?? 0m;
     }
-
-    private static string SessionKey(int customerId) => $"{SessionPrefix}{customerId}";
 }

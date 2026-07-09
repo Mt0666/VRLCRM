@@ -28,14 +28,23 @@
             </a>
           </div>
         </div>
-        @if (Model.IsActive)
-        {
-          <div class="d-flex gap-2 mt-3 pt-3 border-top">
+        <div class="d-flex gap-2 mt-3 pt-3 border-top">
+          @if (Model.IsActive)
+          {
             <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger btn-sm">
               <i class="ri-close-circle-line me-1"></i>Pasife Al
             </a>
-          </div>
-        }
+          }
+          else
+          {
+            <form asp-action="Restore" asp-route-id="@Model.Id" method="post" class="d-inline">
+              @Html.AntiForgeryToken()
+              <button type="submit" class="btn btn-outline-success btn-sm">
+                <i class="ri-checkbox-circle-line me-1"></i>Aktife Al
+              </button>
+            </form>
+          }
+        </div>
       </div>
 
       <div class="card-body">

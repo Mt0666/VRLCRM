@@ -95,6 +95,15 @@
                    class="btn btn-sm btn-icon btn-outline-secondary" title="Detay">
                   <i class="ri ri-eye-line"></i>
                 </a>
+                @if (!stock.IsActive)
+                {
+                  <form asp-action="Restore" asp-route-id="@stock.Id" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-icon btn-outline-success" title="Aktife Al">
+                      <i class="ri ri-checkbox-circle-line"></i>
+                    </button>
+                  </form>
+                }
               </td>
               <td class="d-none">@stock.Barcode @stock.StockCode</td>
             </tr>

@@ -39,6 +39,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<Payment> Payments => Set<Payment>();
 
+    public DbSet<CustomerCartItem> CartItems => Set<CustomerCartItem>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

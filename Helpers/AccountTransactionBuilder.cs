@@ -20,9 +20,15 @@ public static class AccountTransactionBuilder
 
         foreach (var order in orders.Where(o => o.IsActive && o.Status != OrderStatus.Cancelled))
         {
+            // Faturalandırılmışsa cari hareket, faturanın GÜNCEL (düzenlenmiş) tutarını ve detayını yansıtsın.
+            var linkedInvoice = order.SalesInvoiceId.HasValue
+                ? salesInvoices.FirstOrDefault(i => i.Id == order.SalesInvoiceId.Value)
+                : null;
+            var isInvoiced = linkedInvoice is { IsActive: true };
+
             rows.Add(new AccountTransactionRow
             {
-                Id = order.Id,
+                Id = isInvoiced ? linkedInvoice!.Id : order.Id,
                 Number = order.OrderNumber,
                 Date = order.OrderDate,
                 Kind = AccountTransactionKind.Order,
@@ -35,10 +41,10 @@ public static class AccountTransactionBuilder
                     OrderStatus.Cancelled => "danger",
                     _ => "secondary"
                 },
-                Amount = order.TotalAmount,
-                BalanceEffectLabel = order.SalesInvoiceId.HasValue ? "Borç +" : "—",
-                BalanceEffectColor = order.SalesInvoiceId.HasValue ? "danger" : "secondary",
-                DetailController = "Orders"
+                Amount = isInvoiced ? linkedInvoice!.TotalAmount : order.TotalAmount,
+                BalanceEffectLabel = isInvoiced ? "Borç +" : "—",
+                BalanceEffectColor = isInvoiced ? "danger" : "secondary",
+                DetailController = isInvoiced ? "Invoices" : "Orders"
             });
         }
 
@@ -99,9 +105,15 @@ public static class AccountTransactionBuilder
 
         foreach (var order in orders.Where(o => o.IsActive && o.Status != OrderStatus.Cancelled))
         {
+            // Faturalandırılmışsa cari hareket, faturanın GÜNCEL (düzenlenmiş) tutarını ve detayını yansıtsın.
+            var linkedInvoice = order.SalesInvoiceId.HasValue
+                ? salesInvoices.FirstOrDefault(i => i.Id == order.SalesInvoiceId.Value)
+                : null;
+            var isInvoiced = linkedInvoice is { IsActive: true };
+
             rows.Add(new AccountTransactionRow
             {
-                Id = order.Id,
+                Id = isInvoiced ? linkedInvoice!.Id : order.Id,
                 Number = order.OrderNumber,
                 Date = order.OrderDate,
                 Kind = AccountTransactionKind.Order,
@@ -114,10 +126,10 @@ public static class AccountTransactionBuilder
                     OrderStatus.Cancelled => "danger",
                     _ => "secondary"
                 },
-                Amount = order.TotalAmount,
-                BalanceEffectLabel = order.SalesInvoiceId.HasValue ? "Borç −" : "—",
-                BalanceEffectColor = order.SalesInvoiceId.HasValue ? "success" : "secondary",
-                DetailController = "Orders"
+                Amount = isInvoiced ? linkedInvoice!.TotalAmount : order.TotalAmount,
+                BalanceEffectLabel = isInvoiced ? "Borç −" : "—",
+                BalanceEffectColor = isInvoiced ? "success" : "secondary",
+                DetailController = isInvoiced ? "Invoices" : "Orders"
             });
         }
 

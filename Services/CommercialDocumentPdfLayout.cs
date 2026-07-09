@@ -333,7 +333,14 @@ public static class CommercialDocumentPdfLayout
 
                     column.Item().Row(totalRow =>
                     {
-                        totalRow.RelativeItem();
+                        totalRow.RelativeItem().AlignLeft().AlignMiddle().Text(text =>
+                        {
+                            if (partyBalance.HasValue)
+                            {
+                                text.Span("Güncel Bakiye: ").FontColor(MutedColor).SemiBold();
+                                text.Span(FormatMoney(partyBalance.Value)).SemiBold();
+                            }
+                        });
                         totalRow.ConstantItem(280).Background(Colors.Grey.Lighten4).Padding(12).Row(r =>
                         {
                             r.RelativeItem().Text("Ödenecek Tutar").SemiBold();
@@ -342,20 +349,9 @@ public static class CommercialDocumentPdfLayout
                     });
                 });
 
-                page.Footer().Row(f =>
+                page.Footer().AlignCenter().Text(text =>
                 {
-                    f.RelativeItem().AlignLeft().Text(text =>
-                    {
-                        if (partyBalance.HasValue)
-                        {
-                            text.Span("Güncel Bakiye: ").FontSize(9).FontColor(MutedColor).SemiBold();
-                            text.Span(FormatMoney(partyBalance.Value)).FontSize(9).SemiBold();
-                        }
-                    });
-                    f.RelativeItem().AlignRight().Text(text =>
-                    {
-                        text.Span(DateTime.Now.ToString("dd.MM.yyyy", TurkishCulture)).FontSize(8).FontColor(MutedColor);
-                    });
+                    text.Span(DateTime.Now.ToString("dd.MM.yyyy", TurkishCulture)).FontSize(8).FontColor(MutedColor);
                 });
             });
         });
