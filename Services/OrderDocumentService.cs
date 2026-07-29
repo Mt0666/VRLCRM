@@ -58,7 +58,10 @@ public class OrderDocumentService
             partyPhone,
             lines,
             new DocumentTotals(order.SubTotal, order.VatTotal, order.TotalAmount),
-            partyBalance: order.Customer?.Balance ?? order.Supplier?.Balance);
+            partyBalance: order.Customer?.Balance ?? order.Supplier?.Balance,
+            discountRate: order.DiscountRate,
+            discountAmount: order.DiscountAmount,
+            discountLabel: "Sipariş İskontosu");
     }
 
     public byte[] GenerateExcel(Order order)
@@ -90,14 +93,18 @@ public class OrderDocumentService
 
         sheet.Range("A3:A6").Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromHtml("#F4F4F8"));
 
+        // İskonto oranı satır tutarlarına da yansıtılır (%10 → 0.90 çarpanı).
+        var hasDiscount = order.DiscountRate > 0;
+        var factor = 1m - Math.Min(Math.Max(order.DiscountRate, 0m), 100m) / 100m;
+
         var headerRow = 8;
         sheet.Cell(headerRow, 1).Value = "#";
         sheet.Cell(headerRow, 2).Value = "Ürün";
         sheet.Cell(headerRow, 3).Value = "Adet";
-        sheet.Cell(headerRow, 4).Value = "Birim Fiyat";
+        sheet.Cell(headerRow, 4).Value = hasDiscount ? "Birim Fiyat (iskontolu)" : "Birim Fiyat";
         sheet.Cell(headerRow, 5).Value = "KDV %";
         sheet.Cell(headerRow, 6).Value = "KDV Tutarı";
-        sheet.Cell(headerRow, 7).Value = "Toplam";
+        sheet.Cell(headerRow, 7).Value = hasDiscount ? "Toplam (iskontolu)" : "Toplam";
         sheet.Range(headerRow, 1, headerRow, 7).Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromHtml(BrandColor)).Font.SetFontColor(XLColor.White);
 
         var row = headerRow + 1;
@@ -113,11 +120,11 @@ public class OrderDocumentService
             sheet.Cell(row, 1).Value = lineNo++;
             sheet.Cell(row, 2).Value = productText;
             sheet.Cell(row, 3).Value = line.Quantity;
-            sheet.Cell(row, 4).Value = line.UnitPrice;
+            sheet.Cell(row, 4).Value = line.UnitPrice * factor;
             sheet.Cell(row, 5).Value = line.VatRate / 100m;
             sheet.Cell(row, 5).Style.NumberFormat.SetFormat("0%");
-            sheet.Cell(row, 6).Value = line.VatAmount;
-            sheet.Cell(row, 7).Value = line.LineTotal;
+            sheet.Cell(row, 6).Value = line.VatAmount * factor;
+            sheet.Cell(row, 7).Value = line.LineTotal * factor;
             sheet.Cell(row, 4).Style.NumberFormat.SetFormat("#,##0.00 \"₺\"");
             sheet.Cell(row, 6).Style.NumberFormat.SetFormat("#,##0.00 \"₺\"");
             sheet.Cell(row, 7).Style.NumberFormat.SetFormat("#,##0.00 \"₺\"");
@@ -138,8 +145,13 @@ public class OrderDocumentService
         sheet.Cell(row, 5).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
         sheet.Cell(row, 7).Value = order.VatTotal;
         sheet.Cell(row, 7).Style.NumberFormat.SetFormat("#,##0.00 \"₺\"");
-        if (order.DiscountRate > 0)
+        if (hasDiscount)
         {
+            row++;
+            sheet.Range(row, 5, row, 6).Merge().Value = "Vergiler Dahil Toplam Tutar";
+            sheet.Cell(row, 5).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
+            sheet.Cell(row, 7).Value = order.TotalAmount + order.DiscountAmount;
+            sheet.Cell(row, 7).Style.NumberFormat.SetFormat("#,##0.00 \"₺\"");
             row++;
             sheet.Range(row, 5, row, 6).Merge().Value = $"Sipariş İskontosu (%{order.DiscountRate:N2})";
             sheet.Cell(row, 5).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
@@ -151,6 +163,14 @@ public class OrderDocumentService
         sheet.Cell(row, 5).Style.Font.SetBold().Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
         sheet.Cell(row, 7).Value = order.TotalAmount;
         sheet.Cell(row, 7).Style.Font.SetBold().NumberFormat.SetFormat("#,##0.00 \"₺\"");
+
+        if (hasDiscount)
+        {
+            row += 2;
+            sheet.Range(row, 1, row, 7).Merge().Value =
+                $"Birim fiyatlar ve satır tutarları %{order.DiscountRate:N2} iskonto düşülmüş net tutarlardır.";
+            sheet.Cell(row, 1).Style.Font.SetItalic().Font.SetFontSize(9).Font.SetFontColor(XLColor.FromHtml("#6F6B7D"));
+        }
 
         if (!string.IsNullOrWhiteSpace(order.Notes))
         {

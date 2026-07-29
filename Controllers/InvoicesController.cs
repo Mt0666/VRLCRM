@@ -320,6 +320,7 @@ public class InvoicesController : Controller
                 StockItemId = l.StockItemId,
                 Quantity = l.Quantity,
                 UnitPrice = l.UnitPrice,
+                SalePrice = l.SalePrice,
                 VatRate = l.VatRate,
                 Notes = l.Notes
             }).ToList();

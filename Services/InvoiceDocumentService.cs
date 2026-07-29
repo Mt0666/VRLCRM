@@ -67,7 +67,10 @@ public class InvoiceDocumentService
                 partyPhone,
                 lines,
                 new DocumentTotals(invoice.SubTotal, invoice.VatTotal, invoice.TotalAmount),
-                partyBalance: invoice.Customer?.Balance ?? invoice.Supplier?.Balance);
+                partyBalance: invoice.Customer?.Balance ?? invoice.Supplier?.Balance,
+                discountRate: invoice.DiscountRate,
+                discountAmount: invoice.DiscountAmount,
+                discountLabel: "Fatura İskontosu");
         }
 
         return BuildPdf(
@@ -85,7 +88,10 @@ public class InvoiceDocumentService
             lines,
             new DocumentTotals(invoice.SubTotal, invoice.VatTotal, invoice.TotalAmount),
             invoice.Notes,
-            partyBalance: invoice.Customer?.Balance ?? invoice.Supplier?.Balance);
+            discountRate: invoice.DiscountRate,
+            discountAmount: invoice.DiscountAmount,
+            partyBalance: invoice.Customer?.Balance ?? invoice.Supplier?.Balance,
+            discountLabel: "Fatura İskontosu");
     }
 
     public byte[] GenerateExcel(Invoice invoice)
@@ -123,15 +129,19 @@ public class InvoiceDocumentService
 
         sheet.Range("A3:A6").Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromHtml("#F4F4F8"));
 
+        // İskonto oranı satır tutarlarına da yansıtılır (%10 → 0.90 çarpanı).
+        var hasDiscount = invoice.DiscountRate > 0;
+        var factor = 1m - Math.Min(Math.Max(invoice.DiscountRate, 0m), 100m) / 100m;
+
         var headerRow = 8;
         sheet.Cell(headerRow, 1).Value = "#";
         sheet.Cell(headerRow, 2).Value = "Stok Kodu";
         sheet.Cell(headerRow, 3).Value = "Ürün";
         sheet.Cell(headerRow, 4).Value = "Adet";
-        sheet.Cell(headerRow, 5).Value = "Birim Fiyat";
+        sheet.Cell(headerRow, 5).Value = hasDiscount ? "Birim Fiyat (iskontolu)" : "Birim Fiyat";
         sheet.Cell(headerRow, 6).Value = "KDV %";
         sheet.Cell(headerRow, 7).Value = "KDV Tutarı";
-        sheet.Cell(headerRow, 8).Value = "Toplam";
+        sheet.Cell(headerRow, 8).Value = hasDiscount ? "Toplam (iskontolu)" : "Toplam";
         sheet.Range(headerRow, 1, headerRow, 8).Style.Font.SetBold()
             .Fill.SetBackgroundColor(XLColor.FromHtml(BrandColor)).Font.SetFontColor(XLColor.White);
 
@@ -143,11 +153,11 @@ public class InvoiceDocumentService
             sheet.Cell(row, 2).Value = line.StockItem.StockCode;
             sheet.Cell(row, 3).Value = line.StockItem.Name;
             sheet.Cell(row, 4).Value = line.Quantity;
-            sheet.Cell(row, 5).Value = line.UnitPrice;
+            sheet.Cell(row, 5).Value = line.UnitPrice * factor;
             sheet.Cell(row, 6).Value = line.VatRate / 100m;
             sheet.Cell(row, 6).Style.NumberFormat.SetFormat("0%");
-            sheet.Cell(row, 7).Value = line.VatAmount;
-            sheet.Cell(row, 8).Value = line.LineTotal;
+            sheet.Cell(row, 7).Value = line.VatAmount * factor;
+            sheet.Cell(row, 8).Value = line.LineTotal * factor;
             sheet.Cell(row, 5).Style.NumberFormat.SetFormat("#,##0.00 \"₺\"");
             sheet.Cell(row, 7).Style.NumberFormat.SetFormat("#,##0.00 \"₺\"");
             sheet.Cell(row, 8).Style.NumberFormat.SetFormat("#,##0.00 \"₺\"");
@@ -168,11 +178,32 @@ public class InvoiceDocumentService
         sheet.Cell(row, 6).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
         sheet.Cell(row, 8).Value = invoice.VatTotal;
         sheet.Cell(row, 8).Style.NumberFormat.SetFormat("#,##0.00 \"₺\"");
+        if (hasDiscount)
+        {
+            row++;
+            sheet.Range(row, 6, row, 7).Merge().Value = "Vergiler Dahil Toplam Tutar";
+            sheet.Cell(row, 6).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
+            sheet.Cell(row, 8).Value = invoice.TotalAmount + invoice.DiscountAmount;
+            sheet.Cell(row, 8).Style.NumberFormat.SetFormat("#,##0.00 \"₺\"");
+            row++;
+            sheet.Range(row, 6, row, 7).Merge().Value = $"Fatura İskontosu (%{invoice.DiscountRate:N2})";
+            sheet.Cell(row, 6).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
+            sheet.Cell(row, 8).Value = -invoice.DiscountAmount;
+            sheet.Cell(row, 8).Style.NumberFormat.SetFormat("#,##0.00 \"₺\"");
+        }
         row++;
         sheet.Range(row, 6, row, 7).Merge().Value = "Ödenecek Tutar";
         sheet.Cell(row, 6).Style.Font.SetBold().Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
         sheet.Cell(row, 8).Value = invoice.TotalAmount;
         sheet.Cell(row, 8).Style.Font.SetBold().NumberFormat.SetFormat("#,##0.00 \"₺\"");
+
+        if (hasDiscount)
+        {
+            row += 2;
+            sheet.Range(row, 1, row, 8).Merge().Value =
+                $"Birim fiyatlar ve satır tutarları %{invoice.DiscountRate:N2} iskonto düşülmüş net tutarlardır.";
+            sheet.Cell(row, 1).Style.Font.SetItalic().Font.SetFontSize(9).Font.SetFontColor(XLColor.FromHtml("#6F6B7D"));
+        }
 
         if (!string.IsNullOrWhiteSpace(invoice.Notes))
         {

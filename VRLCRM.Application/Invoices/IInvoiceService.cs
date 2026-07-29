@@ -44,6 +44,9 @@ public class InvoiceLineUpdateInput
 
     public decimal UnitPrice { get; set; }
 
+    /// <summary>Alış faturası düzenlenirken kullanıcının belirlediği satış fiyatı. Null ise mevcut satış fiyatı korunur.</summary>
+    public decimal? SalePrice { get; set; }
+
     public decimal VatRate { get; set; }
 
     public string? Notes { get; set; }

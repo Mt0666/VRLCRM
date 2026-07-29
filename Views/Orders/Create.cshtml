@@ -112,6 +112,7 @@
                   <th>Açıklama</th>
                   <th class="text-center" style="width:80px">Adet</th>
                   <th class="text-end" style="width:130px">Birim Fiyat</th>
+                  <th class="text-end js-discount-col d-none" style="width:140px">İskontolu B. Fiyat</th>
                   <th class="text-center" style="width:80px">KDV %</th>
                   <th class="text-end" style="width:130px">Ara Toplam</th>
                   <th class="text-end" style="width:120px">KDV</th>
@@ -121,7 +122,7 @@
               </thead>
               <tbody id="linesBody">
                 <tr id="emptyRow">
-                  <td colspan="9" class="text-center text-body-secondary py-4">
+                  <td colspan="10" class="text-center text-body-secondary py-4">
                     <i class="ri-inbox-line me-1"></i>Henüz ürün eklenmedi.
                   </td>
                 </tr>
@@ -267,7 +268,25 @@
       } else {
         discountRow.classList.add('d-none');
       }
+      syncDiscountColumn();
       persistDraft();
+    }
+
+    // ── İskontolu birim fiyat kolonu ────────────────────────────────────
+    // İskonto tüm satırlara aynı oranda uygulandığı için net birim fiyat = fiyat × (1 - oran/100).
+    function syncDiscountColumn() {
+      const rate = parseFloat(document.getElementById('orderDiscountRate').value) || 0;
+      const show = rate > 0;
+      document.querySelectorAll('.js-discount-col').forEach(function(el) {
+        el.classList.toggle('d-none', !show);
+      });
+      if (!show) return;
+      const factor = 1 - Math.min(Math.max(rate, 0), 100) / 100;
+      document.querySelectorAll('#linesBody tr[data-stock-id]').forEach(function(row) {
+        const item = lines.get(row.dataset.stockId);
+        const cell = row.querySelector('.line-discounted');
+        if (item && cell) cell.textContent = fmtMoney(item.price * factor);
+      });
     }
 
     function renderLines() {
@@ -303,6 +322,7 @@
           '<td data-label="Açıklama"><input type="text" class="form-control form-control-sm line-notes" value="' + (item.notes || '').replace(/"/g, '&quot;') + '" placeholder="Ürün açıklaması" /></td>' +
           '<td data-label="Adet" class="text-center"><input type="number" class="form-control form-control-sm line-qty text-center" value="' + item.qty + '" min="1" style="width:70px;margin:0 auto;" /></td>' +
           '<td data-label="Birim Fiyat" class="text-end" style="padding:4px 8px"><input type="number" class="form-control form-control-sm text-end line-price" value="' + item.price.toFixed(2) + '" step="0.01" min="0" style="width:110px;margin-left:auto" /></td>' +
+          '<td data-label="İskontolu B. Fiyat" class="text-end fw-semibold js-discount-col d-none line-discounted"></td>' +
           '<td data-label="KDV %" class="text-center">%' + item.vatRate + '</td>' +
           '<td data-label="Ara Toplam" class="text-end line-sub">' + fmt(item.qty * item.price) + '</td>' +
           '<td data-label="KDV" class="text-end line-vat">' + fmt(item.qty * item.price * (item.vatRate / 100)) + '</td>' +
@@ -334,6 +354,8 @@
           updateTotals();
         });
       });
+
+      syncDiscountColumn();
     }
 
     function rebuildHiddenInputs() {

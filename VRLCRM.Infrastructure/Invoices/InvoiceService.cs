@@ -557,6 +557,9 @@ public class InvoiceService : IInvoiceService
         var newUnitPricesByStock = lines
             .GroupBy(l => l.StockItemId)
             .ToDictionary(g => g.Key, g => g.Last().UnitPrice);
+        var newSalePricesByStock = lines
+            .GroupBy(l => l.StockItemId)
+            .ToDictionary(g => g.Key, g => g.Last().SalePrice);
 
         var grossTotal = subTotal + vatTotal;
         var clampedRate = Math.Min(Math.Max(discountRate, 0m), 100m);
@@ -571,7 +574,8 @@ public class InvoiceService : IInvoiceService
             oldQtyByStock,
             newQtyByStock,
             stocks,
-            newUnitPricesByStock);
+            newUnitPricesByStock,
+            newSalePricesByStock);
 
         _context.InvoiceLines.RemoveRange(invoice.Lines);
 
@@ -838,7 +842,8 @@ public class InvoiceService : IInvoiceService
         Dictionary<int, int> oldQtyByStock,
         Dictionary<int, int> newQtyByStock,
         Dictionary<int, StockItem> stocks,
-        Dictionary<int, decimal>? newUnitPricesByStock = null)
+        Dictionary<int, decimal>? newUnitPricesByStock = null,
+        Dictionary<int, decimal?>? newSalePricesByStock = null)
     {
         foreach (var stockId in oldQtyByStock.Keys.Union(newQtyByStock.Keys))
         {
@@ -854,8 +859,23 @@ public class InvoiceService : IInvoiceService
             if (invoiceType == InvoiceType.Purchase &&
                 newUnitPricesByStock?.TryGetValue(stockId, out var unitPrice) == true)
             {
+                var purchasePriceChanged = stock.PurchasePrice != unitPrice;
                 stock.PurchasePrice = unitPrice;
-                stock.Price = Math.Round(unitPrice * 1.30m, 2);
+
+                // Kullanıcı satış fiyatını formda belirttiyse her zaman ona uy.
+                // Belirtmediyse: alış fiyatı değiştiyse × 1.30 ile yeniden hesapla,
+                // değişmediyse mevcut satış fiyatına (manuel girilmiş olabilir) dokunma.
+                decimal? salePrice = null;
+                newSalePricesByStock?.TryGetValue(stockId, out salePrice);
+
+                if (salePrice.HasValue && salePrice.Value > 0)
+                {
+                    stock.Price = salePrice.Value;
+                }
+                else if (purchasePriceChanged)
+                {
+                    stock.Price = Math.Round(unitPrice * 1.30m, 2);
+                }
             }
 
             if (stockDelta == 0)

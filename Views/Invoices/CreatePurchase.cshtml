@@ -479,6 +479,7 @@
           var item = lines.get(key);
           if (item) {
             item.salePrice = parseFloat(this.value) || 0;
+            item.salePriceTouched = true;
             lines.set(key, item);
             rebuildHiddenInputs();
           }
@@ -551,7 +552,11 @@
         code: product ? product.stockCode : '',
         qty: (existing ? existing.qty : 0) + qty,
         price: price,
-        salePrice: Math.round(price * 1.30 * 100) / 100,
+        // Satırda satış fiyatı elle girildiyse aynı ürün tekrar eklendiğinde sıfırlama.
+        salePrice: (existing && existing.salePriceTouched)
+          ? existing.salePrice
+          : Math.round(price * 1.30 * 100) / 100,
+        salePriceTouched: existing ? existing.salePriceTouched : false,
         vatRate: vatRate
       });
 
