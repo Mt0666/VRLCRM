@@ -1,4 +1,4 @@
-# SIMDIK KULLANILMIYOR — router yerel DNS gerekir. Ileride: --profile local-https
+# SIMDIK KULLANILMIYOR - router yerel DNS gerekir. Ileride: --profile local-https
 # Let's Encrypt sertifikasi alir (telefona ozel kurulum gerekmez).
 # Kullanim: powershell -ExecutionPolicy Bypass -File scripts\windows\obtain-letsencrypt.ps1
 
@@ -66,4 +66,4 @@ Write-Host ""
 Write-Host "=== Sertifika hazir ==="
 Write-Host "Simdi stack'i baslatin:"
 Write-Host "  docker compose --profile local-https --profile tunnel up -d"
-Write-Host "(veya: scripts\windows\start-vrlcrm.ps1 — sertifika varsa otomatik local-https ekler)"
+Write-Host "(veya: scripts\windows\start-vrlcrm.ps1 - sertifika varsa otomatik local-https ekler)"

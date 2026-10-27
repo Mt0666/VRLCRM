@@ -1,4 +1,4 @@
-# Yerel HTTPS (Let's Encrypt) — once obtain-letsencrypt.ps1 calistirin
+# Yerel HTTPS (Let's Encrypt) - once obtain-letsencrypt.ps1 calistirin
 # Router DNS: CRM_HOSTNAME -> LOCAL_LAN_IP
 
 $ErrorActionPreference = "Stop"
