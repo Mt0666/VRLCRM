@@ -65,4 +65,5 @@ if (-not (Test-Path $livePath) -and -not (Test-Path $archivePath)) {
 Write-Host ""
 Write-Host "=== Sertifika hazir ==="
 Write-Host "Simdi stack'i baslatin:"
-Write-Host "  docker compose --profile tunnel up -d"
+Write-Host "  docker compose --profile local-https --profile tunnel up -d"
+Write-Host "(veya: scripts\windows\start-vrlcrm.ps1 — sertifika varsa otomatik local-https ekler)"

@@ -42,12 +42,22 @@ if (-not (Test-Path ".env")) {
 $envContent = Get-Content ".env" -Raw
 $hasTunnelToken = $envContent -match '(?m)^CLOUDFLARE_TUNNEL_TOKEN=\S+'
 
-if ($hasTunnelToken) {
-    Write-Host "[VRLCRM] Stack + Cloudflare Tunnel baslatiliyor..."
-    $composeArgs = @("compose", "--profile", "tunnel", "up", "-d", "--remove-orphans")
-} else {
-    Write-Host "[VRLCRM] Tunnel token yok; web + db baslatiliyor..."
-    $composeArgs = @("compose", "up", "-d", "--remove-orphans")
+# Yerel HTTPS sadece sertifika + Caddyfile hazirsa devreye girer (yoksa hata uretmesin).
+$certReady = (Test-Path (Join-Path $ProjectRoot "certs\active\fullchain.pem")) -and `
+             (Test-Path (Join-Path $ProjectRoot "caddy\runtime\Caddyfile"))
+
+$composeArgs = @("compose")
+if ($hasTunnelToken) { $composeArgs += @("--profile", "tunnel") }
+if ($certReady)      { $composeArgs += @("--profile", "local-https") }
+$composeArgs += @("up", "-d", "--remove-orphans")
+
+$profilMsg = @()
+if ($hasTunnelToken) { $profilMsg += "Cloudflare Tunnel (dis erisim)" }
+if ($certReady)      { $profilMsg += "Yerel HTTPS/Caddy + DNS (offline)" }
+if ($profilMsg.Count -eq 0) { $profilMsg += "sadece web + db" }
+Write-Host "[VRLCRM] Baslatiliyor: $($profilMsg -join ' + ')"
+if ($hasTunnelToken -and -not $certReady) {
+    Write-Host "[VRLCRM] NOT: Sertifika yok; offline HTTPS pasif. Once obtain-letsencrypt.ps1 calistirin."
 }
 
 docker @composeArgs
@@ -62,5 +72,6 @@ docker compose ps
 
 Write-Host ""
 Write-Host "Yerel test : http://localhost:8080"
+Write-Host "Ofis ici   : https://$($env:CRM_HOSTNAME) (yerel DNS + Caddy; offline de calisir)"
 Write-Host "Dis erisim : Cloudflare tunnel hostname (internet gerekir)"
 Write-Host "[VRLCRM] Tamamlandi."

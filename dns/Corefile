@@ -1,0 +1,13 @@
+# VRLCRM yerel DNS (CoreDNS)
+# CRM_HOSTNAME -> LOCAL_LAN_IP (ofis ici / offline cozumleme)
+# Diger tum isimler 1.1.1.1 ve 8.8.8.8 uzerinden internete forward edilir.
+# Degerler .env dosyasindan (env_file) okunur: LOCAL_LAN_IP, CRM_HOSTNAME
+. {
+    hosts {
+        {$LOCAL_LAN_IP} {$CRM_HOSTNAME}
+        fallthrough
+    }
+    forward . 1.1.1.1 8.8.8.8
+    cache 30
+    errors
+}

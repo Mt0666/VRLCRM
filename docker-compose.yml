@@ -72,6 +72,49 @@ services:
     networks:
       - vrlcrm
 
+  # Ofis offline HTTPS — docker compose --profile local-https up -d
+  # ONCE: obtain-letsencrypt.ps1 (sertifika + caddy/runtime/Caddyfile uretir)
+  # Caddy, gecerli Let's Encrypt sertifikasiyla LAN uzerinden HTTPS sunar.
+  caddy:
+    image: caddy:2-alpine
+    container_name: vrlcrm-caddy
+    profiles: ["local-https"]
+    env_file:
+      - .env
+    environment:
+      CRM_HOSTNAME: ${CRM_HOSTNAME:-crm.metevarol.com.tr}
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./caddy/runtime/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/etc/certs:ro
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - vrlcrm
+
+  # Yerel DNS — internet yokken de CRM_HOSTNAME'i sunucu LAN IP'sine cozer.
+  # Router DHCP: Birincil DNS = sunucu IP, Ikincil DNS = 1.1.1.1
+  # CRM_HOSTNAME -> LOCAL_LAN_IP, diger tum isimler internete forward edilir.
+  dns:
+    image: coredns/coredns:1.11.1
+    container_name: vrlcrm-dns
+    profiles: ["local-https"]
+    env_file:
+      - .env
+    command: ["-conf", "/etc/coredns/Corefile"]
+    volumes:
+      - ./dns/Corefile:/etc/coredns/Corefile:ro
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    restart: unless-stopped
+    networks:
+      - vrlcrm
+
 networks:
   vrlcrm:
     driver: bridge
