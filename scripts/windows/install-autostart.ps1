@@ -32,7 +32,7 @@ Register-ScheduledTask `
     -Trigger $Trigger `
     -Settings $Settings `
     -Description "VRLCRM web, SQL ve Cloudflare Tunnel konteynerlerini baslatir." `
-    -RunLevel LeastPrivilege | Out-Null
+    -RunLevel Limited | Out-Null
 
 Write-Host "Gorev olusturuldu: $TaskName"
 Write-Host ""
