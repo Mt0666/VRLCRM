@@ -24,20 +24,31 @@ $certsDir = Join-Path $ProjectRoot "certs"
 $activeDir = Join-Path $certsDir "active"
 New-Item -ItemType Directory -Force -Path $activeDir | Out-Null
 
-$archiveFull = Join-Path $certsDir "archive\$hostname\fullchain1.pem"
-$archiveKey  = Join-Path $certsDir "archive\$hostname\privkey1.pem"
-$liveFull    = Join-Path $certsDir "live\$hostname\fullchain.pem"
-$liveKey     = Join-Path $certsDir "live\$hostname\privkey.pem"
+$archiveDir = Join-Path $certsDir "archive\$hostname"
 
 $sourceFull = $null
 $sourceKey  = $null
 
-if (Test-Path $archiveFull) {
-    $sourceFull = $archiveFull
-    $sourceKey  = $archiveKey
-} elseif (Test-Path $liveFull) {
-    $sourceFull = $liveFull
-    $sourceKey  = $liveKey
+# certbot renewal'da birden fazla fullchainN.pem olusur; EN YUKSEK numara = EN YENI.
+# (Windows'ta live\ sembolik linkleri guvenilir degil, bu yuzden archive'dan secilir.)
+if (Test-Path $archiveDir) {
+    $latest = Get-ChildItem -Path $archiveDir -Filter "fullchain*.pem" |
+        Sort-Object { [int]($_.BaseName -replace '\D', '') } -Descending |
+        Select-Object -First 1
+    if ($latest) {
+        $num = [int]($latest.BaseName -replace '\D', '')
+        $sourceFull = $latest.FullName
+        $sourceKey  = Join-Path $archiveDir "privkey$num.pem"
+    }
+}
+
+if (-not $sourceFull) {
+    $liveFull = Join-Path $certsDir "live\$hostname\fullchain.pem"
+    $liveKey  = Join-Path $certsDir "live\$hostname\privkey.pem"
+    if (Test-Path $liveFull) {
+        $sourceFull = $liveFull
+        $sourceKey  = $liveKey
+    }
 }
 
 if (-not $sourceFull -or -not (Test-Path $sourceFull)) {
