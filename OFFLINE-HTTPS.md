@@ -59,9 +59,14 @@ Telefonların Wi-Fi'ını bir kez kapat/aç (yeni DNS'i alsınlar).
 2. **Offline:** modemin WAN/internet bağlantısını çek → aynı adres → hâlâ açılmalı, yeşil kilit.
 3. **Ofis dışı:** mobil veri → aynı adres → Cloudflare tunnel üzerinden açılmalı.
 
-## Sertifika yenileme
-Let's Encrypt sertifikası 90 gün geçerli. İnternet varken aylık bir zamanlanmış görevle
-`obtain-letsencrypt.ps1` çalıştırılması önerilir (yeniler + Caddyfile'ı günceller).
+## Sertifika yenileme (otomatik)
+Let's Encrypt sertifikası 90 gün geçerli. Haftalık zamanlanmış görevle otomatik yenilenir:
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\windows\install-renew-task.ps1
+```
+Bu, her Pazar 03:30'da `renew-cert.ps1`'i çalıştırır: `certbot renew` (sadece bitişe
+<30 gün kalınca gerçekten yeniler) + `sync-caddy-config.ps1` + sertifika değiştiyse
+`docker restart vrlcrm-caddy`. Elle yenileme: `scripts\windows\renew-cert.ps1`.
 Telefon tarafında hiçbir işlem gerekmez.
 
 ## Notlar
